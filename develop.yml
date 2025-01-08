@@ -1,0 +1,34 @@
+# requirements for tabbed's development environment
+name: tabbed
+dependencies:
+    - numpy
+    - ipython
+    - notebook
+    - pandas
+    # testing
+    - pytest
+    - pytest-cov
+    # Linting & format
+    - isort
+    - mypy
+    - pylint
+    # pypi packages
+    - pip
+    - pip:
+        - clevercsv
+        - comma
+        # formatting
+        - black
+        # spell checking
+        - codespell
+        # versioning
+        - bumpver
+        # doc builders
+        - mkdocs
+        - mkdocs-material
+        - "mkdocstrings[python]"
+        - mkdocs-jupyter
+        # packaging
+        - pip-tools
+        - build
+        - twine

@@ -1,0 +1,125 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tabbed"
+version = "1.0.0"
+authors =[{ name="Matthew Caudill", email="mscaudill@gmail.com" }]
+description = "Precise CSV "
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = [
+    "machine learning",
+    "classification",
+    "high-dimensional"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "License :: OSI Approved :: BSD License",
+    "Topic :: Education",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering"
+]
+dependencies = [
+    "requests",
+    "wget",
+    "numpy",
+    "scipy",
+    "scikit-learn",
+    "matplotlib",
+    "ipython",
+    "notebook",
+    "psutil"
+]
+
+[project.optional-dependencies]
+dev = ["isort",
+    "mypy",
+    "pylint",
+    "bumpver",
+    "codespell",
+    "black",
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocstrings[python]",
+    "mkdocs-jupyter",
+    "pytest",
+    "pytest-cov",
+    "pytest-lazy-fixture",
+    "pip-tools",
+    "build",
+    "twine"
+]
+test = ["pytest", "pytest-cov", "pytest-lazy-fixture"]
+
+[project.urls]
+Homepage = "https://github.com/mscaudill/ultra-k"
+
+
+# bumpver configuration
+[tool.bumpver]
+current_version = "1.0.0"
+version_pattern = "MAJOR.MINOR.PATCH[PYTAGNUM]"
+commit_message = 'bump version {old_version} -> {new_version}'
+commit = true
+tag = true
+push = true
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    'current_version = "{version}"', 
+    'version = "{version}"'
+]
+"src/ultrak/__init__.py" = ['__version__ = "{version}"']
+
+# inform type checkers openseize supports annotations
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ultrak = ["py.typed"]
+
+# mypy configuration
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+# 3rd party's without annotations
+module = ["scipy.*", "matplotlib.*", "simplexers.*"]
+ignore_missing_imports = true
+
+# pylint configuration
+[tool.pylint.design]
+max-attributes = 10
+max-args = 10
+max-locals = 30
+
+[tool.pylint.basic]
+argument-naming-style = "any"
+variable-naming-style = "any"
+attr-naming-style = "any"
+
+[tool.pylint.messages_control]
+disable = ["ungrouped-imports"] #isort handles this
+
+[tool.isort]
+profile = 'google'
+line_length = 80
+
+[tool.codespell]
+skip = '*.edf,*.json,*.txt,*.npy,*.ipynb'
+before-context = 3
+after-context = 3
+quiet-level = 3
+
+[tool.black]
+line-length = 80
+skip-string-normalization = true
