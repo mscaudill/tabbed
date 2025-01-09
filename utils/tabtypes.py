@@ -1,23 +1,28 @@
 """A module for detecting & converting strs to python intrinsic types."""
 
-import operator
-import regex
-from typing import Any, Dict, List
 from collections import abc
-import itertools
 from datetime import datetime
+import itertools
+import operator
+from typing import Any, Callable, Dict, List, NewType, Optional
+
+import regex as re
+
+# define the supported intrinsic types for each list element read by Tabbed
+CellType = int | float | complex | datetime | str
+Comparable = int | float | datetime | str
 
 
-def rich_comparisons() -> Dict:
+def rich_comparisons() -> Dict[str, Callable[[Comparable, Comparable], bool]]:
     """Returns a dict of Python's rich comparison operators organized by their
     string representation."""
 
     strings = '< > <= >= == !='.split()
-    funcs = [getattr(operator, x) for x in 'lt gt le ge eq neq'.split()]
+    funcs = [getattr(operator, x) for x in 'lt gt le ge eq ne'.split()]
     return dict(zip(strings, funcs))
 
 
-def date_formats() -> List:
+def date_formats() -> List[str]:
     """Creates commonly used date format specifiers.
 
     This function returns many common date formats but not all. As new formats
@@ -27,9 +32,9 @@ def date_formats() -> List:
         A list of date formats specifiers for datetime's strptime method.
     """
 
-    months, seperators, years = 'mbB', ' /-.', 'yY'
+    months, separators, years = 'mbB', ' /-.', 'Yy'
     fmts = []
-    for mth, sep, yr in itertools.product(months, seperators, years):
+    for mth, sep, yr in itertools.product(months, separators, years):
         # build month and day first fmts
         x = [f'%{mth}{sep}%d{sep}%{yr}', f'%d{sep}%{mth}{sep}%{yr}']
         fmts.extend(x)
@@ -37,7 +42,7 @@ def date_formats() -> List:
     return fmts
 
 
-def time_formats() -> List:
+def time_formats() -> List[str]:
     """Creates commonly used time format specifiers.
 
     This function returns many common time formats but not all. As new formats
@@ -47,15 +52,15 @@ def time_formats() -> List:
         A list of time format specifiers for datetime's strptime method.
     """
 
-    hrs, microsecs, diurnal = ['I', 'H'], ['', ':%f',  '.%f'], ['', '%p']
     fmts = []
-    for hrs, micro, di in itertools.product(hrs, microsecs, diurnal):
+    hours, microsecs, diurnal = ['I', 'H'], ['', ':%f', '.%f'], ['', '%p']
+    for hrs, micro, di in itertools.product(hours, microsecs, diurnal):
         fmts.append(f'%{hrs}:%M:%S{micro}{di}')
 
     return fmts
 
 
-def datetime_formats() -> List:
+def datetime_formats() -> List[str]:
     """Creates commonly used datetime format specifiers.
 
     This function returns many common datetime formats but not all. As new
@@ -74,6 +79,31 @@ def datetime_formats() -> List:
     return fmts
 
 
+def find_format(astring: str, formats: List[str]) -> str | None:
+    """Returns the date, time, or datetime format of astring.
+
+    Args:
+        astring:
+            A string instance that possibly represents a date, a time, or
+            a datetime.
+        formats:
+            A list of formats to try to convert astring with. See date_formats,
+            time_formats and datetime_formats functions of this module.
+
+    Returns:
+        A format string or None.
+    """
+
+    for fmt in formats:
+        try:
+            datetime.strptime(astring, fmt)
+            return fmt
+        except ValueError:
+            continue
+
+    return None
+
+
 def is_numeric(astring: str) -> bool:
     """Test if astring is a stringed numeric.
 
@@ -87,7 +117,7 @@ def is_numeric(astring: str) -> bool:
     try:
         complex(astring)
         return True
-    except:
+    except (ValueError, OverflowError):
         return False
 
 
@@ -102,7 +132,7 @@ def is_regex(item: Any) -> bool:
         True if item is instance of re.Pattern and False otherwise.
     """
 
-    return isinstance(item, regex.Pattern)
+    return isinstance(item, re.Pattern)
 
 
 def is_comparison(astring: str, count=1) -> bool:
@@ -125,10 +155,10 @@ def is_comparison(astring: str, count=1) -> bool:
     """
 
     found = [key for key in rich_comparisons() if key in astring]
-    if found > count:
-        return False
+    # remove found if more than count number of rich comparisons located
+    found = [] if found > count else found
 
-    return True if found else False
+    return bool(found)
 
 
 def is_sequence(item: Any) -> bool:
@@ -156,14 +186,9 @@ def is_date(astring: str) -> bool:
         True if astring can be converted to a datetime and False otherwise.
     """
 
-    for fmt in date_formats():
-        try:
-            datetime.strptime(astring, fmt)
-            return fmt
-        except ValueError:
-            continue
-
-    return None
+    # another method to date detect without fmt testing could give speedup
+    fmt = find_format(astring, date_formats())
+    return bool(fmt)
 
 
 def is_time(astring: str) -> bool:
@@ -177,14 +202,9 @@ def is_time(astring: str) -> bool:
         True if astring can be converted to a datetime and False otherwise.
     """
 
-    for fmt in time_formats():
-        try:
-            datetime.strptime(astring, fmt)
-            return fmt
-        except ValueError:
-            continue
-
-    return None
+    # another method to time detect without fmt testing could give speedup
+    fmt = find_format(astring, time_formats())
+    return bool(fmt)
 
 
 def is_datetime(astring: str) -> bool:
@@ -198,74 +218,81 @@ def is_datetime(astring: str) -> bool:
         True if astring can be converted to a datetime and False otherwise.
     """
 
-    for fmt in datetime_formats():
-        try:
-            datetime.strptime(astring, fmt)
-            return fmt
-        except ValueError:
-            continue
-
-    return None
+    # another method to datetime detect without fmt testing could give speedup
+    fmt = find_format(astring, datetime_formats())
+    return bool(fmt)
 
 
-def from_string(
+# conversion stops on first success so allow multi-returns
+# pylint: disable-next=too-many-return-statements
+def convert(
     astring: str,
-    func: Optional[Callable[[str, ...], int|float|complex|str|datetime]] = None,
-    **kwargs):
-    """ """
+    func: Optional[Callable[..., CellType]] = None,
+    **kwargs,
+) -> CellType:
+    """Attempts to convert a string to a valid Cell type.
 
-    # use the function provided
+    Tabbed supports string conversion of each row's elements to the following types:
+    str, int, float, complex, datetime. These are the valid Cell types.
+
+    Args:
+        astring:
+            A string that possibly represents a CellType, one of int, float,
+            complex, datetime or string.
+        func:
+            A callable for performing conversion that must accept at least
+            astring and return a CellType. If provided, this callable
+            supersedes any autoconversion.
+        kwargs:
+            All keyword arguments are passed to func if provided and ignored
+            otherwise.
+
+    Returns:
+        A CellType
+
+    Raises:
+        Convert raises no Errors but silently leaves astring as a string type.
+    """
+
+    # give the converter a try if provided
     if func:
-        return func(astring, **kwargs)
+        try:
+            return func(astring, **kwargs)
+
+        # catch any exception raised by generic func and keep trying
+        # pylint: disable-next=broad-exception-caught
+        except Exception as e:
+            msg = str(e) + ' ... attempting autoconversion'
+            print(msg)
 
     # numeric
     if is_numeric(astring):
 
         # look for imag part for complex
-        if re.findall('[ij]', astring):
+        if re.findall(r'[ij]', astring):
             return complex(astring)
 
         # look for a decimal
-        if re.findall('\.', astring):
+        if re.findall(r'\.', astring):
             return float(astring)
 
-        else:
-            return int(astring)
+        return int(astring)
 
-    # datetimes
-    # TODO fix docs on is_date(times) since they now return a fmt
-    for func in (is_date, is_time, is_datetime):
-        fmt = func(astring)
-        if fmt:
-            return datetime.strptime(astring, fmt)
+    # datetimes - use asserts for mypy type narrowing
+    if is_date(astring):
+        fmt = find_format(astring, date_formats())
+        assert isinstance(fmt, str)
+        return datetime.strptime(astring, fmt)
 
-    else:
-        return astring
+    if is_time(astring):
+        fmt = find_format(astring, time_formats())
+        assert isinstance(fmt, str)
+        return datetime.strptime(astring, fmt)
 
+    if is_datetime(astring):
+        # perform this datetime last since it has many fmts to test
+        fmt = find_format(astring, datetime_formats())
+        assert isinstance(fmt, str)
+        return datetime.strptime(astring, fmt)
 
-
-
-
-if __name__ == '__main__':
-
-    astring = '9.17.2024'
-    print(is_date(astring))
-
-    """
-    dtime0 = datetime.strptime('12/3/2024 10:08:35', '%m/%d/%Y %I:%M:%S')
-    dtime1 = datetime.strptime('12/3/2024', '%m/%d/%Y')
-    dtime2 = datetime.strptime('10:34:27.907', '%I:%M:%S.%f')
-    """
-
-    atime = '14:49:01.009am'
-    print(is_time(atime))
-
-    btime = '12/3/2024 14:22:21.008'
-    print(is_datetime(btime))
-
-    ctime = 'December 3 2024 14:22:21.008'
-    print(is_datetime(ctime))
-
-
-
-
+    return astring
