@@ -121,8 +121,8 @@ def comparison(row: Dict[str, CellType], name: str, other: str) -> bool:
         return _singlecompare(row, name, other)
 
 
-def regsearch(row: Dict[str, CellType], name: str, other: re.Pattern) -> bool:
-    """Compares the named item in row with a other, a compiled regex pattern.
+def search(row: Dict[str, CellType], name: str, other: re.Pattern) -> bool:
+    """Searches a named item in row for other, a compiled regex pattern.
 
     Args:
         row:
@@ -136,8 +136,8 @@ def regsearch(row: Dict[str, CellType], name: str, other: re.Pattern) -> bool:
         True if row[name] contains other and False otherwise.
     """
 
-    return True if re.search(row[name], other) else False
-
+    #return True if other.search(row[name]) else False
+    return True if re.search(other, row[name]) else False
 
 def equality(row: Dict[str, CellType], name: str, other: Comparable) -> bool:
     """Compares the named item in row with other.
@@ -203,6 +203,25 @@ def indicator(
     """
 
     return other(row[name], **kwargs)
+
+
+def index(idx: int,
+    other: range | Sequence[int],
+) -> bool:
+    """Determines if integer row index is in other.
+
+    Args:
+        idx:
+            The index of the dict representing a row of tabular data.
+        other:
+            A range instance or sequence of ints that must contain idx for the
+            row to evaluate to True.
+
+    Returns:
+        True if idx in other and False otherwise.
+    """
+
+    return idx in other
 
 
 if __name__ == '__main__':
