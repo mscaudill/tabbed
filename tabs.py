@@ -5,57 +5,199 @@
 import operator as op
 from collections import abc
 from functools import partial
-import regex as re
+import re
 
+from typing import Callable, Dict, List, Sequence
 from datetime import datetime
 
-from tabbed.utils import typings
-
-def regex(pattern):
-    """ """
-
-    try:
-        raw = r'{}'.format(pattern)
-        return re.compile(raw)
-    except exception as e:
-        msg = f"Pattern '{pattern}' could not be compiled to a valid regex"
-        raise ValueError(msg) from e
+from tabbed.utils import tabtypes, filters
+from tabbed.mixins import ReprMixin
 
 
-####################3 TODO protocols
-def rich_compare(row, name, expression )-> bool:
-    """row is a dict keyed on header names
+class ColumnTabs(abc.Container, ReprMixin):
+    """A Container for setting & storing a subset of column names.
 
+    Attributes:
+        header:
+            A dict of all possible column names from which a subset of named
+            columns may be set using the Column's set method.
+        names:
+            The subset of columns this Container is storing.
     """
 
-    methods = comparisons()
-    loc = re.search(r'[+-\d.eE]+', expression).start()
-    comparator, val = methods[expression[:loc]], expression[loc:]
-    # if numeric convert and return partial
-    val = float(val) if is_numeric(val) else val
+    def __init__(self, header: List[str]) -> None:
+        """Initialize this Columns instance with a header.
 
-    return comparator(row[name], val)
+        Args:
+            header:
+                A list of all possible column names in a tabular dataset.
+
+        Returns:
+            None
+        """
+
+        self.header = header
+        self._header = dict(zip(header, header))
+        self._names = header
 
 
-def regex_compare(row, name, expression) -> bool:
-    """row is a dict keyed on header names """
+    # TODO for consistency maybe rename names to columns
+    @property
+    def names(self) -> List[str]:
+        """Return the currently stored column names."""
 
-    return True if re.search(row[name], expression) else False
+        return self._names
 
 
-def is_equal(row, name, expression):
-    """row is a dict keyed on header names."""
+    @names.deleter
+    def names(self) -> None:
+        """On column names deletion, reset names to all names in header."""
 
-    value = float(expression) if is_numeric(expression) else expression
-    return op.eq(row[name], expression)
+        self._names = self.header
 
-def is_in(row, name, expression):
+
+    def _membership(self, others: List[str]) -> List[str]:
+        """Sets the currently stored names using the membership filter.
+
+        Args:
+            other:
+                A list of names. The intersection of this list with the header
+                names will be returned.
+
+        Returns:
+            A list of strings, the intersection between other and this
+            instance's header.
+
+        Raises:
+            An IndexError is issued if any string in other is not in header.
+        """
+
+        if not set(self.header).issuperset(others):
+            invalid = set(other).difference(header)
+            raise IndexError(f'[{invalid}] are not a valid column name(s)')
+
+        func = partial(filters.membership, row=self._header, other=others)
+        result = [name for name in self.header if func(name=name)]
+
+        return result
+
+
+    def _index(self, indices: List[int]) -> List[str]:
+        """Sets the currently stored names by index selection from header.
+
+        Args:
+            indices:
+                A list of integer indices of header names to use as Columns'
+                stored names.
+
+        Returns:
+            A list of strings, the header names at each index in indices.
+
+        Raises:
+            An IndexError is issued if any index in indices is not less than
+            header's length.
+        """
+
+        return [self.header[idx] for idx in indices]
+
+
+    def _regex(self, pattern: re.Pattern) -> List[str]:
+        """Sets the currently stored names by regular expression matching.
+
+        Args:
+            pattern:
+                A compiled regular expression pattern, an re.Pattern instance.
+                Each name in header will be searched for this pattern and stored
+                if a match is found.
+
+        Returns:
+            A list of strings, header names in which pattern is found. If no
+            matches are found an empty list is returned.
+        """
+
+        func = partial(filters.search, row=self._header, other=pattern)
+        result = [name for name in self.header if func(name=name)]
+
+        return result
+
+
+    def set(self, tabs: Sequence[str|int] | re.Pattern) -> None:
+        """Set the header column names this Column's instance should manage.
+
+        Args:
+            tabs:
+                A sequence or regular expression pattern to mark header names
+                for storage. If a sequence of ints, header names with matching
+                indices will be stored, if a sequence of strings, header names
+                that match will be stored and if a compiled re pattern all
+                header names containing pattern will be stored.
+
+        Returns:
+            None
+        """
+
+        if isinstance(tab, re.Pattern):
+            result = self._regex(tabs)
+
+        elif isinstance(tabs[0], int):
+            result = self._index(tabs)
+
+        else:
+            result = self._membership(tabs)
+
+        self._names = result
+
+
+    def __contains__(self, name):
+        """Test name for membership in this Columns' names."""
+
+        return name in self.names
+
+
+class RowTabs(abc.Container, ReprMixin):
     """ """
 
-    return row[name] in expression:q
+    def __init__(self, header: List[str]):
+        """ """
+
+        self.header = header
+        self._header = dict(zip(header, header))
+        self._rows = []
+        self.comparators = []
+
+    @property
+    def rows(self) -> List[Callable]:
+        """ """
+
+        return self._rows
 
 
-###########################################################################
+    @rows.deleter
+    def rows(self) -> None:
+        """ """
+
+        self._rows = []
+        self.comparators = []
+
+
+    def set(self, comparators=op.and_, **kwargs):
+        """ """
+
+        # membership
+        # comparison
+        # regex
+        # equality
+        # indicator
+        # index
+
+
+
+
+
+
+
+
+
 
 class Tabulator:
     """A callable that coordinates the reading of specific rows and columns from
@@ -71,23 +213,9 @@ class Tabulator:
         """Initialize this Tabulator with a header."""
 
         self.header = header
-        self._columns = self.header
+        self.columns = Columns(header)
         self._rows = dict()
         self._comparators = None
-
-
-    @property
-    def columns(self) -> List[str]:
-        """Return the columns this Tabulator will return when called."""
-
-        return self._columns
-
-
-    @columns.deleter
-    def columns(self) -> None:
-        """Sets columns this Tabulator will return to all columns in header."""
-
-        self._columns = self.header
 
 
     @property
@@ -104,49 +232,6 @@ class Tabulator:
 
         self._rows = dict()
         self._comparators = None
-
-
-    def set_columns(self, names: List[str|re.Pattern]) -> None:
-        """Sets the columns this Tabulator will return when called.
-
-        Args:
-            names:
-                A list of strings or regular expression patterns to match
-                against header columns for selective column reading.
-
-        Returns:
-            None
-
-        Raises:
-            An IndexError if a name in names does not match a name in header.
-        """
-
-        result = []
-        for name in names:
-
-            if isinstance(name, str):
-                # raises index error if name not in header
-                idx = self.header.index(name)
-                result.append(self.header[idx])
-
-            elif isinstance(name, re.Pattern):
-                matches = [re.search(name, col) for col in self.header]
-                # verify name pattern matches at least one header column
-                if not any(matches):
-                    msg = (f"Pattern '{name}' does not match with any header"
-                            "column")
-                    raise IndexError(msg)
-
-                # find all header matches
-                cols = [self.header[idx] for idx, m in enumerate(matches) if m]
-                result.extend(cols)
-
-            else:
-                msg = 'Columns must be str or re.Pattern type'
-                raise TypeError(msg)
-
-        self._columns = result
-
 
     def set_rows(self, *args, comparators=op.and_, **kwargs):
         """ """
@@ -206,9 +291,22 @@ if __name__ == '__main__':
              ['MUT', 2, 'g', 3],
              ]
 
+    """
     tabs = Tabs(header=table[0])
     #tabs.set_columns = ['marbles', regex('type')]
     tabs.set_rows(('marbles', '>=2'), Genotype=['WT', 'MUT'])
     tabs.set_rows(stype=1, color=['k', 'b', 'g'])
     result = tabs(table[1:])
+    """
+
+    columns = Columns(table[0])
+    columns.set(tabs=[0, 1,3])
+    print(columns.names)
+
+    pattern = re.compile(r'stype|mar|col')
+    columns.set(pattern)
+    print(columns.names)
+
+    columns.set(['Genotype', 'marbles', 'color'])
+    print(columns.names)
 
