@@ -15,9 +15,7 @@ dependencies:
     # pypi packages
     - pip
     - pip:
-        - types-regex
         - clevercsv
-        - comma
         # formatting
         - black
         # spell checking
