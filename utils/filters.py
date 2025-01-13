@@ -100,7 +100,7 @@ def comparison(row: Dict[str, CellType], name: str, other: str) -> bool:
             The key of row to extract value for comparison with other.
         other:
             A string containing a comparison operator followed by an int, float,
-            string, date, time or datetime (eg. '>=-12e6')
+            string, date, time or datetime (eg. '>=-12e6 and <= 0')
 
     Notes:
         This function supports comparisons between ints, floats, strings, dates,
@@ -139,7 +139,8 @@ def search(row: Dict[str, CellType], name: str, other: re.Pattern) -> bool:
     #return True if other.search(row[name]) else False
     return True if re.search(other, row[name]) else False
 
-def equality(row: Dict[str, CellType], name: str, other: Comparable) -> bool:
+
+def equality(row: Dict[str, CellType], name: str, other: CellType) -> bool:
     """Compares the named item in row with other.
 
     Args:
