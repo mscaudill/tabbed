@@ -6,7 +6,7 @@ import itertools
 import operator
 from typing import Any, Callable, Dict, List, NewType, Optional
 
-import regex as re
+import re
 
 # define the supported intrinsic types for each list element read by Tabbed
 CellType = int | float | complex | datetime | str
@@ -135,28 +135,27 @@ def is_regex(item: Any) -> bool:
     return isinstance(item, re.Pattern)
 
 
-def is_comparison(astring: str, count=1) -> bool:
+def is_comparison(astring: str) -> bool:
     """Test if astring contains any rich comparisons.
 
     This method is susceptible to False positives since strings may contain rich
-    comparison notation without an actual comparison intended. The count kwarg
-    may be used to reject astring if it contains more than count comparisons.
+    comparison notation without an actual comparison intended.
 
     Args:
         astring:
             A string that possibly contains a rich comparison.
-        count:
-            The maximum number of rich comparisons allowed in astring before it
-            is declared to contain None. This can eliminate strings like <...>
-            from consideration.
 
     Returns:
         True if astring contains no more than count rich comparisons.
     """
 
-    found = [key for key in rich_comparisons() if key in astring]
-    # remove found if more than count number of rich comparisons located
-    found = [] if found > count else found
+    # comparisons are always string type
+    if not isinstance(astring, str):
+        return False
+
+    # remove all spaces
+    x = ''.join(astring.split())
+    found = [key for key in rich_comparisons() if key in x]
 
     return bool(found)
 
