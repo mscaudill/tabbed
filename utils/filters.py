@@ -5,8 +5,8 @@ indicator that the row meets a specific criterion.
 import re
 import operator as op
 from typing import Callable, Dict, Sequence
-from tabbed.utils import tabtypes
-from tabbed.utils.tabtypes import CellType, Comparable
+from tabbed.utils import celltyping
+from tabbed.utils.celltyping import CellType, Comparable
 
 
 def _singlecompare(row: Dict[str, CellType], name:str, other: str) -> bool:
@@ -35,10 +35,10 @@ def _singlecompare(row: Dict[str, CellType], name:str, other: str) -> bool:
         A TypeError is issued if the value in other is not a Comparable type.
     """
 
-    operators = tabtypes.rich_comparisons()
+    operators = celltyping.rich_comparisons()
     key, val = re.split(r'\b', other, maxsplit=1)
     operation = operators[key]
-    value = tabtypes.convert(val)
+    value = celltyping.convert(val)
 
     if not isinstance(value, Comparable):
         msg = f'type(other) must be a Comparable type not {type(val)}'
