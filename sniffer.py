@@ -29,8 +29,17 @@ class Sniffer(ReprMixin):
     Attributes:
         infile:
             An open file, and instance of IO.
-        count:
+        line_count:
             The number of lines in infile.
+        start:
+            The start line of infile for collecting a sample of 'amount' number
+            of lines.
+        amount:
+            The number of infile lines to sample for dialect detection and
+            locating header and metadata positions. The initial value defaults
+            to the smaller of line_count or 100 lines.
+        skips:
+            Line numbers to ignore during sample collection.
 
     Example:
         >>> import tempfile
@@ -39,7 +48,7 @@ class Sniffer(ReprMixin):
         >>> metadata = {'exp': '3', 'name': 'Paul Dirac', 'date': '11/09/1942'}
         >>> text = [delimiter.join([key, val]) for key, val in metadata.items()]
         >>> # make a header and row to skip and add to text
-        >>> header = delimiter.join('group count color temp'.split())
+        >>> header = delimiter.join('group count color'.split())
         >>> to_skip = delimiter.join('please ignore this line'.split())
         >>> text.extend([header, to_skip])
         >>> # make some data rows and add to text
@@ -54,33 +63,50 @@ class Sniffer(ReprMixin):
         >>> # create a sniffer
         >>> sniffer = Sniffer(outfile)
         >>> # ask sniffer to report number of lines
-        >>> sniffer.count
+        >>> sniffer.line_count
         17
         >>> len(text)
         17
-        >>> # make a sample and ask sniffer for the dialect
-        >>> # note the skip over the to_skip line
-        >>> sampling = sniffer.sample(count=5, start=0, skips=[4])
-        >>> dialect = sniffer.sniff(sampling)
+        >>> # change the sample amount to 5 lines and skip line 4
+        >>> # you would know to do this by inspecting the sample property
+        >>> # and seeing the problematic line 4
+        >>> sniffer.amount = 5
+        >>> sniffer.skips = [4]
+        >>> dialect = sniffer.sniff()
         >>> print(dialect)
         SimpleDialect(';', '', '')
         >>> # ask the sniffer to return the header row index
-        >>> heading = sniffer.has_header(sampling, dialect)
-        >>> heading
+        >>> head_pos = sniffer.has_header()
+        >>> head_pos
         3
         >>> # ask sniffer for the inclusive stop row index of metadata
-        >>> sniffer.has_meta(sampling, heading, dialect)
+        >>> sniffer.has_meta(head_pos)
         2
         >>> # close the temp outfile resource
         >>> outfile.close()
     """
 
-    def __init__(self, infile: IO[str]) -> None:
+    def __init__(
+        self,
+        infile: IO[str],
+        start: int = 0,
+        amount: int = 100,
+        skips: Optional[List[int]] = None,
+    ) -> None:
         """Initialize this sniffer.
 
         Args:
-             infile:
+            infile:
                 A I/O stream instance such as returned by open.
+            start:
+                The start line of infile for collecting a sample of 'amount' number
+                of lines.
+            amount:
+                The number of infile lines to sample for dialect detection and
+                locating header and metadata positions. The initial value defaults
+                to the smaller of line_count or 100 lines.
+            skips:
+                Line numbers to ignore during sample collection.
 
         Notes:
             Sniffer deviates from Python's Sniffer in that infile is strictly an
@@ -89,15 +115,101 @@ class Sniffer(ReprMixin):
         """
 
         self.infile = infile
+        self._start = min(start, self.line_count - 1)
+        self._amount = min(self.line_count - self._start, amount)
+        self._skips = skips if skips else []
+        self._sample = self._resample()
+        self.dialect = self.sniff()
 
     @property
-    def count(self) -> int:
+    def line_count(self) -> int:
         """Returns the number of lines in this Sniffer's infile."""
 
         self._move(0)
         result = sum(1 for line in self.infile)
 
         return result
+
+    @property
+    def start(self) -> int:
+        """Returns the start line of this Sniffer's sample string."""
+
+        return self._start
+
+    @start.setter
+    def start(self, value: int) -> None:
+        """Sets a start line and updates this Sniffer's sample string.
+
+        Args:
+            value:
+                A new sample start line.
+        """
+
+        self._start = min(self.line_count - 1, value)
+        self._sample = self._resample()
+
+    @property
+    def amount(self) -> int:
+        """Returns the number of joined lines in Sniffer's sample string."""
+
+        return self._amount
+
+    @amount.setter
+    def amount(self, value: int) -> None:
+        """Sets the number of lines & updates this Sniffer's sample string.
+
+        Args:
+            value:
+                The new number of lines to join to build the sample string.
+        """
+
+        self._amount = min(self.line_count, value)
+        self._sample = self._resample()
+
+    @property
+    def skips(self) -> List[int]:
+        """Returns the skipped lines excluded from this Sniffer's sample string."""
+
+        return self._skips
+
+    @skips.setter
+    def skips(self, other: List[int]) -> None:
+        """Sets the lines to exclude from this Sniffer's sample string."""
+
+        self._skips = other
+        self._sample = self._resample()
+
+    @property
+    def sample(self) -> Tuple[str, List[int]]:
+        """Returns a sample string, the joining of lines read from infile and
+        the indices of the lines that were joined."""
+
+        return self._sample
+
+    def _resample(self) -> Tuple[str, List[int]]:
+        """Returns a tuple, a string of lines & their respective
+        indices from infile.
+
+        Returns:
+            A tuple containing the sample string and the line indices used to
+            make the sample.
+        """
+
+        self._move(self.start)
+        result = SimpleNamespace(loc=self.start, n=0, lines=[], indices=[])
+        while result.n < self.amount:
+
+            line = self.infile.readline()
+            if result.loc not in self.skips:
+                result.lines.append(line)
+                result.indices.append(result.loc)
+                result.n += 1
+            result.loc += 1
+
+        # move line pointer back to start of the file
+        self._move(0)
+        sampled = ''.join(result.lines)
+        return sampled, result.indices
 
     def _move(self, line: int) -> None:
         """Moves the line pointer in this file to line number.
@@ -114,60 +226,13 @@ class Sniffer(ReprMixin):
         for _ in range(line):
             next(self.infile)
 
-    def sample(
-        self,
-        count: int,
-        start: int,
-        skips: List[int],
-    ) -> Tuple[str, List[int]]:
-        """Returns a sampling tuple, a string of lines & their respective
-        indices from infile.
-
-        Args:
-            count:
-                The number of lines used to build the string sample.
-            start:
-                The start line of the file to begin sample collection.
-            skips:
-                Line numbers to ignore during sample collection.
-
-        Returns:
-            A tuple containing the sample string and the line indices used to
-            make the sample.
-        """
-
-        cnt = min(self.count - start, count)
-
-        self._move(start)
-        result = SimpleNamespace(loc=start, n=0, lines=[], indices=[])
-        while result.n < cnt:
-
-            line = self.infile.readline()
-            if result.loc not in skips:
-                result.lines.append(line)
-                result.indices.append(result.loc)
-                result.n += 1
-            result.loc += 1
-
-        # move line pointer back to start of the file
-        self._move(0)
-        sampled = ''.join(result.lines)
-        return sampled, result.indices
-
-    def sniff(
-        self,
-        sampling: Tuple[str, List[int]],
-        delimiters: Optional[str] = None,
-    ) -> SimpleDialect | None:
-        """Returns a clevercsv SimpleDialect from a sample of lines.
+    def sniff(self, delimiters: Optional[str] = None) -> SimpleDialect | None:
+        """Returns a clevercsv SimpleDialect from this instances sample.
 
         Dialect is detected using clevercsv's sniffer as it has shown improved
         dialect detection accuracy over Python's csv sniffer built-in.
 
         Args:
-            sampling:
-                A 2-tuple, a string of lines and their indices returned by this
-                instances sample method.
             delimiters:
                 A string of possibly valid delimiters see csv.Sniffer.sniff.
 
@@ -181,9 +246,10 @@ class Sniffer(ReprMixin):
             1799–1820 (2019). https://doi.org/10.1007/s10618-019-00646-y
         """
 
-        result = clevercsv.Sniffer().sniff(sampling[0], delimiters=delimiters)
+        sample_str = self.sample[0]
+        result = clevercsv.Sniffer().sniff(sample_str, delimiters=delimiters)
         if not result:
-            msg = 'Dialect could not be determined from sample'
+            msg = "Dialect could not be determined from Sniffer's sample"
             warnings.warn(msg)
 
         return result
@@ -208,61 +274,56 @@ class Sniffer(ReprMixin):
 
         return False
 
-    def _as_rows(
-        self,
-        sampling: Tuple[str, List[int]],
-        dialect: SimpleDialect,
-    ) -> List[List[str]]:
+    def rows(self, delimiter: Optional[str] = None) -> List[List[str]]:
         """Transforms a sampling into a list of rows containing string cells.
 
-        A sample consist of count lines of data as a single string. This
-        protected method converts the sample into a list of rows of individual
-        string items. As a protected method it is not intended for external call
-        and may change in the future.
+        This protected method converts the sample string into a list of rows of
+        individual string items. As a protected method it is not intended for
+        external call and may change in the future.
 
         Args:
-           sampling:
-                A 2-tuple, a string of lines and their indices returned by this
-                instance's sample method.
-            dialect:
-                A clevercsv SimpleDialect instance.
+            delimiter:
+                An optional delimiter to split each line in sample string. If
+                None, the delimiter of the detected dialect will be used.
 
         Returns:
-            A list of rows, a list representation of each line in sampling.
+            A list of list representing each line in sample.
         """
 
-        sample, _ = sampling
+        sample_str, _ = self.sample
+
+        if delimiter is None and self.dialect is None:
+            msg = "A delimiter str type must be given if dialect is None."
+            raise TypeError(msg)
+        # mypy fails to detect that one of these two is not None now
+        sep = delimiter if delimiter else self.dialect.delimiter  # type: ignore
+
         rows = []
-        # split sample on terminators, strip then split each line on delimiter
-        for line in sample.splitlines():
+        # split sample_str on terminators, strip & split each line on delimiter
+        for line in sample_str.splitlines():
             # lines may end in delimiter leading to empty trailing cells
-            stripped = line.rstrip(dialect.delimiter)
-            rows.append(stripped.split(dialect.delimiter))
+            stripped = line.rstrip(sep)
+            rows.append(stripped.split(sep))
 
         return rows
 
-    def has_header(
-        self,
-        sampling: Tuple[str, List[int]],
-        dialect: SimpleDialect,
-    ) -> int | None:
+    def header(self, delimiter: Optional[str] = None) -> int | None:
         """Determines if this Sniffer's infile contains a header row.
 
         Args:
-            sampling:
-                A 2-tuple, a string of lines and their indices returned by this
-                instance's sample method.
-            dialect:
-                A clevercsv SimpleDialect instance.
+            delimiter:
+                An optional delimiter to split each line in sample string. If
+                None, the delimiter of the detected dialect will be used.
 
-        Two methods are used to determine if the sample contains a header:
-        1. If the last line of the sample (assumed to be a data section row)
-           contains a string representing a numeric, then the first row from
-           the end of the sample that does not have a string representing
-           a numeric and has no empty strings is taken as the header.
-        2. If the last line of the sample contains only strings. We look for
-           the first row from the end of the sample with no empty strings
-           and contains no items in common with all the rows below it.
+
+        Two methods are used to determine if the rows contain a header.
+        1. If the last line of rows (assumed to be a data section row) contains
+           a substring representing a numeric, then the first row from the end
+           of rows with no numeric string, having no empty strings, and a length
+           matching the last row will be taken as the header.
+        2. If the last line of rows contains only strings. We look for the
+           first row from the end of the rows with no empty strings and
+           contains no items in common with all the rows below it.
 
         Notes:
             Just like all other file sniffers, this heuristic will make
@@ -273,20 +334,98 @@ class Sniffer(ReprMixin):
             The integer row index of the detected header or None.
         """
 
-        indices = sampling[1]
-        rows = self._as_rows(sampling, dialect)
+        indices = self.sample[1]
 
-        result = None
+        if delimiter is None and self.dialect is None:
+            msg = "A delimiter str type must be given if dialect is None."
+            raise TypeError(msg)
+        # mypy fails to detect that one of these two is not None now
+        sep = delimiter if delimiter else self.dialect.delimiter  # type: ignore
+
+        rows = self.rows(sep)
+        index = None
+        # Method1: numeric data, look for 1st non-numeric, full, & complete
+        if self._any_numeric(rows[-1]):
+            for idx, row in reversed(list(zip(indices, rows))):
+
+                has_numeric = self._any_numeric(row)
+                is_full = all(bool(item) for item in row)
+                complete = len(row) == len(rows[-1])
+
+                if not has_numeric and is_full and complete:
+                    index = idx
+                    break
+
+        else:
+            # Method2: non-numeric data, look for 1st disjoint, full & complete
+            riterator = reversed(list(enumerate(rows)))
+            last = next(riterator)  # start with next to last row
+            for idx, row in riterator:
+
+                disjoint = all(set(row).isdisjoint(o) for o in rows[idx + 1 :])
+                is_full = all(bool(item) for item in row)
+                complete = len(row) == len(last)
+
+                if disjoint and is_full and complete:
+                    index = indices[idx]
+                    break
+
+        # TODO this should be optional
+        if index is not None:
+            row = rows[index]
+            result = [astring.replace('"','') for astring in row]
+        else:
+            result = None
+
+        return result, index
+
+    def meta(
+        self,
+        header: int | None,
+        delimiter: Optional[str] = None,
+    ) -> int | None:
+        """Returns the stop index of the metadata section.
+
+        Args:
+            header:
+                The index of the header row or None with None signifying the
+                infile contains no header row.
+            delimiter:
+                An optional delimiter to split each line in sample string. If
+                None, the delimiter of the detected dialect will be used.
+
+        Notes:
+            The metadata section is found similarly to the header section except
+            we do not require the first disjoint or non-numeric row to be
+            complete.
+
+        Returns:
+            The stop index (inclusive) of the metadata section or None.
+        """
+
+
+        indices = self.sample[1]
+
+        if delimiter is None and self.dialect is None:
+            msg = "A delimiter str type must be given if dialect is None."
+            raise TypeError(msg)
+        # mypy fails to detect that one of these two is not None now
+        sep = delimiter if delimiter else self.dialect.delimiter  # type: ignore
+
+        rows = self.rows(sep)
+        if header is not None:
+            return rows[:header]
+
+        index = None
         # Method 1: numerical data, look for first non-numerical & full row
         if self._any_numeric(rows[-1]):
-
             for idx, row in reversed(list(zip(indices, rows))):
 
                 has_numeric = self._any_numeric(row)
                 is_full = all(bool(item) for item in row)
 
                 if not has_numeric and is_full:
-                    result = idx
+                    index = idx
                     break
 
         else:
@@ -299,57 +438,30 @@ class Sniffer(ReprMixin):
                 is_full = all(bool(item) for item in row)
 
                 if disjoint and is_full:
-                    result = indices[idx]
+                    index = indices[max(idx, 0)]
                     break
 
+        if index:
+            result = rows[:index], (0, index)
+        else:
+            result = None, None
         return result
-
-    def has_meta(
-        self,
-        sampling: Tuple[str, List[int]],
-        header: int | None,
-        dialect: SimpleDialect,
-    ) -> int | None:
-        """Returns the stop index of the metadata section.
-
-        Args:
-            sampling:
-                A 2-tuple, a string of lines and their indices returned by this
-                instance's sample method.
-            header:
-                The index of the header row or None with None signifying the
-                infile contains no header row.
-            dialect:
-                A clevercsv SimpleDialect instance.
-
-        Returns:
-            The stop index (inclusive) of the metadata section or None.
-        """
-
-        metadata = None
-        if header is not None:
-            return header - 1 if header > 0 else None
-
-        indices = sampling[1]
-        rows = self._as_rows(sampling, dialect)
-
-        # look for 1st disjoint & full row starting from next to last row
-        riterator = reversed(list(enumerate(rows)))
-        next(riterator)
-        for idx, row in riterator:
-
-            disjoint = all(set(row).isdisjoint(o) for o in rows[idx + 1 :])
-            is_full = all(bool(item) for item in row)
-
-            if disjoint and is_full:
-                metadata = indices[max(idx - 1, 0)]
-                break
-
-        return metadata
 
 
 if __name__ == '__main__':
 
+    """
     import doctest
 
     doctest.testmod()
+    """
+
+    fp = '/home/matt/python/nri/tabbed/__data__/fly_sample.txt'
+    with open(fp, 'r') as infile:
+        sniffer = Sniffer(infile)
+        sniffer.start=0
+        sniffer.skips = []
+        header0 = sniffer.header()
+        sniffer.skips = [35]
+        header1 = sniffer.header()
+        meta1 = sniffer.meta(header1[1])
