@@ -10,6 +10,7 @@ import clevercsv
 from clevercsv.dialect import SimpleDialect
 
 from tabbed.utils.celltyping import is_numeric
+from tabbed.utils.containers import Header, Meta
 from tabbed.utils.mixins import ReprMixin
 
 
@@ -91,9 +92,6 @@ class Sniffer(ReprMixin):
         >>> # close the temp outfile resource
         >>> outfile.close()
     """
-
-    Header = namedtuple('Header', 'names index')
-    Meta = namedtuple('Meta', 'rows indices')
 
     def __init__(
         self,
@@ -439,7 +437,7 @@ class Sniffer(ReprMixin):
 
         # get row
         row = rows[idx] if idx is not None else None
-        return self.Header(row, idx)
+        return Header(row, idx)
 
     def meta(
         self,
@@ -489,7 +487,7 @@ class Sniffer(ReprMixin):
         # get rows upto header index if given
         rows = self.rows(sep)
         if header:
-            return self.Meta(rows[:header.index], header.index)
+            return Meta(rows[:header.index], header.index)
 
         mislengthed = self._mislengthed(rows, indices)
         disjointed = self._disjointed(rows, indices)
@@ -514,7 +512,7 @@ class Sniffer(ReprMixin):
             index = max(indices) if indices else None
 
         metarows = rows[:index + 1] if index else None
-        return self.Meta(metarows, [0, index])
+        return Meta(metarows, [0, index])
 
 
 if __name__ == '__main__':
