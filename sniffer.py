@@ -1,6 +1,7 @@
 """A module housing the Sniffer tool for determining the dialect and structure
 of a csv file that may contain metadata, header and data sections."""
 
+from collections import namedtuple
 from types import SimpleNamespace
 from typing import IO, List, Optional, Tuple
 import warnings
@@ -10,6 +11,7 @@ from clevercsv.dialect import SimpleDialect
 
 from tabbed.utils.celltyping import is_numeric
 from tabbed.utils.mixins import ReprMixin
+
 
 
 class Sniffer(ReprMixin):
@@ -75,16 +77,23 @@ class Sniffer(ReprMixin):
         >>> dialect = sniffer.sniff()
         >>> print(dialect)
         SimpleDialect(';', '', '')
-        >>> # ask the sniffer to return the header row index
-        >>> head_pos = sniffer.has_header()
-        >>> head_pos
-        3
-        >>> # ask sniffer for the inclusive stop row index of metadata
-        >>> sniffer.has_meta(head_pos)
-        2
+        >>> # ask the sniffer to return a Header namedtuple
+        >>> header = sniffer.header()
+        >>> print(header)
+        Header(names=['group', 'count', 'color'], index=3)
+        >>> # ask sniffer for the metadata given the header
+        >>> sniffer.meta(header)
+        ... #doctest: +NORMALIZE_WHITESPACE
+        Meta(rows=[['exp', '3'],
+         ['name', 'Paul Dirac'],
+         ['date', '11/09/1942']],
+         indices=3)
         >>> # close the temp outfile resource
         >>> outfile.close()
     """
+
+    Header = namedtuple('Header', 'names index')
+    Meta = namedtuple('Meta', 'rows indices')
 
     def __init__(
         self,
@@ -99,19 +108,18 @@ class Sniffer(ReprMixin):
             infile:
                 A I/O stream instance such as returned by open.
             start:
-                The start line of infile for collecting a sample of 'amount' number
-                of lines.
+                The start line of infile for collecting a sample of lines.
             amount:
                 The number of infile lines to sample for dialect detection and
                 locating header and metadata positions. The initial value defaults
-                to the smaller of line_count or 100 lines.
+                to the smaller of the infiles length or 100 lines.
             skips:
                 Line numbers to ignore during sample collection.
 
         Notes:
             Sniffer deviates from Python's Sniffer in that infile is strictly an
-            IO stream, not a list. File section detection requires the 'seek'
-            method of IO streams.
+            IO stream, not a list because detecting the metadata and header
+            structures requires movement within the file via 'seek'.
         """
 
         self.infile = infile
@@ -119,6 +127,7 @@ class Sniffer(ReprMixin):
         self._amount = min(self.line_count - self._start, amount)
         self._skips = skips if skips else []
         self._sample = self._resample()
+        # perform initial sniff from initialized sample
         self.dialect = self.sniff()
 
     @property
@@ -181,18 +190,15 @@ class Sniffer(ReprMixin):
 
     @property
     def sample(self) -> Tuple[str, List[int]]:
-        """Returns a sample string, the joining of lines read from infile and
-        the indices of the lines that were joined."""
+        """Returns a sample string and respective line indices from infile."""
 
         return self._sample
 
     def _resample(self) -> Tuple[str, List[int]]:
-        """Returns a tuple, a string of lines & their respective
-        indices from infile.
+        """Sample from the infile using the start, amount and skip properties.
 
         Returns:
-            A tuple containing the sample string and the line indices used to
-            make the sample.
+            A tuple with the sample string and line indices of the sample.
         """
 
         self._move(self.start)
@@ -254,28 +260,8 @@ class Sniffer(ReprMixin):
 
         return result
 
-    def _any_numeric(self, row) -> bool:
-        """Returns True if any string element in row is numeric.
-
-        This protected method is not intended for external call.
-
-        Args:
-            row:
-                A list of strings made from splitting a single line in infile on
-                the detected delimiter.
-
-        Returns:
-            True if row has stringed numeric value and False otherwise.
-        """
-
-        for astring in row:
-            if is_numeric(astring):
-                return True
-
-        return False
-
     def rows(self, delimiter: Optional[str] = None) -> List[List[str]]:
-        """Transforms a sampling into a list of rows containing string cells.
+        """Transforms a sample string into rows containing string cells.
 
         This protected method converts the sample string into a list of rows of
         individual string items. As a protected method it is not intended for
@@ -303,12 +289,111 @@ class Sniffer(ReprMixin):
         for line in sample_str.splitlines():
             # lines may end in delimiter leading to empty trailing cells
             stripped = line.rstrip(sep)
-            rows.append(stripped.split(sep))
+            row = stripped.split(sep)
+            # remove any double quotes
+            row = [astring.replace('"', '') for astring in row]
+            rows.append(row)
 
         return rows
 
-    def header(self, delimiter: Optional[str] = None) -> int | None:
-        """Determines if this Sniffer's infile contains a header row.
+    def _nonnumeric(
+        self,
+        rows: List[List[str]],
+        indices: List[int],
+    ) -> int | None:
+        """Locates the largest indexed row containing no numeric strings, no
+        empty strings and whose length matches the last row.
+
+        A row containing only strings sitting above rows with numerical types
+        is likely a header row. This function finds that row assuming the row is
+        full (no empty strings) and is complete (length matches last row).
+
+        Args:
+            rows:
+                A list of list of representing each file in sample.
+            indices:
+                The indexes of each list in sample accounting for skip rows.
+
+        Returns:
+            An integer row index or None.
+        """
+
+        # search rows from bottom to top to get largest indexed row
+        for idx, row in reversed(list(zip(indices, rows))):
+            numeric = any(is_numeric(astring) for astring in row)
+            full = all(bool(el) for el in row)
+            complete = len(row) == len(rows[-1])
+            if not numeric and full and complete:
+                return idx
+
+        return None
+
+    def _disjointed(
+        self,
+        rows: List[List[str]],
+        indices: List[int],
+    ) -> int | None:
+        """Locates the largest indexed row that shares nothing in common with
+        all the rows below it.
+
+        Metadata and Header rows likely share no string values in common with
+        data rows. This function finds a largest indexed row that is disjoint
+        with all the rows below it.
+
+        Args:
+            rows:
+                A list of list of representing each file in sample.
+            indices:
+                The indexes of each list in sample accounting for skip rows.
+
+        Returns:
+            An integer row index or None.
+
+        """
+
+        reversal = reversed(list(zip(indices, rows)))
+        # advance iterator to line above last row
+        _, last = next(reversal)
+        seen = [last]
+        for idx, row in reversal:
+            if all(set(row).isdisjoint(others) for others in seen):
+                return idx
+
+            seen.append(row)
+
+        return None
+
+    def _mislengthed(
+        self,
+        rows: List[List[str]],
+        indices: List[int],
+    ) -> int | None:
+        """Finds the largest indexed row whose length does not match the length
+        of the last row.
+
+        Metadata rows are not required to be the same length as data rows. The
+        first row above a data section in the absence of a header whose length
+        does not match the last row is likely a metadata row.
+
+        Args:
+            rows:
+                A list of list of representing each file in sample.
+            indices:
+                The indexes of each list in sample accounting for skip rows.
+
+        Returns:
+            An integer row index or None.
+        """
+
+        # search rows from bottom to top to get largest indexed row
+        for idx, row in reversed(list(zip(indices, rows))):
+            if len(row) != len(rows[-1]):
+                return idx
+
+        return None
+
+    def header(self, delimiter: Optional[str] = None) -> Header:
+        """Detects the header row (if any) in this Sniffer's sample.
 
         Args:
             delimiter:
@@ -331,7 +416,7 @@ class Sniffer(ReprMixin):
             via the skip parameter may aide detection.
 
         Returns:
-            The integer row index of the detected header or None.
+            A namedtuple containing a list of column names and the row index.
         """
 
         indices = self.sample[1]
@@ -343,64 +428,53 @@ class Sniffer(ReprMixin):
         sep = delimiter if delimiter else self.dialect.delimiter  # type: ignore
 
         rows = self.rows(sep)
-        index = None
-        # Method1: numeric data, look for 1st non-numeric, full, & complete
-        if self._any_numeric(rows[-1]):
-            for idx, row in reversed(list(zip(indices, rows))):
-
-                has_numeric = self._any_numeric(row)
-                is_full = all(bool(item) for item in row)
-                complete = len(row) == len(rows[-1])
-
-                if not has_numeric and is_full and complete:
-                    index = idx
-                    break
-
+        if any(is_numeric(astring) for astring in rows[-1]):
+            # locate by non-numeric method
+            idx = self._nonnumeric(rows, indices)
         else:
-            # Method2: non-numeric data, look for 1st disjoint, full & complete
-            riterator = reversed(list(enumerate(rows)))
-            last = next(riterator)  # start with next to last row
-            for idx, row in riterator:
+            # locate by disjoint method & assert len to match last row
+            idx = self._disjointed(rows, indices)
+            if idx and len(rows[idx]) != len(rows[-1]):
+                idx = None
 
-                disjoint = all(set(row).isdisjoint(o) for o in rows[idx + 1 :])
-                is_full = all(bool(item) for item in row)
-                complete = len(row) == len(last)
-
-                if disjoint and is_full and complete:
-                    index = indices[idx]
-                    break
-
-        # TODO this should be optional
-        if index is not None:
-            row = rows[index]
-            result = [astring.replace('"','') for astring in row]
-        else:
-            result = None
-
-        return result, index
+        # get row
+        row = rows[idx] if idx is not None else None
+        return self.Header(row, idx)
 
     def meta(
         self,
-        header: int | None,
+        header: Header | None,
         delimiter: Optional[str] = None,
-    ) -> int | None:
-        """Returns the stop index of the metadata section.
+    ) -> Meta:
+        """Detects the metadata section (if any) in this Sniffer's sample.
 
         Args:
             header:
-                The index of the header row or None with None signifying the
-                infile contains no header row.
+                A Header namedtuple instance.
             delimiter:
                 An optional delimiter to split each line in sample string. If
                 None, the delimiter of the detected dialect will be used.
 
         Notes:
-            The metadata section is found similarly to the header section except
-            we do not require the first disjoint or non-numeric row to be
-            complete.
+            The detection of the metadata section when no header is present
+            follows this heuristic:
+            1. If last sample row strings all represent numerics, locate the row
+               closest to the last row that has non numeric strings or
+               a different length whichever occurs closest to last row.
+            2. If the last row contains at least one string representing
+               a numeric, look for the row closest to the last row that has
+               a different length, is disjointed or non-numeric taking the
+               closest to the last row if these rows differ.
+            3. If the last sample contains no strings representing numerics,
+               take the row closest to the last row that is disjointed with all
+               rows below or has a different from last row. If these differ take
+               the one closest to last row.
+
+            This heuristic will make mistakes, A judicious choice for the sample
+            and skips may improve detection.
 
         Returns:
-            The stop index (inclusive) of the metadata section or None.
+            A namedtuple containing metadata rows and index or None.
         """
 
 
@@ -412,56 +486,39 @@ class Sniffer(ReprMixin):
         # mypy fails to detect that one of these two is not None now
         sep = delimiter if delimiter else self.dialect.delimiter  # type: ignore
 
+        # get rows upto header index if given
         rows = self.rows(sep)
-        if header is not None:
-            return rows[:header]
+        if header:
+            return self.Meta(rows[:header.index], header.index)
+
+        mislengthed = self._mislengthed(rows, indices)
+        disjointed = self._disjointed(rows, indices)
+        nonnumeric = self._nonnumeric(rows, indices)
 
         index = None
-        # Method 1: numerical data, look for first non-numerical & full row
-        if self._any_numeric(rows[-1]):
-            for idx, row in reversed(list(zip(indices, rows))):
+        if all(is_numeric(astring) for astring in rows[-1]):
 
-                has_numeric = self._any_numeric(row)
-                is_full = all(bool(item) for item in row)
+            # if all data is numeric find lowest of nonnumeric and mislengthed
+            indices = [x for x in [mislengthed, nonnumeric] if x]
+            index = max(indices) if indices else None
 
-                if not has_numeric and is_full:
-                    index = idx
-                    break
+        if any(is_numeric(astring) for astring in rows[-1]):
+
+            # if any but not all numeric in data find lowest for all indices
+            indices = [x for x in (mislengthed, disjointed, nonnumeric) if x]
+            index = max(indices) if indices else None
 
         else:
-            # Method 2: non-numerical data, look for first disjoint & full row
-            riterator = reversed(list(enumerate(rows)))
-            next(riterator)  # start with next to last row
-            for idx, row in riterator:
+            # all strings- look for lowest row that's disjoint or mislen
+            indices = [x for x in (mislengthed, disjointed) if x]
+            index = max(indices) if indices else None
 
-                disjoint = all(set(row).isdisjoint(o) for o in rows[idx + 1 :])
-                is_full = all(bool(item) for item in row)
-
-                if disjoint and is_full:
-                    index = indices[max(idx, 0)]
-                    break
-
-        if index:
-            result = rows[:index], (0, index)
-        else:
-            result = None, None
-        return result
+        metarows = rows[:index + 1] if index else None
+        return self.Meta(metarows, [0, index])
 
 
 if __name__ == '__main__':
 
-    """
     import doctest
 
     doctest.testmod()
-    """
-
-    fp = '/home/matt/python/nri/tabbed/__data__/fly_sample.txt'
-    with open(fp, 'r') as infile:
-        sniffer = Sniffer(infile)
-        sniffer.start=0
-        sniffer.skips = []
-        header0 = sniffer.header()
-        sniffer.skips = [35]
-        header1 = sniffer.header()
-        meta1 = sniffer.meta(header1[1])
