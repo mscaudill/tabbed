@@ -1,7 +1,6 @@
 """A module housing the Sniffer tool for determining the dialect and structure
 of a csv file that may contain metadata, header and data sections."""
 
-from collections import namedtuple
 from types import SimpleNamespace
 from typing import IO, List, Optional, Tuple
 import warnings
@@ -12,7 +11,6 @@ from clevercsv.dialect import SimpleDialect
 from tabbed.utils.celltyping import is_numeric
 from tabbed.utils.containers import Header, Meta
 from tabbed.utils.mixins import ReprMixin
-
 
 
 class Sniffer(ReprMixin):
@@ -188,7 +186,7 @@ class Sniffer(ReprMixin):
 
     @property
     def sample(self) -> Tuple[str, List[int]]:
-        """Returns a sample string and respective line indices from infile."""
+        """Returns a sample string and respective line numbers from infile."""
 
         return self._sample
 
@@ -196,24 +194,24 @@ class Sniffer(ReprMixin):
         """Sample from the infile using the start, amount and skip properties.
 
         Returns:
-            A tuple with the sample string and line indices of the sample.
+            A tuple with the sample string and line numbers of the sample.
         """
 
         self._move(self.start)
-        result = SimpleNamespace(loc=self.start, n=0, lines=[], indices=[])
+        result = SimpleNamespace(loc=self.start, n=0, lines=[], line_nums=[])
         while result.n < self.amount:
 
             line = self.infile.readline()
             if result.loc not in self.skips:
                 result.lines.append(line)
-                result.indices.append(result.loc)
+                result.line_nums.append(result.loc)
                 result.n += 1
             result.loc += 1
 
         # move line pointer back to start of the file
         self._move(0)
         sampled = ''.join(result.lines)
-        return sampled, result.indices
+        return sampled, result.line_nums
 
     def _move(self, line: int) -> None:
         """Moves the line pointer in this file to line number.
@@ -297,7 +295,7 @@ class Sniffer(ReprMixin):
     def _nonnumeric(
         self,
         rows: List[List[str]],
-        indices: List[int],
+        line_nums: List[int],
     ) -> int | None:
         """Locates the largest indexed row containing no numeric strings, no
         empty strings and whose length matches the last row.
@@ -309,27 +307,27 @@ class Sniffer(ReprMixin):
         Args:
             rows:
                 A list of list of representing each file in sample.
-            indices:
-                The indexes of each list in sample accounting for skip rows.
+            line_nums:
+                The line numbers of each list in sample accounting for skip rows.
 
         Returns:
-            An integer row index or None.
+            An integer line number or None.
         """
 
         # search rows from bottom to top to get largest indexed row
-        for idx, row in reversed(list(zip(indices, rows))):
+        for num, row in reversed(list(zip(line_nums, rows))):
             numeric = any(is_numeric(astring) for astring in row)
             full = all(bool(el) for el in row)
             complete = len(row) == len(rows[-1])
             if not numeric and full and complete:
-                return idx
+                return num
 
         return None
 
     def _disjointed(
         self,
         rows: List[List[str]],
-        indices: List[int],
+        line_nums: List[int],
     ) -> int | None:
         """Locates the largest indexed row that shares nothing in common with
         all the rows below it.
@@ -341,21 +339,21 @@ class Sniffer(ReprMixin):
         Args:
             rows:
                 A list of list of representing each file in sample.
-            indices:
-                The indexes of each list in sample accounting for skip rows.
+            line_nums:
+                The line numbers of each list in sample accounting for skip rows.
 
         Returns:
-            An integer row index or None.
+            An integer line number or None.
 
         """
 
-        reversal = reversed(list(zip(indices, rows)))
+        reversal = reversed(list(zip(line_nums, rows)))
         # advance iterator to line above last row
         _, last = next(reversal)
         seen = [last]
-        for idx, row in reversal:
+        for num, row in reversal:
             if all(set(row).isdisjoint(others) for others in seen):
-                return idx
+                return num
 
             seen.append(row)
 
@@ -364,7 +362,7 @@ class Sniffer(ReprMixin):
     def _mislengthed(
         self,
         rows: List[List[str]],
-        indices: List[int],
+        line_nums: List[int],
     ) -> int | None:
         """Finds the largest indexed row whose length does not match the length
         of the last row.
@@ -376,17 +374,17 @@ class Sniffer(ReprMixin):
         Args:
             rows:
                 A list of list of representing each file in sample.
-            indices:
-                The indexes of each list in sample accounting for skip rows.
+            line_nums:
+                The line numbers of each list in sample accounting for skip rows.
 
         Returns:
-            An integer row index or None.
+            An integer line number or None.
         """
 
         # search rows from bottom to top to get largest indexed row
-        for idx, row in reversed(list(zip(indices, rows))):
+        for num, row in reversed(list(zip(line_nums, rows))):
             if len(row) != len(rows[-1]):
-                return idx
+                return num
 
         return None
 
@@ -414,10 +412,10 @@ class Sniffer(ReprMixin):
             via the skip parameter may aide detection.
 
         Returns:
-            A namedtuple containing a list of column names and the row index.
+            A namedtuple containing a list of column names & int line number.
         """
 
-        indices = self.sample[1]
+        line_nums = self.sample[1]
 
         if delimiter is None and self.dialect is None:
             msg = "A delimiter str type must be given if dialect is None."
@@ -428,16 +426,17 @@ class Sniffer(ReprMixin):
         rows = self.rows(sep)
         if any(is_numeric(astring) for astring in rows[-1]):
             # locate by non-numeric method
-            idx = self._nonnumeric(rows, indices)
+            num = self._nonnumeric(rows, line_nums)
         else:
             # locate by disjoint method & assert len to match last row
-            idx = self._disjointed(rows, indices)
-            if idx and len(rows[idx]) != len(rows[-1]):
-                idx = None
+            num = self._disjointed(rows, line_nums)
+            idx = line_nums.index(num) if num else None
+            if num and len(rows[idx]) != len(rows[-1]):
+                num = None
 
-        # get row
-        row = rows[idx] if idx is not None else None
-        return Header(row, idx)
+        # locate this idx and get corresponding row
+        row = rows[line_nums.index(num)] if num else None
+        return Header(row, num)
 
     def meta(
         self,
@@ -472,11 +471,11 @@ class Sniffer(ReprMixin):
             and skips may improve detection.
 
         Returns:
-            A namedtuple containing metadata rows and index or None.
+            A namedtuple containing metadata rows and line numbers or None.
         """
 
 
-        indices = self.sample[1]
+        line_nums = self.sample[1]
 
         if delimiter is None and self.dialect is None:
             msg = "A delimiter str type must be given if dialect is None."
@@ -484,35 +483,36 @@ class Sniffer(ReprMixin):
         # mypy fails to detect that one of these two is not None now
         sep = delimiter if delimiter else self.dialect.delimiter  # type: ignore
 
-        # get rows upto header index if given
+        # get rows upto header line if given
         rows = self.rows(sep)
         if header:
-            return Meta(rows[:header.index], header.index)
+            return Meta(rows[:line_nums.index(header.index)], header.index)
 
-        mislengthed = self._mislengthed(rows, indices)
-        disjointed = self._disjointed(rows, indices)
-        nonnumeric = self._nonnumeric(rows, indices)
+        mislengthed = self._mislengthed(rows, line_nums)
+        disjointed = self._disjointed(rows, line_nums)
+        nonnumeric = self._nonnumeric(rows, line_nums)
 
-        index = None
+        line_num = None
         if all(is_numeric(astring) for astring in rows[-1]):
 
             # if all data is numeric find lowest of nonnumeric and mislengthed
-            indices = [x for x in [mislengthed, nonnumeric] if x]
-            index = max(indices) if indices else None
+            nums = [x for x in [mislengthed, nonnumeric] if x]
+            line_num = max(nums) if nums else None
 
         if any(is_numeric(astring) for astring in rows[-1]):
 
-            # if any but not all numeric in data find lowest for all indices
-            indices = [x for x in (mislengthed, disjointed, nonnumeric) if x]
-            index = max(indices) if indices else None
+            # if any but not all numeric in data find lowest for all rows
+            nums = [x for x in (mislengthed, disjointed, nonnumeric) if x]
+            line_num = max(nums) if nums else None
 
         else:
             # all strings- look for lowest row that's disjoint or mislen
-            indices = [x for x in (mislengthed, disjointed) if x]
-            index = max(indices) if indices else None
+            nums = [x for x in (mislengthed, disjointed) if x]
+            line_num = max(nums) if nums else None
 
-        metarows = rows[:index + 1] if index else None
-        return Meta(metarows, [0, index])
+        idx = line_nums.index(line_num) if line_num else None
+        metarows = rows[:idx + 1] if idx else None
+        return Meta(metarows, [0, line_num])
 
 
 if __name__ == '__main__':
