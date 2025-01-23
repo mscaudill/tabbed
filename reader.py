@@ -3,6 +3,7 @@
 """
 
 import csv
+from collections import abc
 from typing import List
 
 from tabbed.sniffer import Sniffer
@@ -40,8 +41,7 @@ from tabbed.utils.containers import Header, Meta
 
 class Reader:
     """ """
-
-    # need to work out how to pass no header and no metadata 
+ 
     def __init__(
         self,
         infile,
@@ -52,26 +52,50 @@ class Reader:
 
         self.infile = infile
         self.sniffer = Sniffer(self.infile, **kwargs)
-        self._header = self.sniffer.Header()
+        self._header = self.sniffer.header
+        # intercept sniff attr setting to update this reader's header
+        self._intercept()
+
+    def _intercept(self) -> None:
+        """On update of a Sniffer attribute, update this readers header.
+
+        Monkey patches Sniffer's __setattr__ method in order to update this
+        Reader's header whenever our embedded sniffer instance changes.
+        """
+
+        def on_change(sniffer, name, value):
+            """A replacement for Sniffer's __setattr__."""
+
+            super(Sniffer, sniffer).__setattr__(name, value)
+            self._header = sniffer.header
+
+        Sniffer.__setattr__ = on_change
 
     @property
-    def header(self):
-        """" """
+    def header(self) -> Header | None:
+        """Returns the header from this reader's infile if it exist.
 
-        return self._header
+        Returns:
+            A Header namedtuple containing header names and the row number of
+            the header line in infile or None.
+        """
+
+        item = self._header
+        return item() if isinstance(item, abc.Callable) else item
 
     @header.setter
-    def header(self, value: int | List[str] | None):
+    def header(self, value: int | List[str] | str ):
         """ """
 
-        column_count = len(self.sniffer.rows[-1])
+        column_count = len(self.sniffer.rows()[-1])
         if isinstance(value, int):
-            # the index here should be wrt 0 top of infile
-            # need to check value is in sniffer start + amount
-            self._header = Header(self.sniffer.rows[value], value)
 
-        if isinstance(value, List):
-            # need to check that its size seems right
+            # build a new sniffer that reads only value row
+            # if value exceeds line count the last row is the header
+            sniffer = Sniffer(self.infile, start=value, amount=1)
+            self._header = Header(sniffer.rows()[0], value)
+
+        elif isinstance(value, List):
             if len(value) != column_count:
                 msg = (f'The number of columns {len(value)} does not match the'
                       f'inferred number of columns is {column_count}')
@@ -79,32 +103,50 @@ class Reader:
 
             self._header = Header(value, None)
 
-        if value is None:
-            # generate a list of column names
-            h = Header([f'Column_{i}' for i in range(column_count)], None)
-            self._header = h
+        elif isinstance(value, str):
+            valid = ['generate', 'sniff']
+            val = value.lower()
+            if val not in valid:
+                msg = f"unexpected string value {value} must be one of {valid}"
+                raise ValueError(msg)
 
-        raise TypeError('Header names must be type int, List[str], or None not'
-                        f'{type(value)}')
+            if val == 'generate':
+                # generate a list of column names
+                h = Header([f'Column_{i}' for i in range(column_count)], None)
+                self._header = h
+            else:
+                self._header = self.sniffer.header
+
+        else:
+            raise TypeError('Header names must be type int, List[str], or str'
+                            f'not {type(value)}'
+                            )
 
 
 
     def __len__(self):
         """ """
 
-        return self.sniffer.line_count
+        return self._sniffer.line_count
 
 
 if __name__ == '__main__':
 
     fp = '/home/matt/python/nri/tabbed/__data__/fly_sample.txt'
 
-    with open(fp, 'r') as infile:
-        reader = Reader(infile)
-        reader.sniffer.skips = [35]
-        print(reader.sniffer.has_header())
-        for idx, row in enumerate(reader.sniffer.rows()):
-            print(idx, row)
+    infile = open(fp, 'r')
+    reader = Reader(infile)
+    print(reader.header)
 
 
+
+    """
+    reader.header = 'auto'
+    print(reader.header)
+
+    reader.header = 34
+    print(reader.header)
+
+    reader.sniffer.skips=[35]
+    """
 
