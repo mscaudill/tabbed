@@ -4,9 +4,12 @@
 
 import csv
 from collections import abc
+from itertools import islice
 from typing import List
 
+from tabbed import tabs
 from tabbed.sniffer import Sniffer
+from tabbed.utils.celltyping import convert
 from tabbed.utils.containers import Header, Meta
 
 # Planning
@@ -54,9 +57,11 @@ class Reader:
         self.sniffer = Sniffer(self.infile, **kwargs)
         self._header = self.sniffer.header
         # intercept sniff attr setting to update this reader's header
-        self._intercept()
+        self._set_sniff()
+        self._columns = None
+        self._rows = None
 
-    def _intercept(self) -> None:
+    def _set_sniff(self) -> None:
         """On update of a Sniffer attribute, update this readers header.
 
         Monkey patches Sniffer's __setattr__ method in order to update this
@@ -76,53 +81,162 @@ class Reader:
         """Returns the header from this reader's infile if it exist.
 
         Returns:
-            A Header namedtuple containing header names and the row number of
-            the header line in infile or None.
+            A namedtuple of header names & a file line number if existant.
         """
 
         item = self._header
         return item() if isinstance(item, abc.Callable) else item
 
     @header.setter
-    def header(self, value: int | List[str] | str ):
-        """ """
+    def header(self, value: int | List[str] | str) -> None:
+        """Set the header of this reader.
 
-        column_count = len(self.sniffer.rows()[-1])
+        Args:
+            value:
+                An integer, list of strings or the string 'generic'. If int
+                type, the row in infile at line number = value will be used as
+                the header.  If a list of string types, the header will be built
+                from the list. If a string matching 'generic', a list of column
+                names matching the length of the columns in the last sniffed
+                sample row will be created. The form of the column names will be
+                [Column_0, Column_1 ...].
+
+        Returns:
+            None
+
+        Raises:
+            A ValueError is issued if value is string type but does not match
+            the string 'generic'. A TypeError is raise if value is not a valid
+            type.
+        """
+
+        # on header change delete tabs
+        del self.rows
+        del self.columns
+
+        num_columns = len(self.sniffer.rows()[-1])
         if isinstance(value, int):
 
-            # build a new sniffer that reads only value row
-            # if value exceeds line count the last row is the header
+            # TODO you'll need to sanitize each header here so pull sanitation
+            # out of sniffer to a utils func to be recalled 
+            # new sniffer to sniff single row at value
             sniffer = Sniffer(self.infile, start=value, amount=1)
             self._header = Header(sniffer.rows()[0], value)
 
         elif isinstance(value, List):
+
             if len(value) != column_count:
-                msg = (f'The number of columns {len(value)} does not match the'
-                      f'inferred number of columns is {column_count}')
+                msg = (f'Column count = {len(value)} does not match'
+                      f'last sniffed row column count = {column_count}')
                 raise ValueError(msg)
 
+            # set index of header to None
             self._header = Header(value, None)
 
         elif isinstance(value, str):
-            valid = ['generate', 'sniff']
-            val = value.lower()
-            if val not in valid:
-                msg = f"unexpected string value {value} must be one of {valid}"
+
+            if value.lower() != 'generic':
+                msg = f"Only string 'generic' is valid not {value}"
                 raise ValueError(msg)
 
-            if val == 'generate':
-                # generate a list of column names
-                h = Header([f'Column_{i}' for i in range(column_count)], None)
-                self._header = h
-            else:
-                self._header = self.sniffer.header
+            names = [f'Column_{i}' for i in range(num_columns)]
+            self._header = Header(names, None)
 
         else:
-            raise TypeError('Header names must be type int, List[str], or str'
-                            f'not {type(value)}'
-                            )
+
+            msg = f"Names must be type int, List[str], or str not {type(value)}"
+            raise TypeError(msg)
+
+    @property
+    def columns(self):
+        """Returns the column tabs this reader will apply during reading."""
+
+        return self._columns
+
+    @columns.deleter
+    def columns(self):
+        """Deletion of column tabs sets them to None."""
+
+        self._columns = None
+
+    @property
+    def rows(self):
+        """Returns the row tabs this reader will apply during reading."""
+
+        return self._rows
+
+    @rows.deleter
+    def rows(self):
+        """Deletion of row tabs sets them to None."""
+
+        self._rows = None
+
+    def tab(self, columns=None, **rows):
+        """ """
+
+        if columns:
+            ctabs = tabs.Columns(self.header.names)
+            ctabs.tab(columns)
+            self._columns = ctabs
+
+        if rows:
+            rtabs = tabs.Rows(self.header.names)
+            rtabs.tab(**rows)
+            self._rows = rtabs
 
 
+    def read(self, start=None, skips=None, chunksize=None, **fmtparams):
+        """ """
+
+        if start is None:
+            start = self.header.index+1 if self.header.index else 0
+
+        skips = [] if not skips else skips
+
+        [next(self.infile) for _ in range(start)]
+
+        sep = fmtparams.get('delimiter', self.sniffer.dialect.delimiter)
+        results = []
+        for num, line in enumerate(islice(self.infile, 0, 10000), start):
+
+            if num in skips:
+                continue
+
+            # need to wrap below in a try block and decide if you will raise or
+            # just warn about lines that had problems, this probably should be
+            # a parameter?
+
+            try:
+                # lines may end in delimiter leading to empty trailing cells
+                stripped = line.rstrip(sep)
+                row = stripped.split(sep)
+                # remove any double quotes
+                row = [astring.replace('"', '') for astring in row]
+                dic = dict(zip(self.header.names, row))
+
+                # perform type conversion
+                dic = {name: convert(val) for name, val in dic.items()}
+
+                # apply the row tabs -- expecting list of dics
+                result = self.rows([dic]) if self.rows else [dic]
+                # apply the col tabs
+                result = self.columns(result) if self.columns else result
+
+                if result: # some rows will not survive tabs
+                    results.append(result)
+            except:
+                print(num, line)
+                continue
+
+        return results
+
+
+
+
+    def close(self):
+        """ """
+
+        self.infile.close()
 
     def __len__(self):
         """ """
@@ -137,6 +251,12 @@ if __name__ == '__main__':
     infile = open(fp, 'r')
     reader = Reader(infile)
     print(reader.header)
+
+    # FIXME Trial time column shows we need to sanitize header by subs spaces in
+    # names -- where should this occur? Sniffer?
+    reader.tab(columns=['Trial_time', 'X_center', 'Y_center', 'Area'])
+    reader.tab(Area='>0.025 and <0.03', Trial_time='>0')
+    x = reader.read(skips=[35])
 
 
 
