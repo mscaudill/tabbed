@@ -436,6 +436,10 @@ class Sniffer(ReprMixin):
 
         # locate this idx and get corresponding row
         row = rows[line_nums.index(num)] if num else None
+
+        # substitute '_' for spaces in names
+        row = [astring.replace(' ', '_') for astring in row]
+
         return Header(row, num)
 
     def meta(
