@@ -66,6 +66,22 @@ class Columns(ReprMixin):
          {'group': 'a', 'color': 'b'},
          {'group': 'a', 'color': 'b'},
          {'group': 'c', 'color': 'g'}]
+        >>> # delete the tabs and call again
+        >>> del columns.tabs
+        >>> columns(data)
+        ... #doctest: +NORMALIZE_WHITESPACE
+        [{'group': 'a', 'count': 22, 'color': 'r', 'temp': 33.5},
+         {'group': 'c', 'count': 2,  'color': 'g', 'temp': 40.1},
+         {'group': 'b', 'count': 13, 'color': 'b', 'temp': 29},
+         {'group': 'b', 'count': 15, 'color': 'b', 'temp': 22},
+         {'group': 'c', 'count': 4,  'color': 'r', 'temp': 20},
+         {'group': 'a', 'count': 19, 'color': 'r', 'temp': 19.34},
+         {'group': 'c', 'count': 4,  'color': 'r', 'temp': 50.0},
+         {'group': 'b', 'count': 21, 'color': 'g', 'temp': 11.09},
+         {'group': 'c', 'count': 5,  'color': 'g', 'temp': 11},
+         {'group': 'a', 'count': 24, 'color': 'b', 'temp': 12},
+         {'group': 'a', 'count': 18, 'color': 'b', 'temp': 11},
+         {'group': 'c', 'count': 1,  'color': 'g', 'temp': 13}]
     """
 
     def __init__(self, header: List[str]) -> None:
