@@ -4,9 +4,8 @@ from collections import abc
 from datetime import datetime
 import itertools
 import operator
-from typing import Any, Callable, Dict, List, NewType, Optional
-
 import re
+from typing import Any, Callable, Dict, List, Optional
 
 # define the supported intrinsic types for each list element read by Tabbed
 CellType = int | float | complex | datetime | str
@@ -222,6 +221,52 @@ def is_datetime(astring: str) -> bool:
     return bool(fmt)
 
 
+def as_numeric(astring: str) -> int | float | complex | str:
+    """Converts astring representing a numeric into an int, float or complex.
+
+    Args:
+        astring:
+            A string that represents a numeric type.
+
+    Returns:
+        A numeric type but on conversion failure returns input string.
+    """
+
+    # look for imag part for complex
+    if re.findall(r'[ij]', astring):
+        return complex(astring)
+
+    # look for a decimal
+    if re.findall(r'\.', astring):
+        return float(astring)
+
+    try:
+        return int(astring)
+    except ValueError:
+        return astring
+
+
+def as_datetime(astring: str, fmt: str) -> datetime | str:
+    """Converts astring representing a date, a time or a datetime into
+    a datetime instance.
+
+    Args:
+        astring:
+            A string representing a date, time or datetime. If a date is given
+            without a time the return datetime time portions will have hours
+            mins secs and microsecs of 0.  If a time is given without a date the
+            return datetime date portion will be January 1st 1900.
+
+    Returns:
+        A datetime instance or astring on conversion failure
+    """
+
+    try:
+        return datetime.strptime(astring, fmt)
+    except ValueError:
+        return astring
+
+
 # conversion stops on first success so allow multi-returns
 # pylint: disable-next=too-many-return-statements
 def convert(
@@ -266,32 +311,23 @@ def convert(
 
     # numeric
     if is_numeric(astring):
-
-        # look for imag part for complex
-        if re.findall(r'[ij]', astring):
-            return complex(astring)
-
-        # look for a decimal
-        if re.findall(r'\.', astring):
-            return float(astring)
-
-        return int(astring)
+        return as_numeric(astring)
 
     # datetimes - use asserts for mypy type narrowing
     if is_date(astring):
         fmt = find_format(astring, date_formats())
         assert isinstance(fmt, str)
-        return datetime.strptime(astring, fmt)
+        return as_datetime(astring, fmt)
 
     if is_time(astring):
         fmt = find_format(astring, time_formats())
         assert isinstance(fmt, str)
-        return datetime.strptime(astring, fmt)
+        return as_datetime(astring, fmt)
 
     if is_datetime(astring):
         # perform this datetime last since it has many fmts to test
         fmt = find_format(astring, datetime_formats())
         assert isinstance(fmt, str)
-        return datetime.strptime(astring, fmt)
+        return as_datetime(astring, fmt)
 
     return astring
