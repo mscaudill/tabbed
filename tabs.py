@@ -13,8 +13,8 @@ import operator as op
 import re
 from typing import Callable, Dict, List, Optional, Sequence
 
-from tabbed.utils import celltyping
-from tabbed.utils import filters
+from tabbed.sniffing import Header, MetaData
+from tabbed.utils import celltyping, filters
 from tabbed.utils.celltyping import CellType
 from tabbed.utils.celltyping import Comparable
 from tabbed.utils.mixins import ReprMixin
@@ -49,7 +49,7 @@ class Columns(ReprMixin):
         ... dict(zip(header, items)) for items in zip(group, count, color, temp)
         ... ]
         >>> # make a columns instance
-        >>> columns = Columns(header)
+        >>> columns = Columns(Header(index=None, names=header, string=None))
         >>> # set tabs on columns to read just group and color
         >>> columns.tab(['group', 'color'])
         >>> columns(data)
@@ -84,18 +84,18 @@ class Columns(ReprMixin):
          {'group': 'c', 'count': 1,  'color': 'g', 'temp': 13}]
     """
 
-    def __init__(self, header: List[str]) -> None:
-        """Initialize this Columns' instance with a header.
+    def __init__(self, header: Header) -> None:
+        """Initialize this Columns' instance with a Header instance.
 
         Args:
             header:
-                A dict of all possible column names in a tabular dataset.
+                A Header named tuple instance (see tabbed.sniffing).
 
         Returns:
             None
         """
 
-        self.header = dict(zip(header, header))
+        self.header = dict(zip(header.names, header.names))
         self._tabs: Optional[partial[bool]] = None
 
     @property
@@ -223,7 +223,7 @@ class Rows(ReprMixin):
         ... zip(group, count, color, temp, time)
         ... ]
         >>> # build a rows instance
-        >>> rows = Rows(header)
+        >>> rows = Rows(Header(index=0, names=header, string=None))
         >>> # tab rows with group a or c, time < 10:14:00, and count in (0, 10)
         >>> rows.tab(
         ... group=re.compile(r'a|c'), time='<01-14-2025 10:14:00', count=range(10)
@@ -254,10 +254,15 @@ class Rows(ReprMixin):
           'time': datetime.datetime(2025, 1, 14, 10, 13, 33)}]
     """
 
-    def __init__(self, header: List[str]):
-        """Initialize this Rows instance with a header of column names."""
+    def __init__(self, header: Header) -> None:
+        """Initialize this Rows instance with a Header instance.
 
-        self.header = header
+        Args:
+            header:
+                A Header named tuple instance (see tabbed.sniffing).
+        """
+
+        self.header = header.names
         self._tabs: List = []
 
     @property
