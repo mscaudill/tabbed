@@ -1,24 +1,12 @@
 """A module for detecting & converting strs to python intrinsic types."""
 
-from collections import abc
 from datetime import datetime
 import itertools
-import operator
 import re
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, List, Optional
 
 # define the supported intrinsic types for each list element read by Tabbed
 CellType = int | float | complex | datetime | str
-Comparable = int | float | datetime | str
-
-
-def rich_comparisons() -> Dict[str, Callable[[Comparable, Comparable], bool]]:
-    """Returns a dict of Python's rich comparison operators organized by their
-    string representation."""
-
-    strings = '< > <= >= == !='.split()
-    funcs = [getattr(operator, x) for x in 'lt gt le ge eq ne'.split()]
-    return dict(zip(strings, funcs))
 
 
 def date_formats() -> List[str]:
@@ -132,45 +120,6 @@ def is_regex(item: Any) -> bool:
     """
 
     return isinstance(item, re.Pattern)
-
-
-def is_comparison(astring: str) -> bool:
-    """Test if astring contains any rich comparisons.
-
-    This method is susceptible to False positives since strings may contain rich
-    comparison notation without an actual comparison intended.
-
-    Args:
-        astring:
-            A string that possibly contains a rich comparison.
-
-    Returns:
-        True if astring contains no more than count rich comparisons.
-    """
-
-    # comparisons are always string type
-    if not isinstance(astring, str):
-        return False
-
-    # remove all spaces
-    x = ''.join(astring.split())
-    found = [key for key in rich_comparisons() if key in x]
-
-    return bool(found)
-
-
-def is_sequence(item: Any) -> bool:
-    """Test if item is Sequence type.
-
-    Args:
-        item:
-            Object to test if Sequence type.
-
-    Returns:
-        True if item is Sequence type and False otherwise.
-    """
-
-    return isinstance(item, abc.Sequence)
 
 
 def is_date(astring: str) -> bool:

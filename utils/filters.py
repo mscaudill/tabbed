@@ -4,9 +4,46 @@ indicator that the row meets a specific criterion.
 
 import re
 import operator as op
+from datetime import datetime
 from typing import Callable, Dict, Sequence
 from tabbed.utils import celltyping
-from tabbed.utils.celltyping import CellType, Comparable
+from tabbed.utils.celltyping import CellType
+
+Comparable = int | float | datetime | str
+
+
+def rich_comparisons() -> Dict[str, Callable[[Comparable, Comparable], bool]]:
+    """Returns a dict of Python's rich comparison operators organized by their
+    string representation."""
+
+    strings = '< > <= >= == !='.split()
+    funcs = [getattr(op, x) for x in 'lt gt le ge eq ne'.split()]
+    return dict(zip(strings, funcs))
+
+
+def is_comparison(astring: str) -> bool:
+    """Test if astring contains any rich comparisons.
+
+    This method is susceptible to False positives since strings may contain rich
+    comparison notation without an actual comparison intended.
+
+    Args:
+        astring:
+            A string that possibly contains a rich comparison.
+
+    Returns:
+        True if astring contains no more than count rich comparisons.
+    """
+
+    # comparisons are always string type
+    if not isinstance(astring, str):
+        return False
+
+    # remove all spaces
+    x = ''.join(astring.split())
+    found = [key for key in rich_comparisons() if key in x]
+
+    return bool(found)
 
 
 def _singlecompare(row: Dict[str, CellType], name:str, other: str) -> bool:
@@ -35,7 +72,7 @@ def _singlecompare(row: Dict[str, CellType], name:str, other: str) -> bool:
         A TypeError is issued if the value in other is not a Comparable type.
     """
 
-    operators = celltyping.rich_comparisons()
+    operators = rich_comparisons()
     key, val = re.split(r'\b', other, maxsplit=1)
     operation = operators[key]
     value = celltyping.convert(val)
@@ -76,10 +113,13 @@ def _multicompare(row: Dict[str, CellType], name, other: str) -> bool:
     logicals = {'and': op.__and__, 'or': op.__or__}
 
     # find first occurrence of a logical
-    found = re.search(r'\sand\s|\sor\s', other).group()
-    logical = logicals[found.strip()]
+    found = re.search(r'\sand\s|\sor\s', other)
+    # type narrow for mypy since 'and' or 'or' must be in a multicomparison
+    assert isinstance(found, re.Match)
+    compare = found.group()
+    logical = logicals[compare.strip()]
     # split on the logical
-    comparisons = re.split(found, other)
+    comparisons = re.split(compare, other)
 
     if len(comparisons) > 2:
         raise ValueError('A maximum of two comparisons may be made')
@@ -137,7 +177,7 @@ def search(row: Dict[str, CellType], name: str, other: re.Pattern) -> bool:
     """
 
     #return True if other.search(row[name]) else False
-    return True if re.search(other, row[name]) else False
+    return bool(re.search(other, row[name]))
 
 
 def equality(row: Dict[str, CellType], name: str, other: CellType) -> bool:
