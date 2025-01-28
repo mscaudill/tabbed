@@ -1,22 +1,26 @@
 """A module housing the Sniffer tool for determining the dialect and structure
 of a csv file that may contain metadata, header and data sections."""
 
+from collections import Counter
+from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import IO, List, NamedTuple, Optional, Tuple
+from typing import IO, List, Optional, Tuple
 import warnings
 
 import clevercsv
 from clevercsv.dialect import SimpleDialect
 
+from tabbed.utils.celltyping import convert
 from tabbed.utils.celltyping import is_numeric
 from tabbed.utils.mixins import ReprMixin
 
 
-class Header(NamedTuple):
-    """A namedtuple representation of a text file's header.
+@dataclass(frozen=True)
+class Header:
+    """An immutable dataclass representing a text file's header.
 
-    Atttributes:
-        index:
+    Attributes:
+        line:
             The line number of the file this header represents. It may be None
             indicating the header was not derived from the file.
         names:
@@ -26,16 +30,24 @@ class Header(NamedTuple):
             It may be None to indicate the names were not derived from the file.
     """
 
-    index: int | None
+    line: int | None
     names: List[str]
     string: str | None
 
+    def __post_init__(self) -> None:
+        """Replace any ' ' characters in names with underscores."""
 
-class MetaData(NamedTuple):
-    """A namedtuple representation of a text file's metadata section.
+        # replace any blank chars with underscores
+        names = [name.replace(' ', '_') for name in self.names]
+        super().__setattr__('names', names)
+
+
+@dataclass(frozen=True)
+class MetaData:
+    """An immutable dataclass representing a text file's metadata section.
 
     Attributes:
-        indices:
+        lines:
             A start, stop tuple of the metadata section from a file instance.
             The start is always 0. May be None to indicate the file does not
             contain a metadata section.
@@ -45,7 +57,7 @@ class MetaData(NamedTuple):
             a metadata section.
     """
 
-    indices: Tuple[int, int] | Tuple[int, None]
+    lines: Tuple[int, int | None]
     string: str | None
 
 
@@ -112,18 +124,21 @@ class Sniffer(ReprMixin):
         >>> dialect = sniffer.sniff()
         >>> print(dialect)
         SimpleDialect(';', '', '')
-        >>> # ask the sniffer to return a Header namedtuple
+        >>> # ask the sniffer to return a Header
         >>> header = sniffer.header()
         >>> print(header)
         ... #doctest: +NORMALIZE_WHITESPACE
-        Header(index=3,
+        Header(line=3,
         names=['group', 'count', 'color'],
         string='group;count;color')
         >>> # ask sniffer for the metadata given the header
         >>> sniffer.metadata(header)
         ... #doctest: +NORMALIZE_WHITESPACE
-        MetaData(indices=[0, 3],
+        MetaData(lines=(0, 3),
         string='exp;3\nname;Paul Dirac\ndate;11/09/1942')
+        >>> # ask for the column types
+        >>> sniffer.types()
+        ['str', 'int', 'str']
         >>> # close the temp outfile resource
         >>> outfile.close()
     """
@@ -450,7 +465,7 @@ class Sniffer(ReprMixin):
             via the skip parameter may aide detection.
 
         Returns:
-            A namedtuple Header instance.
+            A Header dataclass instance.
         """
 
         sample, line_nums = self.sample
@@ -469,11 +484,14 @@ class Sniffer(ReprMixin):
             # locate by disjoint method & assert len to match last row
             num = self._disjointed(rows, line_nums)
             idx = line_nums.index(num) if num else None
-            if num and len(rows[idx]) != len(rows[-1]):
+            if idx and len(rows[idx]) != len(rows[-1]):
                 num = None
 
+        if num is None:
+            return Header(line=None, names=[], string=None)
+
         # locate this idx and get corresponding row
-        row = rows[line_nums.index(num)] if num else None
+        row = rows[line_nums.index(num)]
 
         # substitute '_' for spaces in names
         row = [astring.replace(' ', '_') for astring in row]
@@ -481,7 +499,7 @@ class Sniffer(ReprMixin):
         # get the original string & return Header
         s = sample.splitlines()[line_nums.index(num)]
 
-        return Header(index=num, names=row, string=s)
+        return Header(line=num, names=row, string=s)
 
     def metadata(
         self,
@@ -492,7 +510,7 @@ class Sniffer(ReprMixin):
 
         Args:
             header:
-                A Header namedtuple instance.
+                A Header dataclass instance.
             delimiter:
                 An optional delimiter to split each line in sample string. If
                 None, the delimiter of the detected dialect will be used.
@@ -516,9 +534,8 @@ class Sniffer(ReprMixin):
             and skips may improve detection.
 
         Returns:
-            A MetaData namedtuple instance or None.
+            A MetaData dataclass instance or None.
         """
-
 
         sample, line_nums = self.sample
 
@@ -530,10 +547,10 @@ class Sniffer(ReprMixin):
 
         # get rows upto header line if given
         rows = self.rows(sep)
-        if header:
-            idx = line_nums.index(header.index)
+        if header and header.line:
+            idx = line_nums.index(header.line)
             s = '\n'.join(sample.splitlines()[0:idx])
-            return MetaData([0, header.index], s)
+            return MetaData((0, header.line), s)
 
         mislengthed = self._mislengthed(rows, line_nums)
         disjointed = self._disjointed(rows, line_nums)
@@ -557,56 +574,47 @@ class Sniffer(ReprMixin):
             nums = [x for x in (mislengthed, disjointed) if x]
             line_num = max(nums) if nums else None
 
-        idx = line_nums.index(line_num) if line_num else None
+        if line_num is None:
+            return MetaData((0, None), None)
 
-        # get the original string & return Header
-        s = sample.splitlines()[idx + 1] if idx else None
-        return MetaData([0, line_num], s)
+        # get index, original string & return Header
+        idx = line_nums.index(line_num)
+        s = sample.splitlines()[idx + 1]
 
-    def types(self, count: int, delimiter=None):
+        return MetaData((0, line_num), s)
+
+    def types(
+        self,
+        count: int = 5,
+        delimiter: Optional[str] = None,
+    ) -> List[str]:
         """Infer the column types from the last rows of sniffed sample.
 
         Args:
             count:
                 The number of lines at the end of sniffed sample to poll for
-                type.
+                type. Defaults to the last 5 rows of sample.
             delimiter:
                 An optional delimiter to override the sniffed dialect delimiter.
 
         Returns:
-            A dict of type names and conversion functions.
+            A list of type names. The length of the list matches the length of
+            the last row in the sample.
         """
 
         sep = delimiter if delimiter else self.dialect.delimiter  # type: ignore
-        rows = self.rows(sep)[-cnt:]
+        rows = self.rows(sep)[-count:]
+        counters: List[Counter] = [Counter() for astring in rows[-1]]
+        for row in rows:
+            for counter, astring in zip(counters, row):
+                counter.update([type(convert(astring))])
 
-
-
-
+        common = [counter.most_common(1)[0] for counter in counters]
+        return [typed.__name__ for typed, cnt in common]
 
 
 if __name__ == '__main__':
 
     import doctest
 
-    #doctest.testmod()
-    import tempfile
-    delimiter = ';'
-    # make a metadata and add to text that will be written to tempfile
-    metadata = {'exp': '3', 'name': 'Paul Dirac', 'date': '11/09/1942'}
-    text = [delimiter.join([key, val]) for key, val in metadata.items()]
-    # make a header and row to skip and add to text
-    header = delimiter.join('group count color'.split())
-    to_skip = delimiter.join('please ignore this line'.split())
-    text.extend([header, to_skip])
-    # make some data rows and add to text
-    group = 'a c b b c a c b c a a c'.split()
-    count = '22 2 13 15 4 19 4 21 5 24 18 1'.split()
-    color = 'r g b b r r r g g  b b g'.split()
-    data = [delimiter.join(row) for row in zip(group, count, color)]
-    text.extend(data)
-    # create a temp file and dump our text
-    outfile = tempfile.TemporaryFile(mode='w+')
-    _ = outfile.write('\r\n'.join(text))
-    # create a sniffer
-    sniffer = Sniffer(outfile)
+    doctest.testmod()
