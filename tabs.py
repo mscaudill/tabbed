@@ -16,7 +16,7 @@ from typing import Callable, Dict, List, Optional, Sequence
 from tabbed.sniffing import Header, MetaData
 from tabbed.utils import celltyping, filters
 from tabbed.utils.celltyping import CellType
-from tabbed.utils.celltyping import Comparable
+from tabbed.utils.filters import Comparable
 from tabbed.utils.mixins import ReprMixin
 
 
@@ -29,7 +29,7 @@ class Columns(ReprMixin):
 
     Attributes:
         header:
-            A dict of all possible column names, a subset of which can be set
+            A dataclass containing column names, a subset of which can be set
             using the 'tab' method for reading.
         tabs:
             A callable the determines which columns of tabular data will be
@@ -49,7 +49,7 @@ class Columns(ReprMixin):
         ... dict(zip(header, items)) for items in zip(group, count, color, temp)
         ... ]
         >>> # make a columns instance
-        >>> columns = Columns(Header(index=None, names=header, string=None))
+        >>> columns = Columns(Header(line=None, names=header, string=None))
         >>> # set tabs on columns to read just group and color
         >>> columns.tab(['group', 'color'])
         >>> columns(data)
@@ -89,7 +89,7 @@ class Columns(ReprMixin):
 
         Args:
             header:
-                A Header named tuple instance (see tabbed.sniffing).
+                A Header immmutable dataclass instance (see tabbed.sniffing).
 
         Returns:
             None
@@ -223,7 +223,7 @@ class Rows(ReprMixin):
         ... zip(group, count, color, temp, time)
         ... ]
         >>> # build a rows instance
-        >>> rows = Rows(Header(index=0, names=header, string=None))
+        >>> rows = Rows(Header(line=0, names=header, string=None))
         >>> # tab rows with group a or c, time < 10:14:00, and count in (0, 10)
         >>> rows.tab(
         ... group=re.compile(r'a|c'), time='<01-14-2025 10:14:00', count=range(10)
@@ -259,7 +259,7 @@ class Rows(ReprMixin):
 
         Args:
             header:
-                A Header named tuple instance (see tabbed.sniffing).
+                An immutable Header dataclass instance (see tabbed.sniffing).
         """
 
         self.header = header.names
@@ -320,7 +320,7 @@ class Rows(ReprMixin):
         for name, value in kwargs.items():
 
             # comparison is a subset of equality when value type is str
-            if celltyping.is_comparison(value):
+            if filters.is_comparison(value):
                 func = partial(filters.comparison, name=name, other=value)
                 self._tabs.append(func)
 
@@ -330,12 +330,12 @@ class Rows(ReprMixin):
                 self._tabs.append(func)
 
             # regex
-            elif celltyping.is_regex(value):
+            elif filters.is_regex(value):
                 func = partial(filters.search, name=name, other=value)
                 self._tabs.append(func)
 
             # membership
-            elif celltyping.is_sequence(value):
+            elif filters.is_sequence(value):
                 func = partial(filters.membership, name=name, other=value)
                 self._tabs.append(func)
 

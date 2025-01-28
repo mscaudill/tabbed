@@ -5,7 +5,7 @@ indicator that the row meets a specific criterion.
 import re
 import operator as op
 from datetime import datetime
-from typing import Callable, Dict, Sequence
+from typing import Any, Callable, Dict, Sequence
 from tabbed.utils import celltyping
 from tabbed.utils.celltyping import CellType
 
@@ -46,7 +46,35 @@ def is_comparison(astring: str) -> bool:
     return bool(found)
 
 
-def _singlecompare(row: Dict[str, CellType], name:str, other: str) -> bool:
+def is_regex(item: Any) -> bool:
+    """Test if item is a compiled regular expression pattern.
+
+    Args:
+        item:
+            Object to test if compiled regex.
+
+    Returns:
+        True if item is instance of re.Pattern and False otherwise.
+    """
+
+    return isinstance(item, re.Pattern)
+
+
+def is_sequence(item: Any) -> bool:
+    """Test if item is a Sequence.
+
+    Args:
+        item:
+            Object to test if Sequence.
+
+    Returns:
+        True if item is Sequence and False otherwise.
+    """
+
+    return isinstance(item, Sequence)
+
+
+def _singlecompare(row: Dict[str, CellType], name: str, other: str) -> bool:
     """Compares the named item in row dict with other, a string containing
     one rich comparison operator.
 
@@ -157,8 +185,7 @@ def comparison(row: Dict[str, CellType], name: str, other: str) -> bool:
     multicomparison = re.search(r'\sand\s|\sor\s', other)
     if multicomparison:
         return _multicompare(row, name, other)
-    else:
-        return _singlecompare(row, name, other)
+    return _singlecompare(row, name, other)
 
 
 def search(row: Dict[str, CellType], name: str, other: re.Pattern) -> bool:
@@ -176,7 +203,7 @@ def search(row: Dict[str, CellType], name: str, other: re.Pattern) -> bool:
         True if row[name] contains other and False otherwise.
     """
 
-    #return True if other.search(row[name]) else False
+    # return True if other.search(row[name]) else False
     return bool(re.search(other, row[name]))
 
 
@@ -246,7 +273,8 @@ def indicator(
     return other(row[name], **kwargs)
 
 
-def index(idx: int,
+def index(
+    idx: int,
     other: range | Sequence[int],
 ) -> bool:
     """Determines if integer row index is in other.
@@ -263,14 +291,3 @@ def index(idx: int,
     """
 
     return idx in other
-
-
-if __name__ == '__main__':
-
-    from datetime import datetime
-
-    row = {'name': 'Canada', 'population': 1349,
-           'founding': datetime.strptime('12/12/1798', '%m/%d/%Y')}
-
-    x = comparison(row, 'population', '>10 and <10000')
-    y = comparison(row, 'founding', '>7/4/1776 and <12/1/1998')

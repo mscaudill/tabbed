@@ -3,7 +3,7 @@
 from datetime import datetime
 import itertools
 import re
-from typing import Any, Callable, List, Optional
+from typing import Callable, List, Optional
 
 # define the supported intrinsic types for each list element read by Tabbed
 CellType = int | float | complex | datetime | str
@@ -106,20 +106,6 @@ def is_numeric(astring: str) -> bool:
         return True
     except (ValueError, OverflowError):
         return False
-
-
-def is_regex(item: Any) -> bool:
-    """Test if item is a compiled regular expression pattern.
-
-    Args:
-        item:
-            Object to test if compiled regex.
-
-    Returns:
-        True if item is instance of re.Pattern and False otherwise.
-    """
-
-    return isinstance(item, re.Pattern)
 
 
 def is_date(astring: str) -> bool:
