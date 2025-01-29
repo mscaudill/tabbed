@@ -138,7 +138,7 @@ class Sniffer(ReprMixin):
         string='exp;3\nname;Paul Dirac\ndate;11/09/1942')
         >>> # ask for the column types
         >>> sniffer.types()
-        ['str', 'int', 'str']
+        [<class 'str'>, <class 'int'>, <class 'str'>]
         >>> # close the temp outfile resource
         >>> outfile.close()
     """
@@ -607,7 +607,7 @@ class Sniffer(ReprMixin):
                 counter.update([type(convert(astring))])
 
         common = [counter.most_common(1)[0] for counter in counters]
-        return [typed.__name__ for typed, cnt in common]
+        return [typed for typed, cnt in common]
 
 
 if __name__ == '__main__':
