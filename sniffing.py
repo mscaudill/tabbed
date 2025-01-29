@@ -493,9 +493,6 @@ class Sniffer(ReprMixin):
         # locate this idx and get corresponding row
         row = rows[line_nums.index(num)]
 
-        # substitute '_' for spaces in names
-        row = [astring.replace(' ', '_') for astring in row]
-
         # get the original string & return Header
         s = sample.splitlines()[line_nums.index(num)]
 
