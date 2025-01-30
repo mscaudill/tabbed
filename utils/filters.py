@@ -104,6 +104,9 @@ def _singlecompare(row: Dict[str, CellType], name: str, other: str) -> bool:
     key, val = re.split(r'\b', other, maxsplit=1)
     operation = operators[key]
     value = celltyping.convert(val)
+    
+    # FIXME if type(value) and type(row[name]) don't match do something
+    # error may not be best because this will stop reader
 
     if not isinstance(value, Comparable):
         msg = f'type(other) must be a Comparable type not {type(val)}'
