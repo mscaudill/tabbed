@@ -1,9 +1,9 @@
 """A module for creating & tracking tabs along rows & columns of tabular data.
 
-Tabs are callables that return a boolean indicating if a single column or row
-should be returned or skipped. These callables are defined in the
-Tabbed.utils.filters module and are automatically constructed for clients from
-kwargs passed to the 'tab' method of a Columns or Rows instance.
+Tabs are callables or booleans indicating if a single column or row should be
+returned or skipped. These callables are defined in the Tabbed.utils.filters
+module and are automatically constructed for clients from kwargs passed to the
+'tab' method of a Columns or Rows instance.
 """
 
 from collections import abc
@@ -11,31 +11,24 @@ from functools import partial
 from functools import reduce
 import operator as op
 import re
-from typing import Callable, Dict, List, Optional, Sequence
+from typing import Callable, Dict, List, Sequence
 
-from tabbed.sniffing import Header, MetaData
-from tabbed.utils import celltyping, filters
+from tabbed.sniffing import Header
+from tabbed.utils import celltyping
+from tabbed.utils import filters
 from tabbed.utils.celltyping import CellType
 from tabbed.utils.filters import Comparable
 from tabbed.utils.mixins import ReprMixin
 
 
 class Columns(ReprMixin):
-    """A Callable that sets & reads specific columns from tabular data.
-
-    Tabular data is defined as a list of dicts of named data read by Python's
-    csv.DictRreader class. This object tracks and reads specific columns of the
-    data by applying a callable, the tabs attribute, to rows of data.
+    """A Callable that reads specific columns from a dictionary row of delimited
+    text file.
 
     Attributes:
-        header:
-            A dataclass containing column names, a subset of which can be set
-            using the 'tab' method for reading.
         tabs:
-            A callable the determines which columns of tabular data will be
-            returned by this callable. A tab may be a Sequence of strings, ints
-            or re.Pattern instance for selective filtering of the header column
-            names.
+            A dictionary of column names and booleans to indicate which columns
+            to return from a row.
 
     Example:
         >>> # make some tabular data
@@ -52,7 +45,7 @@ class Columns(ReprMixin):
         >>> columns = Columns(Header(line=None, names=header, string=None))
         >>> # set tabs on columns to read just group and color
         >>> columns.tab(['group', 'color'])
-        >>> columns(data)
+        >>> [columns(row) for row in data]
         ... #doctest: +NORMALIZE_WHITESPACE
         [{'group': 'a', 'color': 'r'},
          {'group': 'c', 'color': 'g'},
@@ -68,7 +61,7 @@ class Columns(ReprMixin):
          {'group': 'c', 'color': 'g'}]
         >>> # delete the tabs and call again
         >>> del columns.tabs
-        >>> columns(data)
+        >>> [columns(row) for row in data]
         ... #doctest: +NORMALIZE_WHITESPACE
         [{'group': 'a', 'count': 22, 'color': 'r', 'temp': 33.5},
          {'group': 'c', 'count': 2,  'color': 'g', 'temp': 40.1},
@@ -96,22 +89,22 @@ class Columns(ReprMixin):
         """
 
         self.header = dict(zip(header.names, header.names))
-        self._tabs: Optional[partial[bool]] = None
+        self._tabs: Dict[str, bool]
 
     @property
-    def tabs(self) -> partial[bool] | None:
-        """Return the tab function that will filter the tabular data columns."""
+    def tabs(self) -> Dict[str, bool]:
+        """Return the tab that will filter each dictionary row."""
 
         return self._tabs
 
     @tabs.deleter
     def tabs(self) -> None:
-        """On deletion, reset tabs to None."""
+        """On deletion, reset tabs to an empty dict."""
 
-        self._tabs = None
+        self._tabs = {}
 
     def tab(self, elements: Sequence[str | int] | re.Pattern) -> None:
-        """Set the tab function that will filter the tabular data columns.
+        """Set the tab function that will filter each dictionary row.
 
         Args:
             elements:
@@ -135,75 +128,61 @@ class Columns(ReprMixin):
             msg = 'Tab elements must be a Sequence or re.Pattern type'
             raise TypeError(msg)
 
+        choose: List[str] = []
         if isinstance(elements, re.Pattern):
-            # re search of header column names
-            func = filters.search
-            self._tabs = partial(func, row=self.header, other=elements)
+            # convert re pattern matching to membership
+            func = partial(filters.search, row=self.header, other=elements)
+            choose = [name for name in self.header if func(name=name)]
 
-        elif isinstance(elements[0], int):
-            # index of header column names
-            func = filters.index
-            self._tabs = partial(func, other=elements)
+        elif all(isinstance(el, int) for el in elements):
+            # convert indexing to a membership and we know type is ints
+            names = list(self.header)
+            choose = [names[el] for el in elements]  # type: ignore
+
+        elif all(isinstance(el, str) for el in elements):
+            # we were given membership and we know type is strings
+            choose = elements  # type: ignore
 
         else:
-            # membership of header column names
-            if not set(self.header).issuperset(elements):
-                invalid = set(elements).difference(self.header)
-                raise IndexError(f'[{invalid}] are not a valid column name(s)')
+            msg = 'Tabs must be a sequence of strings, ints or an re.Pattern'
+            raise ValueError(msg)
 
-            func = filters.membership
-            self._tabs = partial(func, row=self.header, other=elements)
+        # validate the elements are a subset of the header names
+        if not set(self.header).issuperset(choose):
+            invalid = set(choose).difference(self.header)
+            raise IndexError(f'[{invalid}] are not a valid column name(s)')
 
-    def __call__(self, data: List[Dict[str, celltyping.CellType]]):
-        """Reads the columns of data that have been tabbed by this instance.
+        func = partial(filters.membership, row=self.header, other=choose)
+        self._tabs = {name: func(name=name) for name in self.header}
+
+    def __call__(self, row: Dict[str, CellType]) -> Dict[str, CellType]:
+        """Reads columns of a dictionary row that satisfy this instances tabs.
 
         Args:
-            data:
-                A list of dicts, rows read by a csv.DictReader instance whose
-                cells have already been type converted.
+            row:
+                A dictionary row read by a csv.DictReader whose cells have been
+                type converted.
 
         Returns:
-            A list of dicts containing only items whose names match the stored
-            tab names of this instance.
+            A dict containing only items whose names match satisfy tabs.
         """
 
         if not self.tabs:
-            return data
+            return row
 
-        # narrow type for mypy
-        assert isinstance(self._tabs, partial)
-
-        # get the tabbed names by calling tabs
-        # pylint misses that tabs is a partial with a func member
-        # pylint: disable-next = no-member
-        if self.tabs.func.__name__ == 'index':
-            h = list(self.header.keys())
-            names = [h[idx] for idx in range(len(h)) if self._tabs(idx=idx)]
-        else:
-            names = [name for name in self.header if self._tabs(name=name)]
-
-        # extract only whose name is in tabbed names
-        result = []
-        for row in data:
-            result.append({name: row[name] for name in names})
-
-        return result
+        # extract only tabbed names
+        return {name: value for name, value in row.items() if self._tabs[name]}
 
 
 class Rows(ReprMixin):
-    """A Callable that sets & reads rows from tabular data.
-
-    Tabular data is defined as a list of dicts of named data read by Python's
-    csv.DictRreader class. This object tracks and reads specific rows of the
-    data by applying a list of callables, the tabs attribute, to each row of
-    data. These callables are defined in tabbed.utils.filters and are
-    automatically set using the kwargs passed to this instance's 'tab' method.
+    """A Callable determining whether a dictionary row satisfies a set of
+    equality, membership, regex or rich comparison conditions.
 
     Attributes:
         tabs:
-            A list of partial functions that accept only a dict representing
-            a single row of tabular data. These filtering functions return
-            a boolean indicating if the row should be included in the return.
+            A mapping of columns names to partial functions. Each partial
+            accepts only a row of data and returns a boolean indicating if that
+            row should be accepted.
 
     Example:
         >>> from datetime import datetime, timedelta
@@ -228,8 +207,8 @@ class Rows(ReprMixin):
         >>> rows.tab(
         ... group=re.compile(r'a|c'), time='<01-14-2025 10:14:00', count=range(10)
         ... )
-        >>> # apply the tabs by calling the rows instance on data
-        >>> row_results = rows(data)
+        >>> # apply the tabs by calling rows tab's on each row of data
+        >>> row_results = [row for row in data if rows(row)]
         >>> row_results
         ... #doctest: +NORMALIZE_WHITESPACE
         [{'group': 'c',
@@ -263,19 +242,19 @@ class Rows(ReprMixin):
         """
 
         self.header = header.names
-        self._tabs: List = []
+        self._tabs: Dict[str, partial[bool]] = {}
 
     @property
-    def tabs(self) -> List[partial[bool]]:
+    def tabs(self) -> Dict[str, partial[bool]]:
         """Returns a list of filtering functions determining row inclusion."""
 
         return self._tabs
 
     @tabs.deleter
     def tabs(self) -> None:
-        """On deletion, return tabs to an empty list."""
+        """On deletion, return tabs to an empty dict."""
 
-        self._tabs = []
+        self._tabs = {}
 
     def tab(
         self,
@@ -322,28 +301,28 @@ class Rows(ReprMixin):
             # comparison is a subset of equality when value type is str
             if filters.is_comparison(value):
                 func = partial(filters.comparison, name=name, other=value)
-                self._tabs.append(func)
+                self._tabs[name] = func
 
             # equality
             elif isinstance(value, celltyping.CellType):
                 func = partial(filters.equality, name=name, other=value)
-                self._tabs.append(func)
+                self._tabs[name] = func
 
             # regex
             elif filters.is_regex(value):
                 func = partial(filters.search, name=name, other=value)
-                self._tabs.append(func)
+                self._tabs[name] = func
 
             # membership
             elif filters.is_sequence(value):
                 func = partial(filters.membership, name=name, other=value)
-                self._tabs.append(func)
+                self._tabs[name] = func
 
             # indicator callable -mypy has problems with callable types
-            elif isinstance(value, abc.Callable): # type: ignore[arg-type]
+            elif isinstance(value, abc.Callable):  # type: ignore[arg-type]
                 # other will be required to be a func of a single variable
                 func = partial(filters.indicator, name=name, other=value)
-                self._tabs.append(func)
+                self._tabs[name] = func
 
             else:
                 msg = (
@@ -354,28 +333,27 @@ class Rows(ReprMixin):
 
     def __call__(
         self,
-        data: List[Dict[str, CellType]],
+        row: Dict[str, CellType],
         logical: Callable[[Comparable, Comparable], bool] = op.and_,
-    ) -> List[Dict[str, CellType]]:
+    ) -> bool:
         """Applies all of the row filter tabs to each dictionary row in data.
 
         Args:
-            data:
-                A list of dicts representing each row in data.
+            row:
+                A dicts representing a row returned by csv.DictReader that has
+                been type converted.
             logical:
                 An callable that accepts two arguments to compare and returns
                 a boolean. Defaults to Python's builtin operator and_.
+
+        Returns:
+            True if the row meets the logical combination of tab filters.
         """
 
-        if not self.tabs:
-            return data
+        if self.tabs:
+            return reduce(logical, [func(row) for func in self.tabs.values()])
 
-        results = []
-        for row in data:
-            if reduce(logical, [func(row) for func in self.tabs]):
-                results.append(row)
-
-        return results
+        return True
 
 
 if __name__ == '__main__':
