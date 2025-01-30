@@ -3,9 +3,10 @@
 """
 
 import csv
+import re
+from itertools import islice #FIXME to be removed
 from collections import abc
-from itertools import islice
-from typing import List
+from typing import Callable, List, Optional, Sequence
 
 from tabbed import tabs
 from tabbed.sniffing import Header, MetaData, Sniffer
@@ -18,8 +19,6 @@ from tabbed.utils.celltyping import CellType, convert
 #    read in a nice format
 # 3. reader should have an index method which will add a client named index to
 #    the rows prior to filters to allow for row index filtering
-# 4. reader will need to do auto type conversion using celltyping.convert
-# 6. reader will embedd a Rows and Columns instance for tab setting
 # 7. reader's read method should support chunk interation of rows that yield
 #    consistent sizes after filtering FIFO
 # 8. Reader is the main type in Tabbed and should be available at package level
@@ -91,7 +90,7 @@ class Reader:
             """A replacement for Sniffer's __setattr__."""
 
             super(Sniffer, sniffer).__setattr__(name, value)
-            self.header = sniffer.header
+            self._header = sniffer.header
 
         Sniffer.__setattr__ = on_change
 
@@ -131,6 +130,7 @@ class Reader:
             the string 'generic'. A TypeError is raise if value is not a valid
             type.
         """
+        print(value)
 
         # on header change delete tabs
         del self.rows
@@ -215,14 +215,50 @@ class Reader:
         """
 
         if columns:
-            ctabs = tabs.Columns(self.header.names)
+            ctabs = tabs.Columns(self.header)
             ctabs.tab(columns)
             self._columns = ctabs
 
         if rows:
-            rtabs = tabs.Rows(self.header.names)
+            rtabs = tabs.Rows(self.header)
             rtabs.tab(**rows)
             self._rows = rtabs
+
+
+    # FIXME clean-up
+    def _convert(self, line, row, converters, error):
+        """Converts a single row."""
+
+        def safe_convert(arow, converters):
+            """ """
+            
+            result = {}
+            for name, astring in arow.items():
+                try:
+                    result[name] = converters[name](astring)
+                except:
+                    result[name] = astring
+
+            return result
+
+
+        try:
+
+            return {name: converters[name](astr) for name, astr in row.items()}
+
+        except Exception as e:
+
+            if error == 'raise':
+                print(f'Exception occured on line number {line}')
+                raise e
+
+            if error == 'warn':
+                print(f'Skipping some conversion(s) on line number {line}')
+                print(e)
+                return safe_convert(row, converters)
+
+            return safe_convert(row, converters)
+
 
     def read(
         self,
@@ -230,9 +266,14 @@ class Reader:
         skips=None,
         chunksize=None,
         index_name='index',
+        errors='warn',
         **fmtparams,
         ):
         """ """
+
+        # TODO
+        # 1. allow dtypes dict to be passed or a single dtype for whole file
+        # 3. date format passing default to None for inference
 
         if start is None:
             start = self.header.line + 1 if self.header.line else 0
@@ -240,88 +281,67 @@ class Reader:
         skips = [] if not skips else skips
         chunksize = len(self) if not chunksize else chunksize
         # advance to the data section
-        [next(self.infile) for _ in range(start))
+        [next(self.infile) for _ in range(start)]
         dictreader = csv.DictReader(
                     infile,
-                    self.header,
+                    self.header.names,
                     restkey=None,
                     restval='',
                     dialect = self.sniffer.dialect, **fmtparams)
 
         # TODO could update with custom converters if desired
-        converters = dict(zip(self.header, self.sniffer.types))
-        fifo = ListFIFO()
+        converters = dict(zip(self.header.names, self.sniffer.types()))
+        fifo = ListFIFO(chunksize)
+
+        # testing limit
+        #dreader = islice(dictreader, 0, 500000)
         for line, dic in enumerate(dictreader, start):
+
             if line in skips:
                 continue
 
+            if not any(dic.values()) and skip_blank:
+                continue
+
             unnamed = dic.pop(None)
-            converted = {name: converters[name](dic[name]) for name in dic}
-            converted.ins({index_name: line})
-            self._header.names.append(index_name) # this may be a problem frozen
-            filtered = self.rows(converted)
-            filtered = self.columns(filtered)
-        
+
+            # FIXME how to do index row filtering fast??
+            # Updating the dic and header dramatically slows reading down
+            """
+            dic.update({index_name: line})
+            self.header.names.append(index_name)
+            """
+
+            """
+            needed = set(self.header.names)
+            if self.columns:
+                needed = set(self.columns.tabs)
+            if self.rows:
+                needed.update(set(self.rows.tabs))
+
+            dic = {name: astring for name, astring in dic.items() if name in needed}
+            """
+
+            res = self._convert(line, dic, converters, errors)
+
+
+            # FIXME if a filter is working with a string that was not converted
+            # errors occur, the filters need a way to ignore, raise, or warn
+            # apply tabs
+            if self.rows and self.rows(res):
+                res = res
+            if self.columns:
+                res = self.columns(res)
+
+            filtered=res
+
             if filtered:
-                # TODO FIFO will need to change since we place dict into it not
-                # list
                 fifo.put(filtered)
 
+            if fifo.full():
+                yield fifo.get()
 
-
-
-
-
-    def _read(self, start=None, skips=None, chunksize=None, **fmtparams):
-        """ """
-
-
-        # To avoid dealing with infile yourself due to seperators at line
-        # endings you could just let DictReader do it and ignore the restkey
-        # remainder
-
-        if start is None:
-            start = self.header.index+1 if self.header.index else 0
-
-        skips = [] if not skips else skips
-
-        [next(self.infile) for _ in range(start)]
-
-
-        sep = fmtparams.get('delimiter', self.sniffer.dialect.delimiter)
-        results = []
-        for num, line in enumerate(islice(self.infile, 0, 10000), start):
-
-            if num in skips:
-                continue
-
-            # need to wrap below in a try block and decide if you will raise or
-            # just warn about lines that had problems, this probably should be
-            # a parameter?
-
-            try:
-                # lines may end in delimiter leading to empty trailing cells
-                stripped = line.rstrip(sep)
-                row = stripped.split(sep)
-                # remove any double quotes
-                row = [astring.replace('"', '') for astring in row]
-                dic = dict(zip(self.header.names, row))
-
-                # perform type conversion
-                dic = {name: convert(val) for name, val in dic.items()}
-
-                # apply the row tabs -- expecting list of dics
-                result = self.rows([dic]) if self.rows else [dic]
-                # apply the col tabs
-                result = self.columns(result) if self.columns else result
-
-                if result: # some rows will not survive tabs
-                    results.append(result)
-            except:
-                print(num, line)
-                continue
-
-        return results
+        yield fifo.get()
 
 
     def preview(self):
@@ -337,32 +357,24 @@ class Reader:
     def __len__(self):
         """ """
 
-        return self._sniffer.line_count
+        return self.sniffer.line_count
 
 
 if __name__ == '__main__':
+
+    import time
 
     fp = '/home/matt/python/nri/tabbed/__data__/fly_sample.txt'
 
     infile = open(fp, 'r')
     reader = Reader(infile)
+    #reader = Reader(infile)
     print(reader.header)
 
-    # FIXME Trial time column shows we need to sanitize header by subs spaces in
-    # names -- where should this occur? Sniffer?
-    reader.tab(columns=['Trial_time', 'X_center', 'Y_center', 'Area'])
-    reader.tab(Area='>0.025 and <0.03', Trial_time='>0')
-    x = reader.read(skips=[35])
+    reader.tab(columns=['Trial_time', 'X_center', 'Y_center', 'Area'],
+            Area='>0.01')
+    x = reader.read(skips=[35], chunksize=200000, escapechar=None, errors='warn')
 
-
-
-    """
-    reader.header = 'auto'
-    print(reader.header)
-
-    reader.header = 34
-    print(reader.header)
-
-    reader.sniffer.skips=[35]
-    """
-
+    t0 = time.perf_counter()
+    result = list(x)
+    print(f'elapsed time: {time.perf_counter() - t0}')
