@@ -5,14 +5,14 @@ from typing import Any, List
 
 
 class ListFIFO:
-    """A first-in-first out queue-like data structure that collects lists.
+    """A first-in-first out queue-like data structure for item collection.
 
     Attributes:
         queue:
-            A list of lists that have been collected via the 'put' method and
-            may be returned by 'get' method.
+            A list of items that have been collected via the 'put' method and
+            may be returned by 'get' method. Items may be of any type.
         chunksize:
-            The number of lists that are dequeued by each 'get' call.
+            The number of items that are dequeued by each 'get' call.
 
     Example:
         >>> fifo = ListFIFO(chunksize=4)
@@ -42,7 +42,7 @@ class ListFIFO:
     def __init__(self, chunksize: int) -> None:
         """Initialize this FIFO with and empty queue."""
 
-        self.queue: List[List[Any]] = []
+        self.queue: List[Any] = []
         self.chunksize = chunksize
 
     def qsize(self) -> int:
@@ -60,7 +60,7 @@ class ListFIFO:
 
         return self.qsize() == 0
 
-    def put(self, x: List[Any] | List[List[Any]]) -> None:
+    def put(self, x: Any) -> None:
         """Adds a list of list of lists to the queue.
 
         Args:
@@ -70,10 +70,9 @@ class ListFIFO:
             None
         """
 
-        addition = [x] if not isinstance(x[0], abc.Sequence) else x
-        self.queue.extend(addition)
+        self.queue.append(x)
 
-    def get(self) -> List[List[Any]]:
+    def get(self) -> List[Any]:
         """Returns a chunksize list of lists."""
 
         result = self.queue[: self.chunksize]
