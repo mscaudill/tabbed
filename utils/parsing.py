@@ -1,6 +1,11 @@
-"""A module of boolean test for parsing tabs passed as keyword arguments."""
+"""A module of boolean test for parsing tabs passed as keyword arguments to
+a reader instance."""
+
+import re
+from typing import Any, Sequence
 
 from celltyping import CellType
+
 
 def is_comparison(item: Any) -> bool:
     """Test if astring contains any rich comparisons.
@@ -16,15 +21,18 @@ def is_comparison(item: Any) -> bool:
         True if astring contains no more than count rich comparisons.
     """
 
+    rich_comparisons = '< > <= >= == !='.split()
+
     # comparisons are always string type
     if not isinstance(item, str):
         return False
 
     # remove all spaces
     x = ''.join(item.split())
-    found = [key for key in rich_comparisons() if key in x]
+    found = [s for s in rich_comparisons if s in x]
 
     return bool(found)
+
 
 def is_regex(item: Any) -> bool:
     """Test if item is a compiled regular expression pattern.
@@ -39,6 +47,7 @@ def is_regex(item: Any) -> bool:
 
     return isinstance(item, re.Pattern)
 
+
 def is_sequence(item: Any) -> bool:
     """Test if item is a Sequence.
 
@@ -52,6 +61,7 @@ def is_sequence(item: Any) -> bool:
 
     return isinstance(item, Sequence)
 
+
 def is_celltype(item: Any) -> bool:
     """Test if item is a Tabbed support CellType.
 
@@ -64,5 +74,3 @@ def is_celltype(item: Any) -> bool:
     """
 
     return isinstance(item, CellType)
-
-
