@@ -12,6 +12,8 @@ from tabbed import tabs
 from tabbed.sniffing import Header, MetaData, Sniffer
 from tabbed.utils.queues import ListFIFO
 from tabbed.utils.celltyping import CellType, convert
+from tabbed.utils import parsing
+from tabbed.utils.mixins import ReprMixin
 
 # Planning
 #
@@ -25,9 +27,71 @@ from tabbed.utils.celltyping import CellType, convert
 #    with no imports
 # 9. Reader should have a sample method to show lines and indices to aid setting
 #    specific numbers like count etc. Could call the method 'lines'
+#
+class _Columns(ReprMixin):
+    """ """
+
+    def __init__(self, header):
+        """ """
+
+        self.header = header
+        self._names = header.names
+
+    @property
+    def names(self):
+        """Returns columns names."""
+
+        return self._names
+
+    @names.setter
+    def names(self, other: Sequence[str|int] | re.Pattern) -> None:
+        """Validate and set the column names.
+
+        Args:
+            other:
+                A sequence of string names, header name indices or a compiled
+                re pattern to match against header names.
+
+        Raises:
+            A ValueError is issued if names contains mixed types.
+            An IndexError is issued if a name in names is not in the header.
+        """
+
+        if not isinstance(other, (Sequence, re.Pattern)):
+            msg = 'Value must be a Sequence[str|int] or re.Pattern type'
+            raise TypeError(msg)
+
+        if isinstance(names, re.Pattern):
+            pattern = names
+            res = [x for x in self.header.names if bool(re.search(pattern, x)]
+
+        elif all(isinstance(name, int) for name in names):
+            indices = names
+            res = [self.header.names[idx] for idx in indices]
+
+        elif all(isinstance(name, str) for name in names):
+            res = names
+
+        else:
+            msg = 'Columns types must all be strs, ints or an re.Pattern'
+            raise ValueError(msg)
+
+        # validate the elements are a subset of the header names
+        if not set(self.header).issuperset(res):
+            invalid = set(res).difference(self.header)
+            raise IndexError(f'[{invalid}] are not a valid column name(s)')
+
+        self._names = res
+
+    @names.deleter
+    def names(self):
+        """ """
+
+        self._names = self.header.names
 
 
-class Reader:
+
+class Reader(ReprMixin):
     """A reader of delimited text files supporting iterative reading of specific
     rows and columns from files that possibly contain metadata and header
     components.
@@ -75,8 +139,9 @@ class Reader:
         # set protected attributes accessible by property access only
         self._header = self.sniffer.header
         self._set_sniff()
-        self._columns = None
-        self._rows = None
+
+        self.columns = Columns(self.header)
+        self.tabbed = []
 
     def _set_sniff(self) -> None:
         """On update of a Sniffer attribute, update this readers header.
@@ -130,11 +195,6 @@ class Reader:
             the string 'generic'. A TypeError is raise if value is not a valid
             type.
         """
-        print(value)
-
-        # on header change delete tabs
-        del self.rows
-        del self.columns
 
         num_columns = len(self.sniffer.rows()[-1])
         if isinstance(value, int):
@@ -166,63 +226,34 @@ class Reader:
             msg = f"Names must be type int, List[str], or str not {type(value)}"
             raise TypeError(msg)
 
-    @property
-    def columns(self):
-        """Returns the column tabs this reader will apply during reading."""
-
-        return self._columns
-
-    @columns.deleter
-    def columns(self):
-        """Deletion of column tabs sets them to None."""
-
-        self._columns = None
-
-    @property
-    def rows(self):
-        """Returns the row tabs this reader will apply during reading."""
-
-        return self._rows
-
-    @rows.deleter
-    def rows(self):
-        """Deletion of row tabs sets them to None."""
-
-        self._rows = None
+        # on header change update tabs and columns
+        self.tabs = []
+        self.columns.names = self.header.names
 
     def tab(
         self,
-        columns: Optional[List[str|int] | re.Pattern] = None,
-        **rows: dict[
+        **tabbings: dict[
             str,
             CellType | Sequence[CellType] | re.Pattern | Callable],
         ):
-        """Sets the rows or columns that will be read by this Reader during a
-        read method call.
+        """ """
 
-        Args:
-            columns:
-                A list of column names, column indices or regular expression
-                pattern to match column names. These columns will be the ones
-                returned. If None, all columns will be returned.
-            **rows:
-                A mapping of column names and one of; CellType, list of
-                Celltype, a compiled re pattern, a rich comparison or
-                a callable.
+        for name, value in tabbings.items():
 
-        Returns:
-            None
-        """
+            if parsing.is_comparison(value):
+                tab = tabs.Comparison(name, value)
 
-        if columns:
-            ctabs = tabs.Columns(self.header)
-            ctabs.tab(columns)
-            self._columns = ctabs
+            if parsing.is_celltype(value):
+                tab = tabs.Equality(name, value)
 
-        if rows:
-            rtabs = tabs.Rows(self.header)
-            rtabs.tab(**rows)
-            self._rows = rtabs
+            if parsing.is_regex(value):
+                tab = tabs.Regex(name, value)
+
+            if parsing.is_sequence(value):
+                tab = tabs.Membership(name, value)
+
+            self.tabbed.append(tab)
+
 
 
     # FIXME clean-up
@@ -274,6 +305,7 @@ class Reader:
         # TODO
         # 1. allow dtypes dict to be passed or a single dtype for whole file
         # 3. date format passing default to None for inference
+
 
         if start is None:
             start = self.header.line + 1 if self.header.line else 0
