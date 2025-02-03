@@ -29,23 +29,38 @@ from tabbed.utils.mixins import ReprMixin
 #    specific numbers like count etc. Could call the method 'lines'
 #
 class _Columns(ReprMixin):
-    """ """
+    """A class for tracking and setting the column names to read from
+    a delimited text file.
+
+    This protected class is used by the Reader and not intended for external
+    instantiation.
+
+    Attributes:
+        header:
+            A Header instance containing all the possible names of columns in
+            infile. This header may be from the infile (if sniffer found it) or
+            client supplied.
+        names:
+            The names of the columns currently being tracked for reading. This
+            may be set with a sequence of string names, sequence of column
+            indices or by regex pattern search.
+    """
 
     def __init__(self, header):
-        """ """
+        """Initialize these Columns with a Header instance."""
 
         self.header = header
         self._names = header.names
 
     @property
     def names(self):
-        """Returns columns names."""
+        """Return the names of the columns to read."""
 
         return self._names
 
     @names.setter
     def names(self, other: Sequence[str|int] | re.Pattern) -> None:
-        """Validate and set the column names.
+        """Set the column names by sequence or regex pattern.
 
         Args:
             other:
@@ -61,23 +76,23 @@ class _Columns(ReprMixin):
             msg = 'Value must be a Sequence[str|int] or re.Pattern type'
             raise TypeError(msg)
 
-        if isinstance(names, re.Pattern):
-            pattern = names
-            res = [x for x in self.header.names if bool(re.search(pattern, x)]
+        if isinstance(other, re.Pattern):
+            pattern = other
+            res = [x for x in self.header.names if bool(re.search(pattern, x))]
 
-        elif all(isinstance(name, int) for name in names):
-            indices = names
+        elif all(isinstance(el, int) for el in other):
+            indices = other
             res = [self.header.names[idx] for idx in indices]
 
-        elif all(isinstance(name, str) for name in names):
-            res = names
+        elif all(isinstance(name, str) for name in other):
+            res = other
 
         else:
             msg = 'Columns types must all be strs, ints or an re.Pattern'
             raise ValueError(msg)
 
         # validate the elements are a subset of the header names
-        if not set(self.header).issuperset(res):
+        if not set(self.header.names).issuperset(res):
             invalid = set(res).difference(self.header)
             raise IndexError(f'[{invalid}] are not a valid column name(s)')
 
@@ -102,11 +117,11 @@ class Reader(ReprMixin):
     but it's heuristic rules for detecting the header are limited and exclude
     the possibility of metadata. This reader uses an embedded sniffer to detect
     header and metadata sections. Additionally, all delimited text readers to
-    date are unable to filter the data by value during reading. This reader
-    can filter both rows and columns of the data using equality, membership,
-    comparisons, regular expression matching and callables to select rows during
-    reading. These filters are stored to objects called Tabs that can be
-    dynamically changed from this Reader instance.
+    date are unable to filter the data by value during reading. This reader can
+    selectively read rows of the data using equality, membership, logical
+    comparisons, regular expression matching and callable filters. These filters
+    are stored to objects called Tabs that can be dynamically changed from this
+    Reader instance.
 
     Attributes:
         infile:
@@ -136,11 +151,10 @@ class Reader(ReprMixin):
 
         self.infile = infile
         self.sniffer = Sniffer(self.infile, **kwargs)
-        # set protected attributes accessible by property access only
         self._header = self.sniffer.header
         self._set_sniff()
 
-        self.columns = Columns(self.header)
+        self._columns = _Columns(self.header)
         self.tabbed = []
 
     def _set_sniff(self) -> None:
@@ -228,6 +242,29 @@ class Reader(ReprMixin):
 
         # on header change update tabs and columns
         self.tabs = []
+        self.columns = self.header.names
+
+    # FIXME Do we really need to track the columns or could these just be given
+    # and validated during read to simplify? Having a container allows for
+    # greater expressivity in defining columns to read such as index or regex
+    # BUT we need to find a way to simplify
+
+    @property
+    def columns(self):
+        """ """
+
+        return reader._columns
+
+    @columns.setter
+    def columns(self, other):
+        """ """
+
+        self.columns.names = other
+
+    @columns.deleter
+    def columns(self):
+        """ """
+
         self.columns.names = self.header.names
 
     def tab(
@@ -405,8 +442,11 @@ if __name__ == '__main__':
 
     reader.tab(columns=['Trial_time', 'X_center', 'Y_center', 'Area'],
             Area='>0.01')
+
+    """
     x = reader.read(skips=[35], chunksize=200000, escapechar=None, errors='warn')
 
     t0 = time.perf_counter()
     result = list(x)
     print(f'elapsed time: {time.perf_counter() - t0}')
+    """
