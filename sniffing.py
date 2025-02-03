@@ -444,6 +444,10 @@ class Sniffer(ReprMixin):
     def header(self, delimiter: Optional[str] = None) -> Header:
         """Detects the header row (if any) in this Sniffer's sample.
 
+        If no header is detected this method constructs a header. The names in
+        this header are of the form; 'Column_1', ... 'Column_n' where n is the
+        expected number of columns from the last row if the sample.
+
         Args:
             delimiter:
                 An optional delimiter to split each line in sample string. If
@@ -488,7 +492,9 @@ class Sniffer(ReprMixin):
                 num = None
 
         if num is None:
-            return Header(line=None, names=[], string=None)
+            ncols = len(self.rows()[-1])
+            names = [f'Column_{i}' for i in range(ncols)]
+            return Header(line=None, names=names, string=None)
 
         # locate this idx and get corresponding row
         row = rows[line_nums.index(num)]
