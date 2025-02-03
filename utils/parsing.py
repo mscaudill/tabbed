@@ -4,7 +4,7 @@ a reader instance."""
 import re
 from typing import Any, Sequence
 
-from celltyping import CellType
+from tabbed.utils.celltyping import CellType
 
 
 def is_comparison(item: Any) -> bool:
