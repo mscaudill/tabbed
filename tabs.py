@@ -2,11 +2,13 @@
 a single dictionary row indicating if the row should be accepted or rejected.
 """
 
+import abc
 from datetime import datetime
 import operator as op
 import re
-from typing import Any, Callable, Dict, Sequence
+from typing import Callable, Dict, List, Sequence
 
+from tabbed.sniffing import Header
 from tabbed.utils import celltyping
 from tabbed.utils.celltyping import CellType
 from tabbed.utils.mixins import ReprMixin
@@ -17,7 +19,15 @@ from tabbed.utils.mixins import ReprMixin
 Comparable = int | float | datetime | str
 
 
-class Equality(ReprMixin):
+class Tab(abc.ABC, ReprMixin):
+    """Abstract base class declaring the required methods of all Tabs."""
+
+    @abc.abstractmethod
+    def __call__(self, row: Dict[str, CellType]) -> bool:
+        """All Tabs implement a call method accepting a row dictionary."""
+
+
+class Equality(Tab):
     """A Callable to test if a value in a dictionary row equals another value.
 
     Attributes:
@@ -74,7 +84,7 @@ class Equality(ReprMixin):
         return bool(row[self.name] == self.matching)
 
 
-class Membership(ReprMixin):
+class Membership(Tab):
     """A Callable that test if a named item id a dictionary row belongs to
     a collection.
 
@@ -131,7 +141,7 @@ class Membership(ReprMixin):
         return row[self.name] in self.collection
 
 
-class Regex(ReprMixin):
+class Regex(Tab):
     """A Callable that test if a compiled re pattern is in the named item of
     a row dictionary.
 
@@ -188,7 +198,7 @@ class Regex(ReprMixin):
         return bool(re.search(self.pattern, row[self.name]))
 
 
-class Comparison(ReprMixin):
+class Comparison(Tab):
     """A Callable that test if a named value in a row dictionary satisfies
     a comparison.
 
@@ -322,7 +332,7 @@ class Comparison(ReprMixin):
         return self._single(row, self.comparison)
 
 
-class Calling(ReprMixin):
+class Calling(Tab):
     """A Callable that test if a named value in a row satisfies a boolean
     returning Callable.
 
@@ -387,6 +397,148 @@ class Calling(ReprMixin):
         """
 
         return self.func(row, self.name, **self.kwargs)
+
+
+class Columns(ReprMixin):
+    """A Callable for reading a subset of a row's columns.
+
+    This class, like tabs, is a callable that accepts a data row. However,
+    it returns the row filtered by this instance's stored column names rather
+    than a boolean.
+
+    Attributes:
+        header:
+            A Header instance containing the names of each column in the
+            delimited text file.
+
+    Example:
+        >>> # make tabular data
+        >>> header = ['group', 'count', 'color']
+        >>> group = ['a', 'c', 'b', 'b', 'c', 'a', 'c', 'b', 'c', 'a', 'a', 'c']
+        >>> count = [22,   2,   13,  15,  4,   19,  4,   21,  5,   24,  18,  1]
+        >>> color = 'r g b b r r r g g  b b g'.split()
+        >>> items = zip(group, count, color)
+        >>> data = [dict(zip(header, values)) for values in items]
+        >>> # create a Columns selector
+        >>> columns = Columns(Header(line=None, names=header, string=None))
+        >>> # set the secret names list -- this will be controlled by readers
+        >>> columns._names = [0, 2] #may be set by strings, ints or re.Pattern
+        >>> #apply the named tabs
+        >>> rows = [columns(row) for row in data]
+        >>> print(rows[0:3])
+        ... # doctest: +NORMALIZE_WHITESPACE
+        [{'group': 'a', 'color': 'r'},
+        {'group': 'c', 'color': 'g'},
+        {'group': 'b', 'color': 'b'}]
+    """
+
+    def __init__(self, header: Header) -> None:
+        """Initialize this Columns instance."""
+
+        self.header = header
+        self._names: List[str] = header.names
+
+    def __setattr__(
+        self,
+        name: str,
+        value: Sequence[str | int] | re.Pattern,
+    ) -> None:
+        """On set of names by sequence or re pattern, fetch names from
+        this instance's header.
+
+        Args:
+            name:
+                String name of the attribute of this object to set. Only _names
+                attr is intercepted, all others delegate to supers setattr
+                method.
+
+        Raises:
+            A TypeError is issued of the _names attribute is set to a value that
+            is not a Sequence of strings, a Sequence of ints or an re Pattern
+            instance.
+        """
+
+        vals = value
+        if name == '_names':
+
+            if not isinstance(value, (Sequence, re.Pattern)):
+                msg = 'Value must be a Sequence[str|int] or re.Pattern type'
+                raise TypeError(msg)
+
+            if isinstance(value, Sequence):
+                if len(set(type(el) for el in value)) > 1:
+                    msg = 'All sequence elements must have the same type'
+                    raise TypeError(msg)
+
+            if isinstance(value, re.Pattern):
+                pattern = value
+                vals = [x for x in self.header.names if re.search(pattern, x)]
+
+            assert isinstance(value, Sequence)  # mypy type narrow
+            if isinstance(value[0], int):
+                indices = value
+                vals = [self.header.names[idx] for idx in indices]
+
+            # validate others is a subset of header names
+            assert isinstance(vals, Sequence)  # mypy type narrow
+            invalid = set(vals).difference(self.header.names)
+            if invalid:
+                raise IndexError(f'[{invalid}] are not a valid column name(s)')
+
+        super().__setattr__(name, vals)
+
+    def __call__(self, row: Dict[str, CellType]) -> Dict[str, CellType]:
+        """Apply Columns to a row dictionary.
+
+        Args:
+            row:
+               A mapping representing a dictionary row of an infile that has
+                undergone type conversion.
+
+        Returns:
+            A new mapping containing only the named columns from this instance.
+        """
+
+        return {key: value for key, value in row.items() if key in self._names}
+
+
+class Tabbing:
+    """A callable container for storing & applying tab instances to rows
+    and filtering by columns.
+
+    Attributes:
+        rows:
+            A list of tab instances to apply to each row.
+        columns:
+            A Columns callable returning a new row containing only the named
+            columns.
+    """
+
+    def __init__(self, rows: List[Tab], columns: Columns) -> None:
+        """Initialize with tabs to apply to rows & columns to extract."""
+
+        self.rows = rows
+        self.columns = columns
+
+    def __contains__(self, tab: Tab) -> bool:
+        """Returns True if tab is in this tabbing else False."""
+
+        return tab in self.rows
+
+    def __call__(self, row: Dict[str, CellType]) -> Dict[str, CellType] | None:
+        """Apply the tabs and columns to this row.
+
+        Args:
+            row:
+               A mapping representing a dictionary row of an infile that has
+                undergone type conversion.
+
+        Returns:
+            A new row containing only columns if the row satisfies the tabs and
+            None otherwise.
+        """
+
+        return self.columns(row) if all(tab(row) for tab in self.rows) else None
 
 
 if __name__ == '__main__':
