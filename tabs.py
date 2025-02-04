@@ -6,7 +6,7 @@ import abc
 from datetime import datetime
 import operator as op
 import re
-from typing import Callable, Dict, List, Sequence
+from typing import Callable, Dict, List, Literal, Sequence
 
 from tabbed.sniffing import Header
 from tabbed.utils import celltyping
@@ -20,7 +20,7 @@ Comparable = int | float | datetime | str
 
 
 class Tab(abc.ABC, ReprMixin):
-    """Abstract base class declaring the required methods of all Tabs."""
+    """Abstract base class declaring required methods of all Tabs."""
 
     @abc.abstractmethod
     def __call__(self, row: Dict[str, CellType]) -> bool:
@@ -399,6 +399,42 @@ class Calling(Tab):
         return self.func(row, self.name, **self.kwargs)
 
 
+class Accepting(Tab):
+    """A Callable that accepts a row always.
+
+    This Tab type is used as a place holder and defines what to do with a row
+    when no tabs are present.
+
+    Args:
+        May take any kwarg to store to this instance.
+
+    Example:
+        >>> # make tabular data
+        >>> header = ['group', 'count', 'color']
+        >>> group = ['a', 'c', 'b', 'b', 'c', 'a', 'c', 'b', 'c', 'a', 'a', 'c']
+        >>> count = [22,   2,   13,  15,  4,   19,  4,   21,  5,   24,  18,  1]
+        >>> color = 'r g b b r r r g g  b b g'.split()
+        >>> items = zip(group, count, color)
+        >>> data = [dict(zip(header, values)) for values in items]
+        >>> # make Accepting tab
+        >>> accepting = Accepting(x='twiddle', y='dee')
+        >>> # apply the accepting tab to data
+        >>> booleans = [accepting(row) for row in data]
+        >>> print([idx for idx, val in enumerate(booleans) if val])
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    """
+
+    def __init__(self, **kwargs):
+        """ """
+
+        self.__dict__.update(kwargs)
+
+    def __call__(self, row: Dict[str, CellType]) -> Literal[True]:
+        """Returns True for a dictionary row always."""
+
+        return True
+
+
 class Columns(ReprMixin):
     """A Callable for reading a subset of a row's columns.
 
@@ -512,12 +548,50 @@ class Tabbing:
         columns:
             A Columns callable returning a new row containing only the named
             columns.
+
+    Example:
+        >>> # make tabular data
+        >>> header = ['group', 'count', 'color']
+        >>> group = ['a', 'c', 'b', 'b', 'c', 'a', 'c', 'b', 'c', 'a', 'a', 'c']
+        >>> count = [22,   2,   13,  15,  4,   19,  4,   21,  5,   24,  18,  1]
+        >>> color = 'r g b b r r r g g  b b g'.split()
+        >>> items = zip(group, count, color)
+        >>> data = [dict(zip(header, values)) for values in items]
+        >>> # create a Columns selector
+        >>> columns = Columns(Header(line=None, names=header, string=None))
+        >>> # set the secret names list -- this will be controlled by readers
+        >>> columns._names = [0, 1] #may be set by strings, ints or re.Pattern
+        >>> #create tab instances
+        >>> members = Membership('group', ['a', 'c'])
+        >>> comparator = Comparison('count', '<=20')
+        >>> # Create a tabbing to apply the columns and tabs to the data
+        >>> tabbing = Tabbing(rows=[members, comparator], columns=columns)
+        >>> rows = [tabbing(row) for row in data if tabbing(row)]
+        >>> print(rows)
+        ... # doctest: +NORMALIZE_WHITESPACE
+        [{'group': 'c', 'count': 2},
+        {'group': 'c', 'count': 4},
+        {'group': 'a', 'count': 19},
+        {'group': 'c', 'count': 4},
+        {'group': 'c', 'count': 5},
+        {'group': 'a', 'count': 18},
+        {'group': 'c', 'count': 1}]
     """
 
-    def __init__(self, rows: List[Tab], columns: Columns) -> None:
-        """Initialize with tabs to apply to rows & columns to extract."""
+    def __init__(self, rows: List[Tab] | None, columns: Columns) -> None:
+        """Initialize with tabs to apply to rows & columns to extract.
 
-        self.rows = rows
+        Args:
+            rows:
+                A list of tab instances to apply to a row. If None, an Accepting
+                tab instance is created and used.
+            columns:
+                A Columns instance that tracks the columns in the row to return.
+                Columns instances are initialized to track all the names in the
+                Header.
+        """
+
+        self.rows = rows if rows else [Accepting()]
         self.columns = columns
 
     def __contains__(self, tab: Tab) -> bool:
