@@ -619,7 +619,13 @@ class Tabulator(ReprMixin):
         cls,
         header: Header,
         columns: Optional[List[str | int] | re.Pattern] = None,
-        **kwargs,
+        **kwargs: Dict[
+            str,
+            CellType
+            | Sequence[CellType]
+            | re.Pattern
+            | Callable[[Dict[str, CellType], str], bool],
+        ],
     ) -> Self:
         """Alternative instance constructor from tabs given as keyword args.
 
