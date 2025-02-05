@@ -7,6 +7,7 @@ from datetime import datetime
 import operator as op
 import re
 from typing import Callable, Dict, List, Literal, Optional, Sequence
+from typing_extensions import Self
 
 from tabbed.sniffing import Header
 from tabbed.utils import celltyping
@@ -477,6 +478,26 @@ class Tabulator(ReprMixin):
         {'group': 'c', 'count': 5},
         {'group': 'a', 'count': 18},
         {'group': 'c', 'count': 1}]
+        >>> # alternatively build tabulator from keyword args defining tabs
+        >>> tabulator2 = Tabulator.from_keywords(
+        ... header,
+        ... columns=[0,1],
+        ... group=['a', 'c'],
+        ... count='<=20')
+        >>> # show the tab types tabulator2 will use
+        >>> print([type(tab).__name__ for tab in tabulator2.rows])
+        ['Membership', 'Comparison']
+        >>> # apply the tabulator to get the same rows
+        >>> rows2 = [tabulator2(row) for row in data if tabulator2(row)]
+        >>> print(rows2)
+        ... # doctest: +NORMALIZE_WHITESPACE
+        [{'group': 'c', 'count': 2},
+        {'group': 'c', 'count': 4},
+        {'group': 'a', 'count': 19},
+        {'group': 'c', 'count': 4},
+        {'group': 'c', 'count': 5},
+        {'group': 'a', 'count': 18},
+        {'group': 'c', 'count': 1}]
     """
 
     def __init__(
@@ -541,6 +562,88 @@ class Tabulator(ReprMixin):
             raise IndexError(f'[{invalid}] are not a valid column name(s)')
 
         return vals
+
+    # we are defining a static method for a classmethod without instant access
+    # pylint: disable-next=no-self-argument
+    def _from_keyword(
+        name: str,
+        value: dict[
+            str,
+            CellType
+            | Sequence[CellType]
+            | re.Pattern
+            | Callable[[Dict[str, CellType], str], bool],
+        ],
+    ) -> Tab:
+        """Returns a Tab instance by inferring the Tab type from value.
+
+        This is a protected static method that aides the alternative
+        from_keywords constructor. It should not be externally called.
+
+        Args:
+            name:
+                The column name to provide to a Tab initializer.
+            value:
+                A value to provide to a Tab initializer.
+
+        Returns:
+            A Tab instance.
+        """
+
+        rich_comparisons = '< > <= >= == !='.split()
+
+        if isinstance(value, str):
+            if any(compare in value for compare in rich_comparisons):
+                return Comparison(name, value)
+
+            return Equality(name, value)
+
+        if isinstance(value, CellType):
+            # non-string CellType value -> make equality tab
+            return Equality(name, value)
+
+        if isinstance(value, Sequence):
+            return Membership(name, value)
+
+        if isinstance(value, re.Pattern):
+            return Regex(name, value)
+
+        if callable(value):
+            return Calling(name, value)
+
+        msg = 'Value of type {type(value)} for tab named {name} is not a'
+        raise TypeError(msg)
+
+    @classmethod
+    def from_keywords(
+        cls,
+        header: Header,
+        columns: Optional[List[str | int] | re.Pattern] = None,
+        **kwargs,
+    ) -> Self:
+        """Alternative instance constructor from tabs given as keyword args.
+
+        Args:
+            header:
+                A Header type containing the names of all the columns in infile.
+            columns:
+                A list of columns passed as string names or column indices or
+                a single re pattern to match against column names.
+            kwargs:
+                A mapping of column names and values to convert to Tab
+                instances (e.g. 'group' = ['a', 'b'], 'count' = '<=20', ...)
+
+        Returns:
+            A Tabulator instance
+
+        Raises:
+            A TypeError is issued if columns is a Sequence of inconsistent
+            types.
+
+        """
+
+        rows = [cls._from_keyword(*item) for item in kwargs.items()]
+        return cls(header, rows, columns)
 
     def __contains__(self, tab: Tab) -> bool:
         """Returns True if tab is in this tabbing else False."""
