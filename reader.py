@@ -6,13 +6,12 @@ import csv
 import re
 from itertools import islice #FIXME to be removed
 from collections import abc
-from typing import Callable, List, Optional, Sequence
+from typing import Callable, Dict, List, Optional, Sequence
 
 from tabbed import tabs
 from tabbed.sniffing import Header, MetaData, Sniffer
 from tabbed.utils.queues import ListFIFO
 from tabbed.utils.celltyping import CellType, convert
-from tabbed.utils import parsing
 from tabbed.utils.mixins import ReprMixin
 
 # Planning
@@ -21,97 +20,19 @@ from tabbed.utils.mixins import ReprMixin
 #    read in a nice format
 # 3. reader should have an index method which will add a client named index to
 #    the rows prior to filters to allow for row index filtering
-# 7. reader's read method should support chunk interation of rows that yield
-#    consistent sizes after filtering FIFO
 # 8. Reader is the main type in Tabbed and should be available at package level
 #    with no imports
 # 9. Reader should have a sample method to show lines and indices to aid setting
 #    specific numbers like count etc. Could call the method 'lines'
 #
-class _Columns(ReprMixin):
-    """A class for tracking and setting the column names to read from
-    a delimited text file.
 
-    This protected class is used by the Reader and not intended for external
-    instantiation.
-
-    Attributes:
-        header:
-            A Header instance containing all the possible names of columns in
-            infile. This header may be from the infile (if sniffer found it) or
-            client supplied.
-        names:
-            The names of the columns currently being tracked for reading. This
-            may be set with a sequence of string names, sequence of column
-            indices or by regex pattern search.
-    """
-
-    def __init__(self, header):
-        """Initialize these Columns with a Header instance."""
-
-        self.header = header
-        self._names = header.names
-
-    @property
-    def names(self):
-        """Return the names of the columns to read."""
-
-        return self._names
-
-    @names.setter
-    def names(self, other: Sequence[str|int] | re.Pattern) -> None:
-        """Set the column names by sequence or regex pattern.
-
-        Args:
-            other:
-                A sequence of string names, header name indices or a compiled
-                re pattern to match against header names.
-
-        Raises:
-            A ValueError is issued if names contains mixed types.
-            An IndexError is issued if a name in names is not in the header.
-        """
-
-        if not isinstance(other, (Sequence, re.Pattern)):
-            msg = 'Value must be a Sequence[str|int] or re.Pattern type'
-            raise TypeError(msg)
-
-        if isinstance(other, re.Pattern):
-            pattern = other
-            res = [x for x in self.header.names if bool(re.search(pattern, x))]
-
-        elif all(isinstance(el, int) for el in other):
-            indices = other
-            res = [self.header.names[idx] for idx in indices]
-
-        elif all(isinstance(name, str) for name in other):
-            res = other
-
-        else:
-            msg = 'Columns types must all be strs, ints or an re.Pattern'
-            raise ValueError(msg)
-
-        # validate the elements are a subset of the header names
-        if not set(self.header.names).issuperset(res):
-            invalid = set(res).difference(self.header)
-            raise IndexError(f'[{invalid}] are not a valid column name(s)')
-
-        self._names = res
-
-    @names.deleter
-    def names(self):
-        """ """
-
-        self._names = self.header.names
-
-
-
+# FIXME declare in docs the supported celltypes
 class Reader(ReprMixin):
     """A reader of delimited text files supporting iterative reading of specific
     rows and columns from files that possibly contain metadata and header
     components.
 
-    Most CSV files do not adhere to the RFC-4180 CSV standards. In particular,
+    Most CSV files do not adhere to the RFC-4180 CSV standard. In particular,
     many delimited files contain a metadata section in addition to a header line
     naming the columns of the data. Python's file sniffer can detect dialects
     but it's heuristic rules for detecting the header are limited and exclude
@@ -120,27 +41,25 @@ class Reader(ReprMixin):
     date are unable to filter the data by value during reading. This reader can
     selectively read rows of the data using equality, membership, logical
     comparisons, regular expression matching and callable filters. These filters
-    are stored to objects called Tabs that can be dynamically changed from this
-    Reader instance.
+    can be created using kwargs passed to the tab method.
 
     Attributes:
         infile:
             An I/O stream instance returned by open.
         sniffer:
-            A tabbed Sniffer instance fo inferring the dialect and structure of
-            infile.
+            A tabbed Sniffer instance for dialect & file structure inference.
         header:
-            A Header named tuple instance from sniffer. This value is
-            updated on any change to this Reader's sniffer.
-        columns:
-            A callable that determines the columns of the data to return during
-            read. This callable is set by creating a tab via the tab method
-            allowing columns to be selected by regex pattern, membership or index.
-        rows:
-            A sequence of callables that determines the rows of data to return
-            during read. These callables can be set by creating a tab via the
-            tab method allowing rows to be filtered by comparison, equality,
-            membership, regex or callable.
+            A Header dataclass containing the header line number, the header
+            column names, and the row string used to build the column names. If
+            the header is not determnined by infile, the line number and row
+            string are None type (see tabbed.sniffing module)
+        metadata:
+            A frozen dataclass containing the line numbers and metadata string
+            from the infile. If not determined from infile the line number is
+            None type.
+        tabulator:
+            An callable container that tracks the tabs to apply to each row and
+            the columns to filter each row with.
 
     Example:
         >>
@@ -153,9 +72,7 @@ class Reader(ReprMixin):
         self.sniffer = Sniffer(self.infile, **kwargs)
         self._header = self.sniffer.header
         self._set_sniff()
-
-        self._columns = _Columns(self.header)
-        self.tabbed = []
+        self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
 
     def _set_sniff(self) -> None:
         """On update of a Sniffer attribute, update this readers header.
@@ -188,33 +105,32 @@ class Reader(ReprMixin):
         return item() if isinstance(item, abc.Callable) else item
 
     @header.setter
-    def header(self, value: int | List[str] | str) -> None:
+    def header(self, value: int | List[str] | None) -> None:
         """Sets this Reader's header.
 
         Args:
             value:
-                An integer, list of strings or the string 'generic'. If int
-                type, the row in infile at line number = value will be used as
-                the header.  If a list of string types, the header will be built
-                from the list. If a string matching 'generic', a list of column
-                names matching the length of the columns in the last sniffed
-                sample row will be created. The form of the column names will be
-                [Column_0, Column_1 ...].
+                An integer, list of strings or None. If int type, the row in
+                infile at value line number will be used as the header.  If
+                a list of string types, the header will be built from the list.
+                If None, the sniffer's header will returned. If the sniffer
+                fails to find the header, a generic header is returned with
+                names = ['Column_0', 'Column_1', ...].
 
         Returns:
             None
 
         Raises:
-            A ValueError is issued if value is string type but does not match
-            the string 'generic'. A TypeError is raise if value is not a valid
-            type.
+            A TypeError is raise if value is not a valid type.
         """
 
         num_columns = len(self.sniffer.rows()[-1])
         if isinstance(value, int):
 
+            # sniff single line at index value, get str & make header
             sniffer = Sniffer(self.infile, start=value, amount=1)
-            self._header = Header(sniffer.rows()[0], value)
+            string = sniffer.sample[0]
+            self._header = Header(value, sniffer.rows()[0], string)
 
         elif isinstance(value, List):
 
@@ -223,189 +139,150 @@ class Reader(ReprMixin):
                       f'last sniffed row column count = {column_count}')
                 raise ValueError(msg)
 
-            # set index of header to None
-            self._header = Header(value, None)
+            # set index and string to none
+            self._header = Header(line=None, names=value, string=None)
 
-        elif isinstance(value, str):
+        elif isinstance(value, type(None)):
 
-            if value.lower() != 'generic':
-                msg = f"Only string 'generic' is valid not {value}"
-                raise ValueError(msg)
-
-            names = [f'Column_{i}' for i in range(num_columns)]
-            self._header = Header(names, None)
+            # if None given as for sniffer's header
+            self._header = self.sniffer.header()
 
         else:
 
-            msg = f"Names must be type int, List[str], or str not {type(value)}"
+            msg = f"Names must be type int, List[str], or None not {type(value)}"
             raise TypeError(msg)
 
-        # on header change update tabs and columns
-        self.tabs = []
-        self.columns = self.header.names
-
-    # FIXME Do we really need to track the columns or could these just be given
-    # and validated during read to simplify? Having a container allows for
-    # greater expressivity in defining columns to read such as index or regex
-    # BUT we need to find a way to simplify
-
-    @property
-    def columns(self):
-        """ """
-
-        return reader._columns
-
-    @columns.setter
-    def columns(self, other):
-        """ """
-
-        self.columns.names = other
-
-    @columns.deleter
-    def columns(self):
-        """ """
-
-        self.columns.names = self.header.names
+        # on header change reset tabulator
+        self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
 
     def tab(
         self,
-        **tabbings: dict[
-            str,
-            CellType | Sequence[CellType] | re.Pattern | Callable],
-        ):
-        """ """
+        columns: Optional[List[str | int] | re.Pattern] = None,
+        **rows: dict[str, CellType | Sequence[CellType] | re.Pattern | Callable],
+    ) -> None:
+        """Set the Tabulator instance that will filter infiles rows & columns.
 
-        for name, value in tabbings.items():
+        Args:
+            columns:
+                Column names to be returned during reading. These may be
+                provided as a list of string names, a list of column indices or
+                a compiled regular expression pattern to match against header
+                names. If None, all the columns in the header will be read
+                during a read call.
+            rows:
+                name = value keyword argument pairs where name is a valid header
+                column name and value may be of type string, CellType, reg.
+                expression pattern or a callable. If a string type with rich
+                comparison(s) is provided, a comparison tab is constructed. If
+                a string, int, float, complex value or datetime is provided, an
+                equality tab is constructed. If a sequence is provided,
+                a membership tab is constructed. If a compiled re pattern
+                a Regex tab is constructed. See class docs for example.
 
-            if parsing.is_comparison(value):
-                tab = tabs.Comparison(name, value)
+        Returns:
+            None
+        """
 
-            if parsing.is_celltype(value):
-                tab = tabs.Equality(name, value)
+        self.tabulator = tabs.Tabulator.from_keywords(self.header, columns, **rows)
 
-            if parsing.is_regex(value):
-                tab = tabs.Regex(name, value)
+    def _recast(
+        self,
+        line: int,
+        row: dict[str, str],
+        castings: dict[str, type],
+        issue: str,
+    ) -> Dict[str, CellType]:
+        """Applies named castings to dictionary row at line.
 
-            if parsing.is_sequence(value):
-                tab = tabs.Membership(name, value)
+        Args:
+            line:
+                The integer line number of row.
+            row:
+                A dictionary row whose string values will be recast.
+            castings:
+                A dictionary of casting callables that accept a string &
+                return a CellType. The keys must match this reader's header.
+            issue:
+                A string, one of {'ignore', 'warn', 'raise'} indicating whether
+                cast failure on a row should be ignored, a warning issued or an
+                exception raised.
 
-            self.tabbed.append(tab)
+        Returns:
+            The row with values recast according to castings.
+        """
 
+        result = {}
+        msg = 'Conversion error occurred on line {} in column {}'
+        for name, value in row.items():
+            try:
+                result[name] = castings[name](value)
+            except ValueError as e:
+                if issue.lower() == 'ignore':
+                    result[name] = value
+                if issue.lower() == 'warn':
+                   msg.format(line, name)
+                   result[name] = value
+                else:
+                    # any other triggers an exception to be raised
+                    msg.format(line, name)
+                    raise e
 
-
-    # FIXME clean-up
-    def _convert(self, line, row, converters, error):
-        """Converts a single row."""
-
-        def safe_convert(arow, converters):
-            """ """
-            
-            result = {}
-            for name, astring in arow.items():
-                try:
-                    result[name] = converters[name](astring)
-                except:
-                    result[name] = astring
-
-            return result
-
-
-        try:
-
-            return {name: converters[name](astr) for name, astr in row.items()}
-
-        except Exception as e:
-
-            if error == 'raise':
-                print(f'Exception occured on line number {line}')
-                raise e
-
-            if error == 'warn':
-                print(f'Skipping some conversion(s) on line number {line}')
-                print(e)
-                return safe_convert(row, converters)
-
-            return safe_convert(row, converters)
-
+        return result
 
     def read(
         self,
-        start=None,
-        skips=None,
-        chunksize=None,
-        index_name='index',
-        errors='warn',
-        **fmtparams,
-        ):
+        start: Optional[int],
+        skips: Optional[List[int]],
+        chunksize: int = int(1e6),
+        errors: str = 'warn',
+        castings: Optional[Dict[str, Callable[[str], CellType]]] = None,
+        **fmt_params,
+    ) -> List[Dict[str, CellType]]:
         """ """
-
-        # TODO
-        # 1. allow dtypes dict to be passed or a single dtype for whole file
-        # 3. date format passing default to None for inference
-
 
         if start is None:
             start = self.header.line + 1 if self.header.line else 0
-
         skips = [] if not skips else skips
-        chunksize = len(self) if not chunksize else chunksize
+        chunksize = min(len(self), chunksize)
+        casts = {} if not castings else castings
+
+        # ask sniffer for castings and update with client casts
+        delimiter = fmt_params.get('delimiter', None)
+        castings = dict(
+                zip(
+                    self.header.names,
+                    self.sniffer.types(delimiter=delimiter,
+                    )
+                    )
+                )
+        castings.update(casts)
+
         # advance to the data section
         [next(self.infile) for _ in range(start)]
-        dictreader = csv.DictReader(
-                    infile,
-                    self.header.names,
-                    restkey=None,
-                    restval='',
-                    dialect = self.sniffer.dialect, **fmtparams)
-
-        # TODO could update with custom converters if desired
-        converters = dict(zip(self.header.names, self.sniffer.types()))
+        # build reader and FIFO for chunksize dequeing
+        dreader = csv.DictReader(
+                infile,
+                self.header.names,
+                restkey=None,
+                restval='',
+                dialect = self.sniffer.dialect,
+                **fmtparams,
+                )
         fifo = ListFIFO(chunksize)
-
-        # testing limit
-        #dreader = islice(dictreader, 0, 500000)
-        for line, dic in enumerate(dictreader, start):
+        for line, dic in enumerate(dreader, start):
 
             if line in skips:
                 continue
 
-            if not any(dic.values()) and skip_blank:
+            if not any(dic.values()):
                 continue
 
-            unnamed = dic.pop(None)
-
-            # FIXME how to do index row filtering fast??
-            # Updating the dic and header dramatically slows reading down
-            """
-            dic.update({index_name: line})
-            self.header.names.append(index_name)
-            """
-
-            """
-            needed = set(self.header.names)
-            if self.columns:
-                needed = set(self.columns.tabs)
-            if self.rows:
-                needed.update(set(self.rows.tabs))
-
-            dic = {name: astring for name, astring in dic.items() if name in needed}
-            """
-
-            res = self._convert(line, dic, converters, errors)
-
-
-            # FIXME if a filter is working with a string that was not converted
-            # errors occur, the filters need a way to ignore, raise, or warn
-            # apply tabs
-            if self.rows and self.rows(res):
-                res = res
-            if self.columns:
-                res = self.columns(res)
-
-            filtered=res
-
-            if filtered:
-                fifo.put(filtered)
+            # remove any values under the None restkey and recast
+            dic.pop(None)
+            row = self._recast(line, dic, castings, errors)
+            row = self.tabulator(row)
+            if row:
+                fifo.put(row)
 
             if fifo.full():
                 yield fifo.get()
@@ -443,10 +320,8 @@ if __name__ == '__main__':
     reader.tab(columns=['Trial_time', 'X_center', 'Y_center', 'Area'],
             Area='>0.01')
 
-    """
-    x = reader.read(skips=[35], chunksize=200000, escapechar=None, errors='warn')
+    x = reader.read(start=None, skips=[35], chunksize=200000, escapechar=None)
 
     t0 = time.perf_counter()
     result = list(x)
     print(f'elapsed time: {time.perf_counter() - t0}')
-    """
