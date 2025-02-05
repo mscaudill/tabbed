@@ -6,7 +6,7 @@ import abc
 from datetime import datetime
 import operator as op
 import re
-from typing import Callable, Dict, List, Literal, Sequence
+from typing import Callable, Dict, List, Literal, Optional, Sequence
 
 from tabbed.sniffing import Header
 from tabbed.utils import celltyping
@@ -435,119 +435,19 @@ class Accepting(Tab):
         return True
 
 
-class Columns(ReprMixin):
-    """A Callable for reading a subset of a row's columns.
-
-    This class, like tabs, is a callable that accepts a data row. However,
-    it returns the row filtered by this instance's stored column names rather
-    than a boolean.
-
-    Attributes:
-        header:
-            A Header instance containing the names of each column in the
-            delimited text file.
-
-    Example:
-        >>> # make tabular data
-        >>> header = ['group', 'count', 'color']
-        >>> group = ['a', 'c', 'b', 'b', 'c', 'a', 'c', 'b', 'c', 'a', 'a', 'c']
-        >>> count = [22,   2,   13,  15,  4,   19,  4,   21,  5,   24,  18,  1]
-        >>> color = 'r g b b r r r g g  b b g'.split()
-        >>> items = zip(group, count, color)
-        >>> data = [dict(zip(header, values)) for values in items]
-        >>> # create a Columns selector
-        >>> columns = Columns(Header(line=None, names=header, string=None))
-        >>> # set the secret names list -- this will be controlled by readers
-        >>> columns._names = [0, 2] #may be set by strings, ints or re.Pattern
-        >>> #apply the named tabs
-        >>> rows = [columns(row) for row in data]
-        >>> print(rows[0:3])
-        ... # doctest: +NORMALIZE_WHITESPACE
-        [{'group': 'a', 'color': 'r'},
-        {'group': 'c', 'color': 'g'},
-        {'group': 'b', 'color': 'b'}]
-    """
-
-    def __init__(self, header: Header) -> None:
-        """Initialize this Columns instance."""
-
-        self.header = header
-        self._names: List[str] = header.names
-
-    def __setattr__(
-        self,
-        name: str,
-        value: Sequence[str | int] | re.Pattern,
-    ) -> None:
-        """On set of names by sequence or re pattern, fetch names from
-        this instance's header.
-
-        Args:
-            name:
-                String name of the attribute of this object to set. Only _names
-                attr is intercepted, all others delegate to supers setattr
-                method.
-
-        Raises:
-            A TypeError is issued of the _names attribute is set to a value that
-            is not a Sequence of strings, a Sequence of ints or an re Pattern
-            instance.
-        """
-
-        vals = value
-        if name == '_names':
-
-            if not isinstance(value, (Sequence, re.Pattern)):
-                msg = 'Value must be a Sequence[str|int] or re.Pattern type'
-                raise TypeError(msg)
-
-            if isinstance(value, Sequence):
-                if len(set(type(el) for el in value)) > 1:
-                    msg = 'All sequence elements must have the same type'
-                    raise TypeError(msg)
-
-            if isinstance(value, re.Pattern):
-                pattern = value
-                vals = [x for x in self.header.names if re.search(pattern, x)]
-
-            assert isinstance(value, Sequence)  # mypy type narrow
-            if isinstance(value[0], int):
-                indices = value
-                vals = [self.header.names[idx] for idx in indices]
-
-            # validate others is a subset of header names
-            assert isinstance(vals, Sequence)  # mypy type narrow
-            invalid = set(vals).difference(self.header.names)
-            if invalid:
-                raise IndexError(f'[{invalid}] are not a valid column name(s)')
-
-        super().__setattr__(name, vals)
-
-    def __call__(self, row: Dict[str, CellType]) -> Dict[str, CellType]:
-        """Apply Columns to a row dictionary.
-
-        Args:
-            row:
-               A mapping representing a dictionary row of an infile that has
-                undergone type conversion.
-
-        Returns:
-            A new mapping containing only the named columns from this instance.
-        """
-
-        return {key: value for key, value in row.items() if key in self._names}
-
-
-class Tabbing:
+class Tabulator(ReprMixin):
     """A callable container for storing & applying tab instances to rows
     and filtering by columns.
 
     Attributes:
+        header:
+            A Header instance storing all possible column names in the infile.
         rows:
             A list of tab instances to apply to each row.
         columns:
-            A Columns callable returning a new row containing only the named
-            columns.
+            The columns to extract from each row. These may be provided as
+            a list of column names, a list of integer column indices or a single
+            re pattern to match column names against.
 
     Example:
         >>> # make tabular data
@@ -557,16 +457,17 @@ class Tabbing:
         >>> color = 'r g b b r r r g g  b b g'.split()
         >>> items = zip(group, count, color)
         >>> data = [dict(zip(header, values)) for values in items]
-        >>> # create a Columns selector
-        >>> columns = Columns(Header(line=None, names=header, string=None))
-        >>> # set the secret names list -- this will be controlled by readers
-        >>> columns._names = [0, 1] #may be set by strings, ints or re.Pattern
         >>> #create tab instances
         >>> members = Membership('group', ['a', 'c'])
         >>> comparator = Comparison('count', '<=20')
-        >>> # Create a tabbing to apply the columns and tabs to the data
-        >>> tabbing = Tabbing(rows=[members, comparator], columns=columns)
-        >>> rows = [tabbing(row) for row in data if tabbing(row)]
+        >>> # Create a Header and a Tabulator
+        >>> header = Header(line=None, names=header, string=None)
+        >>> tabulator = Tabulator(
+        ... header,
+        ... rows=[members, comparator],
+        ... columns=[0, 1])
+        >>> # call the tabulator on our data
+        >>> rows = [tabulator(row) for row in data if tabulator(row)]
         >>> print(rows)
         ... # doctest: +NORMALIZE_WHITESPACE
         [{'group': 'c', 'count': 2},
@@ -578,21 +479,68 @@ class Tabbing:
         {'group': 'c', 'count': 1}]
     """
 
-    def __init__(self, rows: List[Tab] | None, columns: Columns) -> None:
-        """Initialize with tabs to apply to rows & columns to extract.
+    def __init__(
+        self,
+        header: Header,
+        rows: Optional[List[Tab]] = None,
+        columns: Optional[List[str | int] | re.Pattern] = None,
+    ) -> None:
+        """Initialize with row tabs, columns to extract & Header instance.
 
         Args:
+            header:
+                A Header type containing the names of all the columns in infile.
             rows:
                 A list of tab instances to apply to a row. If None, an Accepting
-                tab instance is created and used.
+                tab instance is applied to a row.
             columns:
-                A Columns instance that tracks the columns in the row to return.
-                Columns instances are initialized to track all the names in the
-                Header.
+                A list of columns passed as string names or column indices or
+                a single re pattern to match against column names.
+
+        Raises:
+            A TypeError is issued if columns is a Sequence of inconsistent
+            types.
         """
 
+        self.header = header
         self.rows = rows if rows else [Accepting()]
-        self.columns = columns
+        self.columns = self._assign(columns) if columns else self.header.names
+
+    def _assign(self, value):
+        """Assigns the passed column value(s) to valid column names.
+
+        Args:
+            value:
+                A list of column string names, a list of column indices, or
+                a single re pattern to match against names in header
+        """
+
+        vals = value
+        if not isinstance(value, (Sequence, re.Pattern)):
+            msg = 'Columns must be a Sequence[str|int] or re.Pattern type'
+            raise TypeError(msg)
+
+        if isinstance(value, Sequence):
+            if len(set(type(el) for el in value)) > 1:
+                msg = 'All sequence elements must have the same type'
+                raise TypeError(msg)
+
+        if isinstance(value, re.Pattern):
+            pattern = value
+            vals = [x for x in self.header.names if re.search(pattern, x)]
+
+        assert isinstance(value, Sequence)  # mypy type narrow
+        if isinstance(value[0], int):
+            indices = value
+            vals = [self.header.names[idx] for idx in indices]
+
+        # validate others is a subset of header names
+        assert isinstance(vals, Sequence)  # mypy type narrow
+        invalid = set(vals).difference(self.header.names)
+        if invalid:
+            raise IndexError(f'[{invalid}] are not a valid column name(s)')
+
+        return vals
 
     def __contains__(self, tab: Tab) -> bool:
         """Returns True if tab is in this tabbing else False."""
@@ -612,7 +560,10 @@ class Tabbing:
             None otherwise.
         """
 
-        return self.columns(row) if all(tab(row) for tab in self.rows) else None
+        if all(tab(row) for tab in self.rows):
+            return {key: val for key, val in row.items() if key in self.columns}
+
+        return None
 
 
 if __name__ == '__main__':
