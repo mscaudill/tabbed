@@ -321,7 +321,7 @@ class Sniffer(ReprMixin):
                 None, the delimiter of the detected dialect will be used.
 
         Returns:
-            A list of list representing each line in sample.:q
+            A list of list representing each line in sample.
 
         """
 
