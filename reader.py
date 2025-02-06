@@ -4,7 +4,7 @@
 
 import csv
 import re
-from itertools import islice #FIXME to be removed
+from itertools import islice
 from collections import abc, namedtuple
 from typing import Callable, Dict, List, Optional, Sequence
 
@@ -16,8 +16,6 @@ from tabbed.utils.mixins import ReprMixin
 
 # Planning
 #
-# 2. reader should have a 'peek' or show method to show a sample of what will be
-#    read in a nice format
 # 3. reader should have an index method which will add a client named index to
 #    the rows prior to filters to allow for row index filtering
 # 8. Reader is the main type in Tabbed and should be available at package level
@@ -240,10 +238,12 @@ class Reader(ReprMixin):
 
         return result
 
+
     def read(
         self,
         start: Optional[int],
         skips: Optional[List[int]],
+        indices: Optional[Sequence] = None,
         chunksize: int = int(1e6),
         raise_error: bool = False,
         castings: Optional[Dict[str, Callable[[str], CellType]]] = None,
@@ -254,7 +254,8 @@ class Reader(ReprMixin):
         if start is None:
             start = self.header.line + 1 if self.header.line else 0
         skips = [] if not skips else skips
-        chunksize = min(len(self), chunksize)
+        indices = range(0, len(self)) if not indices else indices
+        chunksize = min(len(self), len(indices), chunksize)
         casts = {} if not castings else castings
         # reset errors
         self.errors = []
@@ -291,9 +292,14 @@ class Reader(ReprMixin):
             if not any(dic.values()):
                 continue
 
+            if line not in indices:
+                continue
+
             # remove any values under the None restkey and recast
+            # TODO decide if ever needed...
             dic.pop(None)
             row = self._recast(line, dic, castings, raise_error)
+
             row = self.tabulator(row)
             if row:
                 fifo.put(row)
@@ -336,7 +342,7 @@ if __name__ == '__main__':
     reader.tab(columns=['Trial_time', 'X_center', 'Y_center', 'Area'],
             Area='>0.01')
 
-    x = reader.read(start=None, skips=[35], chunksize=200000)
+    x = reader.read(start=None, skips=[35], indices=range(34, 10000), chunksize=200000)
 
     t0 = time.perf_counter()
     result = []
