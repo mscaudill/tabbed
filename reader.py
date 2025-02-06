@@ -5,7 +5,7 @@
 import csv
 import re
 from itertools import islice #FIXME to be removed
-from collections import abc
+from collections import abc, namedtuple
 from typing import Callable, Dict, List, Optional, Sequence
 
 from tabbed import tabs
@@ -60,6 +60,11 @@ class Reader(ReprMixin):
         tabulator:
             An callable container that tracks the tabs to apply to each row and
             the columns to filter each row with.
+        errors:
+            A list to store casting errors. Each error is a namedtuple containing a line
+            number and the error messages that occured during casting of values
+            on that line. These errors are only stored if the read methods
+            'raised' argument is False.
 
     Example:
         >>
@@ -73,6 +78,8 @@ class Reader(ReprMixin):
         self._header = self.sniffer.header
         self._set_sniff()
         self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
+        self._error = namedtuple('error', 'line messages')
+        self.errors = []
 
     def _set_sniff(self) -> None:
         """On update of a Sniffer attribute, update this readers header.
@@ -106,7 +113,7 @@ class Reader(ReprMixin):
 
     @header.setter
     def header(self, value: int | List[str] | None) -> None:
-        """Sets this Reader's header.
+        """Set this Reader's header.
 
         Args:
             value:
@@ -190,7 +197,7 @@ class Reader(ReprMixin):
         line: int,
         row: dict[str, str],
         castings: dict[str, type],
-        issue: str,
+        raise_error: bool,
     ) -> Dict[str, CellType]:
         """Applies named castings to dictionary row at line.
 
@@ -211,21 +218,25 @@ class Reader(ReprMixin):
             The row with values recast according to castings.
         """
 
+        error_msgs = []
         result = {}
-        msg = 'Conversion error occurred on line {} in column {}'
         for name, value in row.items():
             try:
                 result[name] = castings[name](value)
-            except ValueError as e:
-                if issue.lower() == 'ignore':
-                    result[name] = value
-                if issue.lower() == 'warn':
-                   msg.format(line, name)
-                   result[name] = value
-                else:
+            except Exception as e:
+                if raise_error:
+                    msg = "Casting error occurred on line = {}, column = '{}'"
                     # any other triggers an exception to be raised
-                    msg.format(line, name)
+                    msg = msg.format(line, name)
+                    print(msg)
                     raise e
+                else:
+                    result[name] = value
+                    error_msgs.append(str(e))
+
+        if error_msgs:
+            self.errors.append(self._error(line, set(error_msgs)))
+
 
         return result
 
@@ -234,7 +245,7 @@ class Reader(ReprMixin):
         start: Optional[int],
         skips: Optional[List[int]],
         chunksize: int = int(1e6),
-        errors: str = 'warn',
+        raise_error: bool = False,
         castings: Optional[Dict[str, Callable[[str], CellType]]] = None,
         **fmt_params,
     ) -> List[Dict[str, CellType]]:
@@ -245,7 +256,10 @@ class Reader(ReprMixin):
         skips = [] if not skips else skips
         chunksize = min(len(self), chunksize)
         casts = {} if not castings else castings
+        # reset errors
+        self.errors = []
 
+        # FIXME point of failure that needs docs
         # ask sniffer for castings and update with client casts
         delimiter = fmt_params.get('delimiter', None)
         castings = dict(
@@ -256,7 +270,7 @@ class Reader(ReprMixin):
                     )
                 )
         castings.update(casts)
-
+        chunk = 0
         # advance to the data section
         [next(self.infile) for _ in range(start)]
         # build reader and FIFO for chunksize dequeing
@@ -266,7 +280,7 @@ class Reader(ReprMixin):
                 restkey=None,
                 restval='',
                 dialect = self.sniffer.dialect,
-                **fmtparams,
+                **fmt_params,
                 )
         fifo = ListFIFO(chunksize)
         for line, dic in enumerate(dreader, start):
@@ -279,12 +293,14 @@ class Reader(ReprMixin):
 
             # remove any values under the None restkey and recast
             dic.pop(None)
-            row = self._recast(line, dic, castings, errors)
+            row = self._recast(line, dic, castings, raise_error)
             row = self.tabulator(row)
             if row:
                 fifo.put(row)
 
             if fifo.full():
+                print(f'yielding chunk {chunk}')
+                chunk += 1
                 yield fifo.get()
 
         yield fifo.get()
@@ -320,8 +336,9 @@ if __name__ == '__main__':
     reader.tab(columns=['Trial_time', 'X_center', 'Y_center', 'Area'],
             Area='>0.01')
 
-    x = reader.read(start=None, skips=[35], chunksize=200000, escapechar=None)
+    x = reader.read(start=None, skips=[35], chunksize=200000)
 
     t0 = time.perf_counter()
-    result = list(x)
+    result = []
+    [result.extend(rows) for rows in x]
     print(f'elapsed time: {time.perf_counter() - t0}')
