@@ -7,6 +7,7 @@ from datetime import datetime
 import operator as op
 import re
 from typing import Callable, Dict, List, Literal, Optional, Sequence
+
 from typing_extensions import Self
 
 from tabbed.sniffing import Header
@@ -232,12 +233,16 @@ class Comparison(Tab):
         [2, 3, 4, 6, 8]
     """
 
-    comparators = dict(
-        zip(
-            '< > <= >= == !='.split(),
-            [op.lt, op.gt, op.le, op.ge, op.eq, op.ne],
-        )
-    )
+    comparators = {
+        '<': op.lt,
+        '>': op.gt,
+        '<=': op.le,
+        '>=': op.ge,
+        '==': op.eq,
+        '!=': op.ne,
+    }
+
+    logicals = {'and': op.__and__, 'or': op.__or__}
 
     def __init__(
         self,
@@ -266,37 +271,60 @@ class Comparison(Tab):
         self.name = name
         self.comparison = comparison
         self.permissive = permissive
+        self._funcs, self._values, self._logical = self._components()
 
-    def _single(self, row: Dict[str, CellType], comparison: str) -> bool:
-        """Determines if named value in row satisfies comparison.
+    def _components(self):
+        """Splits a comparison string into an operator module func, a casted
+        value and a logical operator.
 
-        This "protected" function not intended for external call.
-
-        Args:
-            row:
-               A mapping representing a dictionary row of an infile that has
-                undergone type conversion.
-            comparison:
-                A string containing one or two rich comparison operators
-                followed by a Comparable type (e.g. '>= 8.3', '< 9 and > 2').
-                The logical 'and' or 'or' may be used for double comparisons.
+        This protected method should not be called externally.
 
         Returns:
-            True if named value in row satisfies comparison.
+            2 tuples containing of operator module functions and casted values
+            one per comparison and a logical operator that will be None if only
+            a single comparison is found.
         """
 
-        # boundary split comparison to get value and comparator str
-        comparator, value = re.split(r'\b', comparison, maxsplit=1)
-        func = self.comparators[comparator.strip()]
-        value = celltyping.convert(value)
+        logical = None
+        multicomparison = re.search(r'\sand\s|\sor\s', self.comparison)
+        if multicomparison:
+            # match cannot be None -- for mypy
+            logic_string = multicomparison.group()  # type: ignore [union-attr]
+            logical = self.logicals[logic_string.strip()]
 
-        try:
-            return bool(func(row[self.name], value))
-        except TypeError:
-            # comparisons between incompatible types -> return permissive
-            return self.permissive
+            # get each string comparisons and get func, value components
+            cstrings = re.split(logic_string, self.comparison)
+            if len(cstrings) > 2:
+                raise ValueError('A maximum of two comparisons may be made')
 
-    def __call__(self, row: Dict[str, CellType]):
+            items = [self._parse(compare_str) for compare_str in cstrings]
+            funcs, values = zip(*items)
+        else:
+            funcs, values = zip(*[self._parse(self.comparison)])
+
+        return funcs, values, logical
+
+    def _parse(self, compare_str: str):
+        """Parses a string containing a single comparison operator into
+        a operator module function and a value.
+
+        This protected method should not be called externally.
+
+        Args:
+            A string containing one rich comparison operator followed by
+            a Comparable type.
+
+        Returns:
+            A function from the operator module and the casted value.
+        """
+
+        # split string on alphanum boundary
+        name, value_str = re.split(r'\b', compare_str, maxsplit=1)
+        comparator = self.comparators[name.strip()]
+        value = celltyping.convert(value_str)
+        return comparator, value
+
+    def __call__(self, row: Dict[str, CellType]) -> bool:
         """Apply this tab to a dictionary row.
 
         Args:
@@ -311,26 +339,18 @@ class Comparison(Tab):
             A ValueError is issued if more than two logicals are in comparison.
         """
 
-        # determine if multi-comparison
-        multicomparison = re.search(r'\sand\s|\sor\s', self.comparison)
-        if multicomparison:
+        try:
+            booleans = [
+                func(row[self.name], val)
+                for func, val in zip(self._funcs, self._values)
+            ]
+            if self._logical:
+                return bool(self._logical(*booleans))
+            return bool(booleans[0])
 
-            logicals = {'and': op.__and__, 'or': op.__or__}
-            # find occurrence of a logical string 'and' or 'or'
-            match = re.search(r'\sand\s|\sor\s', self.comparison)
-            # match cannot be None -- for mypy
-            logic_string = match.group()  # type: ignore [union-attr]
-            logical = logicals[logic_string.strip()]
-
-            comparisons = re.split(logic_string, self.comparison)
-            if len(comparisons) > 2:
-                raise ValueError('A maximum of two comparisons may be made')
-
-            booleans = [self._single(row, cstring) for cstring in comparisons]
-
-            return logical(*booleans)
-
-        return self._single(row, self.comparison)
+        except TypeError:
+            # comparisons between incompatible types -> return permissive
+            return self.permissive
 
 
 class Calling(Tab):
