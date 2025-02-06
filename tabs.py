@@ -672,9 +672,9 @@ class Tabulator(ReprMixin):
         return cls(header, rows, columns)
 
     def __contains__(self, tab: Tab) -> bool:
-        """Returns True if tab is in this tabbing else False."""
+        """Returns True if tab type is a type in this tabulator else False."""
 
-        return tab in self.rows
+        return type(tab) in [type(tab) for tab in self.rows]
 
     def __call__(self, row: Dict[str, CellType]) -> Dict[str, CellType] | None:
         """Apply the tabs and columns to this row.
