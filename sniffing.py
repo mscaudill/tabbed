@@ -184,6 +184,7 @@ class Sniffer(ReprMixin):
 
         self._move(0)
         result = sum(1 for line in self.infile)
+        self._move(0)
 
         return result
 
@@ -305,6 +306,10 @@ class Sniffer(ReprMixin):
         if not result:
             msg = "Dialect could not be determined from Sniffer's sample"
             warnings.warn(msg)
+
+        # python 3.11 deprecated '' escapechars that clever csv defaults to
+        escapechar = result.escapechar
+        result.escapechar = None if escapechar == '' else escapechar
 
         return result
 
