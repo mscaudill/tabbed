@@ -4,20 +4,18 @@
 
 import csv
 import re
-from itertools import islice
-from collections import abc, namedtuple
+from itertools import zip_longest
+from collections import abc, namedtuple, deque
+from types import SimpleNamespace
 from typing import Callable, Dict, List, Optional, Sequence
 
 from tabbed import tabs
 from tabbed.sniffing import Header, MetaData, Sniffer
-from tabbed.utils.queues import ListFIFO
 from tabbed.utils.celltyping import CellType, convert
 from tabbed.utils.mixins import ReprMixin
 
 # Planning
 #
-# 3. reader should have an index method which will add a client named index to
-#    the rows prior to filters to allow for row index filtering
 # 8. Reader is the main type in Tabbed and should be available at package level
 #    with no imports
 # 9. Reader should have a sample method to show lines and indices to aid setting
@@ -46,6 +44,10 @@ class Reader(ReprMixin):
             An I/O stream instance returned by open.
         sniffer:
             A tabbed Sniffer instance for dialect & file structure inference.
+        dialect:
+            The current dialect used by Sniffer. If problems are encountered
+            during sniffing, this property may be changed to improve
+            detection of header, metadata, and casting types of the Sniffer.
         header:
             A Header dataclass containing the header line number, the header
             column names, and the row string used to build the column names. If
@@ -59,10 +61,6 @@ class Reader(ReprMixin):
             An callable container that tracks the tabs to apply to each row and
             the columns to filter each row with.
         errors:
-            A list to store casting errors. Each error is a namedtuple containing a line
-            number and the error messages that occured during casting of values
-            on that line. These errors are only stored if the read methods
-            'raised' argument is False.
 
     Example:
         >>
@@ -77,7 +75,7 @@ class Reader(ReprMixin):
         self._set_sniff()
         self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
         self._error = namedtuple('error', 'line messages')
-        self.errors = []
+        self.errors = SimpleNamespace(casting=[], ragged=[])
 
     def _set_sniff(self) -> None:
         """On update of a Sniffer attribute, update this readers header.
@@ -94,6 +92,29 @@ class Reader(ReprMixin):
             self._header = sniffer.header
 
         Sniffer.__setattr__ = on_change
+
+    @property
+    def dialect(self):
+        """Returns the Sniffer's current simplecsv dialect."""
+
+        return self.sniffer.dialect
+
+    @dialect.setter
+    def dialect(self, **fmt_params: Dict[str, str | bool | None]) -> None:
+        """Sets Sniffer's current simplecsv dialect.
+
+        Args:
+            fmt_params:
+                A dictionary of formatting params to update. Valid names are
+                'delimiter', 'quotechar', 'escapechar' and 'strict'. Delimiter
+                refers to the character used to separate columns. Quotechar is
+                the character used to quote strings, escapechar is used for
+                writers and is not relevant and strict refers to error handling
+                if a bad csv is encountered. Please see Python csv dialect
+                specification.
+        """
+
+        self.sniffer.dialect.__dict__.update(fmt_params)
 
     @property
     def header(self) -> Header | None:
@@ -160,6 +181,20 @@ class Reader(ReprMixin):
         # on header change reset tabulator
         self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
 
+    @property
+    def typecasts(self):
+        """Returns the Sniffers type castings from the last 5 sample lines."""
+
+        types = self.sniffer.types()
+        if len(types) < len(self.header.names):
+            msg = ('Casting count = {len(types)} does not match the number'
+                   ' of header columns = {len(self.header.names}. Some columns will'
+                   ' not be type casted'
+                   )
+            print(msg)
+
+        return dict(zip_longest(self.header.names, types, fillvalue=str))
+
     def tab(
         self,
         columns: Optional[List[str | int] | re.Pattern] = None,
@@ -190,6 +225,43 @@ class Reader(ReprMixin):
 
         self.tabulator = tabs.Tabulator.from_keywords(self.header, columns, **rows)
 
+    def _autostart(self):
+        """Locates the start line of the data section.
+
+        Infers start of the data section of infile by looking at whether the
+        Header instance has a line number in the infile or if not, examining if
+        the metadata section exist and fetching its line numbers.
+
+        This protected method is subject to change and should not be called
+        externally.
+
+        Returns:
+            An integer line number that begins the data section.
+        """
+
+        start = 0
+        if self.header.line:
+            start = self.header.line + 1
+        elif self.sniffer.metadata.string:
+            start = self.sniffer.metadata.lines[1] + 1
+
+        return start
+
+    def _ragged(self, line: int, row: dict[str, str], raise_error: bool) -> bool:
+        """ """
+
+        error_msg = None
+        # a non-empty restkey or a None value indicates raggedness
+        if row[None][0] or None in row.values():
+            msg = f'Unexpected line length on row {line}'
+            if raise_error:
+                raise csv.Error(msg)
+            else:
+                self.errors.ragged.append(msg)
+
+        row.pop(None, None)
+        return row
+
     def _recast(
         self,
         line: int,
@@ -197,7 +269,7 @@ class Reader(ReprMixin):
         castings: dict[str, type],
         raise_error: bool,
     ) -> Dict[str, CellType]:
-        """Applies named castings to dictionary row at line.
+        """Applies named castings to a dictionary row.
 
         Args:
             line:
@@ -222,94 +294,81 @@ class Reader(ReprMixin):
             try:
                 result[name] = castings[name](value)
             except Exception as e:
+                msg = "Casting error occurred on line = {}, column = '{}'"
+                msg = msg.format(line, name)
                 if raise_error:
-                    msg = "Casting error occurred on line = {}, column = '{}'"
                     # any other triggers an exception to be raised
-                    msg = msg.format(line, name)
                     print(msg)
                     raise e
                 else:
                     result[name] = value
-                    error_msgs.append(str(e))
+                    error_msgs.append(msg)
 
         if error_msgs:
-            self.errors.append(self._error(line, set(error_msgs)))
-
+            #self.errors.casting.append(self._error(line, error_msgs))
+            self.errors.casting.extend(error_msgs)
 
         return result
 
-
+    #TODO Finish docs
     def read(
         self,
-        start: Optional[int],
-        skips: Optional[List[int]],
+        start: Optional[int] = None,
+        skips: Optional[Sequence[int]] = None,
         indices: Optional[Sequence] = None,
         chunksize: int = int(1e6),
-        raise_error: bool = False,
-        castings: Optional[Dict[str, Callable[[str], CellType]]] = None,
-        **fmt_params,
+        skip_blanks: bool = True,
+        castings: Optional[Dict[str, Callable[[str], CellType]]] = {},
+        raise_cast: bool = False,
+        raise_ragged: bool = False,
     ) -> List[Dict[str, CellType]]:
-        """ """
+        """Read dictionary rows from an text delimited infile.
 
-        if start is None:
-            start = self.header.line + 1 if self.header.line else 0
+        Args:
+            start:
+                An integer line number to begin reading data. If None and
+                Header has a line number, the line following the header line is the start.
+                If None and header line number is None, the line following the metadata
+                section is the start. If None and no header line or metadata
+                lines are present, the start line will be 0.
+            skips:
+                A Sequence of integer line numbers to skip during reading.
+        """
+
+        # init None args and reset errors to fresh empty for this read
+        start = self._autostart() if not start else start
         skips = [] if not skips else skips
         indices = range(0, len(self)) if not indices else indices
-        chunksize = min(len(self), len(indices), chunksize)
-        casts = {} if not castings else castings
-        # reset errors
-        self.errors = []
+        self.errors = SimpleNamespace(casting=[], ragged=[])
+        # update typecasts with castings
+        typecasts = self.typecasts
+        typecasts.update(castings)
 
-        # FIXME point of failure that needs docs
-        # ask sniffer for castings and update with client casts
-        delimiter = fmt_params.get('delimiter', None)
-        castings = dict(
-                zip(
-                    self.header.names,
-                    self.sniffer.types(delimiter=delimiter,
-                    )
-                    )
-                )
-        castings.update(casts)
-        chunk = 0
-        # advance to the data section
+        # advance to data section, build row iterator and fifo
         [next(self.infile) for _ in range(start)]
-        # build reader and FIFO for chunksize dequeing
-        dreader = csv.DictReader(
-                infile,
-                self.header.names,
-                restkey=None,
-                restval='',
-                dialect = self.sniffer.dialect,
-                **fmt_params,
-                )
-        fifo = ListFIFO(chunksize)
-        for line, dic in enumerate(dreader, start):
+        riter = csv.DictReader(infile, self.header.names, dialect=self.dialect)
+        fifo = deque()
+        for line, dic in enumerate(riter, start):
 
-            if line in skips:
+            if line in skips or line not in indices:
                 continue
 
             if not any(dic.values()):
-                continue
+                if skip_blanks:
+                    continue
 
-            if line not in indices:
-                continue
-
-            # remove any values under the None restkey and recast
-            # TODO decide if ever needed...
-            dic.pop(None)
-            row = self._recast(line, dic, castings, raise_error)
+            # log whether the row is ragged and recast
+            row = self._ragged(line, dic, raise_ragged)
+            row = self._recast(line, dic, typecasts, raise_cast)
 
             row = self.tabulator(row)
             if row:
-                fifo.put(row)
+                fifo.append(row)
 
-            if fifo.full():
-                print(f'yielding chunk {chunk}')
-                chunk += 1
-                yield fifo.get()
+            if len(fifo) >= chunksize:
+                yield [fifo.popleft() for _ in range(chunksize)]
 
-        yield fifo.get()
+        yield [row for row in fifo]
 
 
     def preview(self):
@@ -318,12 +377,12 @@ class Reader(ReprMixin):
         pass
 
     def close(self):
-        """ """
+        """Closes the infile resource."""
 
         self.infile.close()
 
     def __len__(self):
-        """ """
+        """Returns the number of lines in the infile."""
 
         return self.sniffer.line_count
 
@@ -342,9 +401,12 @@ if __name__ == '__main__':
     reader.tab(columns=['Trial_time', 'X_center', 'Y_center', 'Area'],
             Area='>0.01')
 
-    x = reader.read(start=None, skips=[35], indices=range(34, 10000), chunksize=200000)
+    x = reader.read(start=None, skips=[35], indices=None, chunksize=200000)
 
     t0 = time.perf_counter()
     result = []
-    [result.extend(rows) for rows in x]
+    for idx, chunk in enumerate(x):
+        print(idx)
+        result.extend(chunk)
+
     print(f'elapsed time: {time.perf_counter() - t0}')
