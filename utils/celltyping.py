@@ -3,6 +3,7 @@
 from datetime import datetime
 import itertools
 import re
+import string
 from typing import Callable, List, Optional
 
 # define the supported intrinsic types for each list element read by Tabbed
@@ -135,6 +136,10 @@ def is_time(astring: str) -> bool:
         True if astring can be converted to a datetime and False otherwise.
     """
 
+    # all time formats have colon separators
+    if ':' not in astring:
+        return False
+
     # another method to time detect without fmt testing could give speedup
     fmt = find_format(astring, time_formats())
     return bool(fmt)
@@ -248,14 +253,18 @@ def convert(
     if is_numeric(astring):
         return as_numeric(astring)
 
+    # simple string a subset of ascii
+    if set(astring.lower()).issubset(string.ascii_letters):
+        return astring
+
     # datetimes - use asserts for mypy type narrowing
-    if is_date(astring):
-        fmt = find_format(astring, date_formats())
+    if is_time(astring):
+        fmt = find_format(astring, time_formats())
         assert isinstance(fmt, str)
         return as_datetime(astring, fmt)
 
-    if is_time(astring):
-        fmt = find_format(astring, time_formats())
+    if is_date(astring):
+        fmt = find_format(astring, date_formats())
         assert isinstance(fmt, str)
         return as_datetime(astring, fmt)
 
