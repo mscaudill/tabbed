@@ -1,5 +1,9 @@
-"""
-
+"""An iterative reader of text delimited files that supports three features.
+First, it can automatically identify metadata & header file sections preceeding
+the data section. Second, it supports automatic type conversion to ints, floats,
+complex and datetime instances. Third, it can selectively read rows and columns
+that satisfy equality, membership, regular expressions, and rich comparison
+conditions called tabs.
 """
 
 import csv
@@ -9,24 +13,21 @@ from collections import abc, namedtuple, deque
 from types import SimpleNamespace
 from typing import Callable, Dict, List, Optional, Sequence
 
+from tabulate import tabulate
+
 from tabbed import tabs
 from tabbed.sniffing import Header, MetaData, Sniffer
 from tabbed.utils.celltyping import CellType, convert
 from tabbed.utils.mixins import ReprMixin
 
-# Planning
-#
 # 8. Reader is the main type in Tabbed and should be available at package level
 #    with no imports
-# 9. Reader should have a sample method to show lines and indices to aid setting
-#    specific numbers like count etc. Could call the method 'lines'
-#
 
 # FIXME declare in docs the supported celltypes
 class Reader(ReprMixin):
-    """A reader of delimited text files supporting iterative reading of specific
-    rows and columns from files that possibly contain metadata and header
-    components.
+    r"""A reader of delimited text files supporting iterative reading of
+    specific rows and columns from files that possibly contain metadata and
+    header components.
 
     Most CSV files do not adhere to the RFC-4180 CSV standard. In particular,
     many delimited files contain a metadata section in addition to a header line
@@ -63,7 +64,70 @@ class Reader(ReprMixin):
         errors:
 
     Example:
-        >>
+        >>> # This example creates a temp file with both a header and metadata
+        >>> import os
+        >>> import tempfile
+        >>> import random
+        >>> import datetime
+        >>> random.seed(0) # make a reproducible random number generator
+        >>> # make a metadata string that spans several lines
+        >>> metadata_string = ('Experiment, 3\n'
+        ... 'Name, Ernst Rutherford\n'
+        ... 'location, Cavendish Labs\n'
+        ... 'Time, 11:03:29.092\n'
+        ... 'Date, 8/23/1917\n')
+        >>> # make a header string of 5 columns
+        >>> header = ['group', 'count', 'color', 'time', 'area']
+        >>> header_string = ','.join(header) + '\n'
+        >>> # make 20 data rows of random data
+        >>> groups = random.choices(['a', 'b', 'c'], k=20)
+        >>> counts = [str(random.randint(0, 10)) for _ in range(20)]
+        >>> colors = random.choices(['red', 'green', 'blue'], k=20)
+        >>> start = datetime.datetime(1917, 8, 23, 11, 3, 29, 9209)
+        >>> times = [str(start + datetime.timedelta(seconds=10*i)) for i in range(20)]
+        >>> areas = [str(random.uniform(0, 10)) for _ in range(20)]
+        >>> # make a data string
+        >>> x = [','.join(row) for row in zip(groups, counts, colors, times, areas)]
+        >>> data_string = '\r\n'.join(x)
+        >>> # write the metadata, header and data strings
+        >>> fp = tempfile.NamedTemporaryFile(mode='w', delete=False)
+        >>> _ = fp.write(metadata_string)
+        >>> _ = fp.write(header_string)
+        >>> _ = fp.write(data_string)
+        >>> fp.close()
+        >>> # open the file for reading
+        >>> infile = open(fp.name, mode='r')
+        >>> reader = Reader(infile)
+        >>> # ask the reader for the header
+        >>> reader.header
+        ... # doctest: +NORMALIZE_WHITESPACE
+        Header(line=5,
+        names=['group', 'count', 'color', 'time', 'area'],
+        string='group,count,color,time,area')
+        >>> # peek at the first 10 lines of the data section
+        >>> reader.peek(range(10))
+        ... # doctest: +SKIP
+        >>> # read group, count & area columns where group is a or c & 0 < area <=4
+        >>> reader.tab(columns=['group', 'count', 'area'],
+        ... group=['a', 'c'],
+        ... area='> 0 and <= 4')
+        >>> # read the data with a chunksize of 3 rows
+        >>> rows = reader.read(chunksize=3)
+        >>> type(rows) # rows are of type generator yielding 3 rows at a time
+        <class 'generator'>
+        >>> for idx, chunk in enumerate(rows):
+        ...     print(f'Index = {idx}\n{chunk}')
+        ...     # doctest: +NORMALIZE_WHITESPACE
+        Index = 0
+        [{'group': 'c', 'count': 4, 'area': 3.2005460467254574},
+        {'group': 'a', 'count': 10, 'area': 1.0905784593110368},
+        {'group': 'c', 'count': 7, 'area': 2.90329502402758}]
+        Index = 1
+        [{'group': 'c', 'count': 8, 'area': 1.8939132855435614},
+        {'group': 'c', 'count': 4, 'area': 1.867295282555551}]
+        >>> # close reader since it was not opened with context manager
+        >>> reader.close()
+        >>> os.remove(fp.name) # explicitly remove the tempfile
     """
 
     def __init__(self, infile, **kwargs) -> None:
@@ -181,11 +245,10 @@ class Reader(ReprMixin):
         # on header change reset tabulator
         self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
 
-    @property
-    def typecasts(self):
-        """Returns the Sniffers type castings from the last 5 sample lines."""
+    def typecasts(self, count=5, **kwargs):
+        """Returns the Sniffers type castings from the last count sample lines."""
 
-        types = self.sniffer.types()
+        types = self.sniffer.types(count, **kwargs)
         if len(types) < len(self.header.names):
             msg = ('Casting count = {len(types)} does not match the number'
                    ' of header columns = {len(self.header.names}. Some columns will'
@@ -249,6 +312,9 @@ class Reader(ReprMixin):
 
     def _ragged(self, line: int, row: dict[str, str], raise_error: bool) -> bool:
         """ """
+        
+        if None not in row:
+            return row
 
         error_msg = None
         # a non-empty restkey or a None value indicates raggedness
@@ -305,12 +371,10 @@ class Reader(ReprMixin):
                     error_msgs.append(msg)
 
         if error_msgs:
-            #self.errors.casting.append(self._error(line, error_msgs))
             self.errors.casting.extend(error_msgs)
 
         return result
 
-    #TODO Finish docs
     def read(
         self,
         start: Optional[int] = None,
@@ -341,12 +405,12 @@ class Reader(ReprMixin):
         indices = range(0, len(self)) if not indices else indices
         self.errors = SimpleNamespace(casting=[], ragged=[])
         # update typecasts with castings
-        typecasts = self.typecasts
+        typecasts = self.typecasts()
         typecasts.update(castings)
 
         # advance to data section, build row iterator and fifo
         [next(self.infile) for _ in range(start)]
-        riter = csv.DictReader(infile, self.header.names, dialect=self.dialect)
+        riter = csv.DictReader(self.infile, self.header.names, dialect=self.dialect)
         fifo = deque()
         for line, dic in enumerate(riter, start):
 
@@ -369,12 +433,18 @@ class Reader(ReprMixin):
                 yield [fifo.popleft() for _ in range(chunksize)]
 
         yield [row for row in fifo]
+        self.infile.seek(0)
 
-
-    def preview(self):
+    def peek(self, start=0, count=10, **kwargs):
         """ """
 
-        pass
+        a = self._autostart() + start
+        b = a + count
+        data = []
+        rows = self.read(indices=range(a, b), **kwargs)
+        [data.extend(chunk) for chunk in rows]
+        table = tabulate(data, headers='keys', tablefmt='simple_grid')
+        print(table)
 
     def close(self):
         """Closes the infile resource."""
@@ -389,6 +459,11 @@ class Reader(ReprMixin):
 
 if __name__ == '__main__':
 
+    #import doctest
+
+    #doctest.testmod()
+
+    """
     import time
 
     fp = '/home/matt/python/nri/tabbed/__data__/fly_sample.txt'
@@ -410,3 +485,45 @@ if __name__ == '__main__':
         result.extend(chunk)
 
     print(f'elapsed time: {time.perf_counter() - t0}')
+    """
+  
+    # This example creates a temp file with both a header and metadata
+    import os
+    import tempfile
+    import random
+    import datetime
+    random.seed(0) # make a reproducible random number generator
+    # make a metadata string that spans several lines
+    metadata = ('Experiment, 3\n'
+    'Name, Ernst Rutherford\n'
+    'location, Cavendish Labs\n'
+    'Time, 11:03:29.092\n'
+    'Date, 8/23/1917\n')
+    # make a header string of 5 columns
+    header = ','.join(['group', 'count', 'color', 'time', 'area']) + '\n'
+    # make 20 data rows of random data
+    groups = random.choices(['a', 'b', 'c'], k=20)
+    counts = [str(random.randint(0, 10)) for _ in range(20)]
+    colors = random.choices(['red', 'green', 'blue'], k=20)
+    start = datetime.datetime(1917, 8, 23, 11, 3, 29, 9209)
+    times = [str((start + datetime.timedelta(seconds=10*i)).time()) for i in range(20)]
+    areas = [str(random.uniform(0, 10)) for _ in range(20)]
+    # make a datastring
+    x = [','.join(row) for row in zip(groups, counts, colors, times, areas)]
+    data = '\r\n'.join(x)
+    # write the metadata, header string and data st
+    fp = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    _ = fp.write(metadata)
+    _ = fp.write(header)
+    _ = fp.write(data)
+    fp.close()
+
+    infile = open(fp.name, mode='r')
+    reader = Reader(infile)
+    # read the data for groups a and c where area is > 0 and less than 4
+    #reader.tab(columns=['group', 'count', 'area'], group=['a', 'c'], area='> 0 and <= 4')
+    result = list(reader.read())
+
+    #infile.close()
+    os.remove(fp.name) # explicitly remove the tempfile
+
