@@ -1,9 +1,10 @@
-"""An iterative reader of text delimited files that supports three features.
-First, it can automatically identify metadata & header file sections preceeding
-the data section. Second, it supports automatic type conversion to ints, floats,
-complex and datetime instances. Third, it can selectively read rows and columns
-that satisfy equality, membership, regular expressions, and rich comparison
-conditions called tabs.
+"""A reader of text delimited files that supports the following features.
+    - Automatic identification of metadata & header file sections.
+    - Automatic type conversion to ints, floats, complex numbers,
+      times, dates and datetime instances.
+    - Selective reading of rows and columns satisfying equality,
+      membership, regular expression, and rich comparison conditions.
+    - Iterative reading of rows from the input file.
 """
 
 import csv
@@ -11,7 +12,7 @@ import re
 from itertools import zip_longest
 from collections import abc, namedtuple, deque
 from types import SimpleNamespace
-from typing import Callable, Dict, List, Optional, Sequence
+from typing import Callable, Dict, Iterator, List, Optional, Sequence
 
 from tabulate import tabulate
 
@@ -20,10 +21,7 @@ from tabbed.sniffing import Header, MetaData, Sniffer
 from tabbed.utils.celltyping import CellType, convert
 from tabbed.utils.mixins import ReprMixin
 
-# 8. Reader is the main type in Tabbed and should be available at package level
-#    with no imports
 
-# FIXME declare in docs the supported celltypes
 class Reader(ReprMixin):
     r"""A reader of delimited text files supporting iterative reading of
     specific rows and columns from files that possibly contain metadata and
@@ -33,12 +31,15 @@ class Reader(ReprMixin):
     many delimited files contain a metadata section in addition to a header line
     naming the columns of the data. Python's file sniffer can detect dialects
     but it's heuristic rules for detecting the header are limited and exclude
-    the possibility of metadata. This reader uses an embedded sniffer to detect
+    the possibility of metadata. This reader uses a structural sniffer to detect
     header and metadata sections. Additionally, all delimited text readers to
     date are unable to filter the data by value during reading. This reader can
     selectively read rows of the data using equality, membership, logical
     comparisons, regular expression matching and callable filters. These filters
-    can be created using kwargs passed to the tab method.
+    can be created using kwargs passed to the tab method. This reader supports
+    automatic type conversion to ints, floats, complex numbers, times, dates and
+    datetime types. Type conversions errors are gracefully handled by returning
+    strings and logging casting errors for review.
 
     Attributes:
         infile:
@@ -48,20 +49,37 @@ class Reader(ReprMixin):
         dialect:
             The current dialect used by Sniffer. If problems are encountered
             during sniffing, this property may be changed to improve
-            detection of header, metadata, and casting types of the Sniffer.
+            detection of header, metadata, and casting types of the Sniffer. The
+            dialect parameters that may be changed are; delimiter, escapechar
+            and quotechar. Please see the dialect property for a description of
+            these parameters.
         header:
             A Header dataclass containing the header line number, the header
             column names, and the row string used to build the column names. If
             the header is not determnined by infile, the line number and row
-            string are None type (see tabbed.sniffing module)
+            string are None type (see tabbed.sniffing module). Attribute changes
+            on the embedded sniffer are dynamically reflected in changes to this
+            header attribute.
         metadata:
             A frozen dataclass containing the line numbers and metadata string
             from the infile. If not determined from infile the line number is
-            None type.
+            None type. Attribute changes on the embedded sniffer are dynamically
+            reflected in changes to this metadata attribute.
+        typecasts:
+            A dictionary of column names and sniffed data types used to convert
+            string values from the input file. These types may be overridden in
+            the 'read' method for custom type casting.
         tabulator:
-            An callable container that tracks the tabs to apply to each row and
-            the columns to filter each row with.
+            An callable container of tab instances that sequentially applies the
+            tabs supplied to the 'tab' method to filter rows and columns of the
+            infile during reading. Please type help on the 'tab' method for
+            details on how to create tabs using keyword arguments.
         errors:
+            A SimpleNamespace instance containing two lists called casting and
+            ragged. The casting list is a list of strings indicating the line
+            and columns on which casting failed. The ragged list is a list of
+            strings indicating the line numbers which have too many or too few
+            fields.
 
     Example:
         >>> # This example creates a temp file with both a header and metadata
@@ -131,14 +149,13 @@ class Reader(ReprMixin):
     """
 
     def __init__(self, infile, **kwargs) -> None:
-        """Initialize Reader with infile & any valid sniffer arguments."""
+        """Initialize Reader with infile and sniffer keyword arguments."""
 
         self.infile = infile
         self.sniffer = Sniffer(self.infile, **kwargs)
         self._header = self.sniffer.header
-        self._set_sniff()
+        self._set_sniff() # on sniffer attr change update header
         self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
-        self._error = namedtuple('error', 'line messages')
         self.errors = SimpleNamespace(casting=[], ragged=[])
 
     def _set_sniff(self) -> None:
@@ -159,7 +176,7 @@ class Reader(ReprMixin):
 
     @property
     def dialect(self):
-        """Returns the Sniffer's current simplecsv dialect."""
+        """Returns the Sniffer's current Simplecsv dialect."""
 
         return self.sniffer.dialect
 
@@ -175,14 +192,14 @@ class Reader(ReprMixin):
                 the character used to quote strings, escapechar is used for
                 writers and is not relevant and strict refers to error handling
                 if a bad csv is encountered. Please see Python csv dialect
-                specification.
+                specification for further details.
         """
 
         self.sniffer.dialect.__dict__.update(fmt_params)
 
     @property
-    def header(self) -> Header | None:
-        """Returns this Reader's header instance.
+    def header(self) -> Header:
+        """Returns this Reader's header data class instance.
 
         This header may come from the sniffer or a previously set header.
 
@@ -245,18 +262,30 @@ class Reader(ReprMixin):
         # on header change reset tabulator
         self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
 
-    def typecasts(self, count=5, **kwargs):
-        """Returns the Sniffers type castings from the last count sample lines."""
+    @property
+    def metadata(self) -> MetaData:
+        """Returns this Reader's metadata dataclass from sniffer."""
 
-        types = self.sniffer.types(count, **kwargs)
-        if len(types) < len(self.header.names):
-            msg = ('Casting count = {len(types)} does not match the number'
-                   ' of header columns = {len(self.header.names}. Some columns will'
-                   ' not be type casted'
-                   )
-            print(msg)
+        return self.sniffer.metadata
 
-        return dict(zip_longest(self.header.names, types, fillvalue=str))
+    def typecasts(self, count=5) -> Dict[str, Callable[[str], CellType]]:
+        """Returns a mapping of column names and column types.
+
+        To quickly perform type conversions, the sniffer polls count number of
+        lines in each column of the sniffer's sample to infer types. A single
+        type is then used to cast all cells within that column.
+
+        Args:
+            count:
+                The number of cells within a column to poll for type.
+
+        Returns:
+            A mapping of header names and the inferred types.
+        """
+
+        types = self.sniffer.types(count)
+
+        return dict(zip(self.header.names, types))
 
     def tab(
         self,
@@ -264,6 +293,11 @@ class Reader(ReprMixin):
         **rows: dict[str, CellType | Sequence[CellType] | re.Pattern | Callable],
     ) -> None:
         """Set the Tabulator instance that will filter infiles rows & columns.
+
+        A tabulator is a container of tab instances that when called on a row,
+        sequentially applies each tab to that row. Additionally after applying
+        the row tabs it filters the result by columns. Implementation details
+        may be found in the tabbed.tabs module.
 
         Args:
             columns:
@@ -274,13 +308,14 @@ class Reader(ReprMixin):
                 during a read call.
             rows:
                 name = value keyword argument pairs where name is a valid header
-                column name and value may be of type string, CellType, reg.
-                expression pattern or a callable. If a string type with rich
-                comparison(s) is provided, a comparison tab is constructed. If
-                a string, int, float, complex value or datetime is provided, an
-                equality tab is constructed. If a sequence is provided,
-                a membership tab is constructed. If a compiled re pattern
-                a Regex tab is constructed. See class docs for example.
+                column name and value may be of type string, int, float,
+                complex, time, date, datetime, regular expression or callable.
+                If a string type with rich comparison(s) is provided,
+                a comparison tab is constructed. If a string, int, float,
+                complex, time, date  or datetime is provided, an equality tab is
+                constructed. If a sequence is provided, a membership tab is
+                constructed. If a compiled re patterni, a Regex tab is
+                constructed. See class docs for example.
 
         Returns:
             None
@@ -310,13 +345,36 @@ class Reader(ReprMixin):
 
         return start
 
-    def _ragged(self, line: int, row: dict[str, str], raise_error: bool) -> bool:
-        """ """
-        
-        if None not in row:
+    def _ragged(
+        self,
+        line: int,
+        row: dict[str, str],
+        raise_error: bool,
+    ) -> dict[str, str]:
+        """Error logs rows that are shorter or longer than expected.
+
+        When python's csv DictReader encounters a row with more cells than
+        header columns, it stores the additional cells to a list under the None
+        key.  When the csv DictReader encounters a row that with fewer cells
+        than header columns it inserts None values into the missing cells. This
+        function detects rows with None keys or None values and logs the row
+        number to the error log.
+
+        Args:
+            line:
+                The line number of the row being tested.
+            row:
+                A row dictionary of header names and string values.
+            raise_error:
+                A boolean indicating if ragged should raise an error and stop
+                the reading of the file if a ragged row is encountered.
+
+        Returns
+        """
+
+        if None not in row and None not in row.values():
             return row
 
-        error_msg = None
         # a non-empty restkey or a None value indicates raggedness
         if row[None][0] or None in row.values():
             msg = f'Unexpected line length on row {line}'
@@ -325,6 +383,7 @@ class Reader(ReprMixin):
             else:
                 self.errors.ragged.append(msg)
 
+        # pop a None restkey ignoring rows too long
         row.pop(None, None)
         return row
 
@@ -336,6 +395,11 @@ class Reader(ReprMixin):
         raise_error: bool,
     ) -> Dict[str, CellType]:
         """Applies named castings to a dictionary row.
+
+        Tabbed automatically casts infile cells to int, float, complex, time,
+        date, and datetime types. This function allows these castings to occur
+        gracefully be defaulting to str type on casting error. Each error is
+        logged to the error log.
 
         Args:
             line:
@@ -385,18 +449,48 @@ class Reader(ReprMixin):
         castings: Optional[Dict[str, Callable[[str], CellType]]] = {},
         raise_cast: bool = False,
         raise_ragged: bool = False,
-    ) -> List[Dict[str, CellType]]:
-        """Read dictionary rows from an text delimited infile.
+    ) -> Iterator[Dict[str, CellType]]:
+        """Iteratively read dictionary rows that satisfy this Reader's tabs.
 
         Args:
             start:
-                An integer line number to begin reading data. If None and
-                Header has a line number, the line following the header line is the start.
-                If None and header line number is None, the line following the metadata
-                section is the start. If None and no header line or metadata
-                lines are present, the start line will be 0.
+                An integer line number from the start of the file to begin
+                reading data. If None and Header has a line number, the line
+                following the header line is the start.  If None and header line
+                number is None, the line following the metadata section is the
+                start. If None and no header line or metadata lines are present,
+                the start line will be 0.
             skips:
                 A Sequence of integer line numbers to skip during reading.
+            indices:
+                An optional sequence of line numbers to read rows from. If None,
+                all rows from start that are not in skips will be read.
+            chunksize:
+                The number of data lines to read at a time. Changing this
+                argument to lower values results in lower memory overhead but
+                possibly at the expense of runtime. The default is to read 1e6
+                lines at a time.
+            skip_blanks:
+                A boolean indicating if blank lines should be skipped or
+                included.
+            castings:
+                A mapping of column names and types for casting specific columns
+                of the data.
+            raise_cast:
+                A boolean indicating if casting errors should be raised (i.e.
+                stop reading) or ignored but logged. On a casting error, this
+                reader will gracefully default to string type.
+            raise_ragged:
+                A boolean indicating if rows with too many or too few cells, as
+                compared with the header, should raise an error (i.e. stop
+                reading) or be ignored. On a ragged error, this reader will
+                gracefully log the error and drop any cells not associated with
+                a header column.
+
+        Yields:
+            A list of dictionary rows. The number of dicts in each row will be
+            chunksize if the number of lines left to read is greater than
+            chunksize and smaller otherwise. 
         """
 
         # init None args and reset errors to fresh empty for this read
@@ -435,9 +529,21 @@ class Reader(ReprMixin):
         yield [row for row in fifo]
         self.infile.seek(0)
 
-    def peek(self, start=0, count=10, **kwargs):
-        """ """
+    def peek(self, start: int = 0, count: int = 10, **kwargs) -> str:
+        """Prints count number of lines from the start of the data section.
 
+        Args:
+            start:
+                The first line to peek at relative to the data section start
+                line which follows the header line or metadata lines if present.
+            count:
+                The number of lines to peek at.
+            kwargs:
+                Any valid keyword argument for this Reader's read method except
+                for indices which is determined by start and count.
+        """
+
+        # set the start position relative to the datastart using autostart
         a = self._autostart() + start
         b = a + count
         data = []
@@ -445,6 +551,8 @@ class Reader(ReprMixin):
         [data.extend(chunk) for chunk in rows]
         table = tabulate(data, headers='keys', tablefmt='simple_grid')
         print(table)
+
+        return table
 
     def close(self):
         """Closes the infile resource."""
@@ -521,7 +629,9 @@ if __name__ == '__main__':
     infile = open(fp.name, mode='r')
     reader = Reader(infile)
     # read the data for groups a and c where area is > 0 and less than 4
-    #reader.tab(columns=['group', 'count', 'area'], group=['a', 'c'], area='> 0 and <= 4')
+    #reader.tab(columns=['group', 'count', 'area'], group=['a', 'c'],
+    #        area='>0 and <= 10')
+    reader.peek()
     result = list(reader.read())
 
     #infile.close()
