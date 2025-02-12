@@ -40,9 +40,17 @@ def time_formats() -> List[str]:
     """
 
     fmts = []
-    hours, microsecs, diurnal = ['I', 'H'], ['', ':%f', '.%f'], ['', '%p']
-    for hrs, micro, di in itertools.product(hours, microsecs, diurnal):
-        fmts.append(f'%{hrs}:%M:%S{micro}{di}')
+    hours, microsecs = ['I', 'H'], ['', ':%f', '.%f']
+    # Issue: now time formats is generating invalid format where you can have military
+    # time but also have a diurnal. Also allowing 12 hour format to be given without a diurnal
+    # which is problematic.
+    # Proposed Change:
+    for hrs, micro in itertools.product(hours, microsecs):
+        if hrs == "I":
+            diurnal = " %p"
+        else:
+            diurnal = ''
+        fmts.append(f'%{hrs}:%M:%S{micro}{diurnal}')
 
     return fmts
 
