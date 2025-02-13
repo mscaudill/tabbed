@@ -7,18 +7,20 @@
     - Iterative reading of rows from the input file.
 """
 
+from collections import abc
+from collections import deque
 import csv
 import re
-from itertools import zip_longest
-from collections import abc, namedtuple, deque
 from types import SimpleNamespace
-from typing import Callable, Dict, Iterator, List, Optional, Sequence
+from typing import Callable, Deque, Dict, Iterator, List, Optional, Sequence
 
 from tabulate import tabulate
 
 from tabbed import tabs
-from tabbed.sniffing import Header, MetaData, Sniffer
-from tabbed.utils.celltyping import CellType, convert
+from tabbed.sniffing import Header
+from tabbed.sniffing import MetaData
+from tabbed.sniffing import Sniffer
+from tabbed.utils.celltyping import CellType
 from tabbed.utils.mixins import ReprMixin
 
 
@@ -154,7 +156,7 @@ class Reader(ReprMixin):
         self.infile = infile
         self.sniffer = Sniffer(self.infile, **kwargs)
         self._header = self.sniffer.header
-        self._set_sniff() # on sniffer attr change update header
+        self._set_sniff()  # on sniffer attr change update header
         self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
         self.errors = SimpleNamespace(casting=[], ragged=[])
 
@@ -169,6 +171,8 @@ class Reader(ReprMixin):
         def on_change(sniffer, name, value):
             """A replacement for Sniffer's __setattr__."""
 
+            # access a setattr method of non-direct parent
+            # pylint: disable-next = bad-super-call
             super(Sniffer, sniffer).__setattr__(name, value)
             self._header = sniffer.header
 
@@ -209,7 +213,7 @@ class Reader(ReprMixin):
 
         item = self._header
         # if header is a sniffer method call it
-        return item() if isinstance(item, abc.Callable) else item
+        return item() if callable(item) else item
 
     @header.setter
     def header(self, value: int | List[str] | None) -> None:
@@ -231,7 +235,7 @@ class Reader(ReprMixin):
             A TypeError is raise if value is not a valid type.
         """
 
-        num_columns = len(self.sniffer.rows()[-1])
+        column_count = len(self.sniffer.rows()[-1])
         if isinstance(value, int):
 
             # sniff single line at index value, get str & make header
@@ -242,8 +246,10 @@ class Reader(ReprMixin):
         elif isinstance(value, List):
 
             if len(value) != column_count:
-                msg = (f'Column count = {len(value)} does not match'
-                      f'last sniffed row column count = {column_count}')
+                msg = (
+                    f'Column count = {len(value)} does not match'
+                    f'last sniffed row column count = {column_count}'
+                )
                 raise ValueError(msg)
 
             # set index and string to none
@@ -256,7 +262,9 @@ class Reader(ReprMixin):
 
         else:
 
-            msg = f"Names must be type int, List[str], or None not {type(value)}"
+            msg = (
+                f"Names must be type int, List[str], or None not {type(value)}"
+            )
             raise TypeError(msg)
 
         # on header change reset tabulator
@@ -290,7 +298,9 @@ class Reader(ReprMixin):
     def tab(
         self,
         columns: Optional[List[str | int] | re.Pattern] = None,
-        **rows: dict[str, CellType | Sequence[CellType] | re.Pattern | Callable],
+        **rows: dict[
+            str, CellType | Sequence[CellType] | re.Pattern | Callable
+        ],
     ) -> None:
         """Set the Tabulator instance that will filter infiles rows & columns.
 
@@ -321,7 +331,9 @@ class Reader(ReprMixin):
             None
         """
 
-        self.tabulator = tabs.Tabulator.from_keywords(self.header, columns, **rows)
+        self.tabulator = tabs.Tabulator.from_keywords(
+            self.header, columns, **rows
+        )
 
     def _autostart(self):
         """Locates the start line of the data section.
@@ -340,17 +352,13 @@ class Reader(ReprMixin):
         start = 0
         if self.header.line:
             start = self.header.line + 1
-        elif self.sniffer.metadata.string:
-            start = self.sniffer.metadata.lines[1] + 1
+        elif self.sniffer.metadata(None).string:
+            start = self.sniffer.metadata(None).lines[1] + 1
 
         return start
 
-    def _ragged(
-        self,
-        line: int,
-        row: dict[str, str],
-        raise_error: bool,
-    ) -> dict[str, str]:
+    # ignore typing here for speed
+    def _ragged(self, line, row, raise_error):
         """Error logs rows that are shorter or longer than expected.
 
         When python's csv DictReader encounters a row with more cells than
@@ -369,22 +377,19 @@ class Reader(ReprMixin):
                 A boolean indicating if ragged should raise an error and stop
                 the reading of the file if a ragged row is encountered.
 
-        Returns
+        Returns:
+            The row with None restkey popped
         """
 
-        if None not in row and None not in row.values():
-            return row
+        remainder = row.pop(None, [None])
+        none_vals = None in row.values()
 
-        # a non-empty restkey or a None value indicates raggedness
-        if row[None][0] or None in row.values():
+        if any(remainder) or none_vals:
             msg = f'Unexpected line length on row {line}'
             if raise_error:
                 raise csv.Error(msg)
-            else:
-                self.errors.ragged.append(msg)
+            self.errors.ragged.append(msg)
 
-        # pop a None restkey ignoring rows too long
-        row.pop(None, None)
         return row
 
     def _recast(
@@ -416,6 +421,12 @@ class Reader(ReprMixin):
 
         Returns:
             The row with values recast according to castings.
+
+        Raises:
+            A ValueError is raised if raise_error and a cell can not be cast
+            with the specified casting.
+            An Overflow error is raised if raise_error and the cell value
+            exceeds the maximum value for that datatype.
         """
 
         error_msgs = []
@@ -423,6 +434,8 @@ class Reader(ReprMixin):
         for name, value in row.items():
             try:
                 result[name] = castings[name](value)
+            # slight speed boost if ignore exception type (Value, Overflow)
+            # pylint: disable-next broad-exception-caught
             except Exception as e:
                 msg = "Casting error occurred on line = {}, column = '{}'"
                 msg = msg.format(line, name)
@@ -430,9 +443,9 @@ class Reader(ReprMixin):
                     # any other triggers an exception to be raised
                     print(msg)
                     raise e
-                else:
-                    result[name] = value
-                    error_msgs.append(msg)
+
+                result[name] = value
+                error_msgs.append(msg)
 
         if error_msgs:
             self.errors.casting.extend(error_msgs)
@@ -444,12 +457,12 @@ class Reader(ReprMixin):
         start: Optional[int] = None,
         skips: Optional[Sequence[int]] = None,
         indices: Optional[Sequence] = None,
-        chunksize: int = int(1e6),
+        chunksize: int = int(200e3),
         skip_blanks: bool = True,
-        castings: Optional[Dict[str, Callable[[str], CellType]]] = {},
+        castings: Optional[Dict[str, Callable[[str], CellType]]] = None,
         raise_cast: bool = False,
         raise_ragged: bool = False,
-    ) -> Iterator[Dict[str, CellType]]:
+    ) -> Iterator[List[Dict[str, CellType]]]:
         """Iteratively read dictionary rows that satisfy this Reader's tabs.
 
         Args:
@@ -468,8 +481,8 @@ class Reader(ReprMixin):
             chunksize:
                 The number of data lines to read at a time. Changing this
                 argument to lower values results in lower memory overhead but
-                possibly at the expense of runtime. The default is to read 1e6
-                lines at a time.
+                possibly at the expense of runtime. The default is to read
+                200,000 lines at a time.
             skip_blanks:
                 A boolean indicating if blank lines should be skipped or
                 included.
@@ -490,7 +503,7 @@ class Reader(ReprMixin):
         Yields:
             A list of dictionary rows. The number of dicts in each row will be
             chunksize if the number of lines left to read is greater than
-            chunksize and smaller otherwise. 
+            chunksize and smaller otherwise.
         """
 
         # init None args and reset errors to fresh empty for this read
@@ -500,12 +513,14 @@ class Reader(ReprMixin):
         self.errors = SimpleNamespace(casting=[], ragged=[])
         # update typecasts with castings
         typecasts = self.typecasts()
-        typecasts.update(castings)
+        typecasts.update(castings if castings else {})
 
         # advance to data section, build row iterator and fifo
-        [next(self.infile) for _ in range(start)]
-        riter = csv.DictReader(self.infile, self.header.names, dialect=self.dialect)
-        fifo = deque()
+        _ = [self.infile.readline() for _ in range(start)]
+        riter = csv.DictReader(
+            self.infile, self.header.names, dialect=self.dialect
+        )
+        fifo: Deque[Dict[str, CellType]] = deque()
         for line, dic in enumerate(riter, start):
 
             if line in skips or line not in indices:
@@ -526,7 +541,7 @@ class Reader(ReprMixin):
             if len(fifo) >= chunksize:
                 yield [fifo.popleft() for _ in range(chunksize)]
 
-        yield [row for row in fifo]
+        yield list(fifo)
         self.infile.seek(0)
 
     def peek(self, start: int = 0, count: int = 10, **kwargs) -> str:
@@ -549,7 +564,7 @@ class Reader(ReprMixin):
         data = []
         rows = self.read(indices=range(a, b), **kwargs)
         [data.extend(chunk) for chunk in rows]
-        table = tabulate(data, headers='keys', tablefmt='simple_grid')
+        table: str = tabulate(data, headers='keys', tablefmt='simple_grid')
         print(table)
 
         return table
@@ -567,73 +582,31 @@ class Reader(ReprMixin):
 
 if __name__ == '__main__':
 
-    #import doctest
+    # import doctest
 
-    #doctest.testmod()
+    # doctest.testmod()
 
-    """
     import time
 
     fp = '/home/matt/python/nri/tabbed/__data__/fly_sample.txt'
 
     infile = open(fp, 'r')
     reader = Reader(infile)
-    #reader = Reader(infile)
+    # reader = Reader(infile)
     print(reader.header)
 
-    reader.tab(columns=['Trial_time', 'X_center', 'Y_center', 'Area'],
-            Area='>0.01')
-
-    x = reader.read(start=None, skips=[35], indices=None, chunksize=200000)
+    reader.tab(
+        columns=['Trial_time', 'X_center', 'Y_center', 'Area'], Area='>0.01'
+    )
+    datagen = reader.read(
+        start=None, skips=[35], indices=None, chunksize=200000
+    )
 
     t0 = time.perf_counter()
     result = []
-    for idx, chunk in enumerate(x):
-        print(idx)
+    for idx, chunk in enumerate(datagen):
+        print(idx, len(chunk))
         result.extend(chunk)
 
     print(f'elapsed time: {time.perf_counter() - t0}')
-    """
-  
-    # This example creates a temp file with both a header and metadata
-    import os
-    import tempfile
-    import random
-    import datetime
-    random.seed(0) # make a reproducible random number generator
-    # make a metadata string that spans several lines
-    metadata = ('Experiment, 3\n'
-    'Name, Ernst Rutherford\n'
-    'location, Cavendish Labs\n'
-    'Time, 11:03:29.092\n'
-    'Date, 8/23/1917\n')
-    # make a header string of 5 columns
-    header = ','.join(['group', 'count', 'color', 'time', 'area']) + '\n'
-    # make 20 data rows of random data
-    groups = random.choices(['a', 'b', 'c'], k=20)
-    counts = [str(random.randint(0, 10)) for _ in range(20)]
-    colors = random.choices(['red', 'green', 'blue'], k=20)
-    start = datetime.datetime(1917, 8, 23, 11, 3, 29, 9209)
-    times = [str((start + datetime.timedelta(seconds=10*i)).time()) for i in range(20)]
-    areas = [str(random.uniform(0, 10)) for _ in range(20)]
-    # make a datastring
-    x = [','.join(row) for row in zip(groups, counts, colors, times, areas)]
-    data = '\r\n'.join(x)
-    # write the metadata, header string and data st
-    fp = tempfile.NamedTemporaryFile(mode='w', delete=False)
-    _ = fp.write(metadata)
-    _ = fp.write(header)
-    _ = fp.write(data)
-    fp.close()
-
-    infile = open(fp.name, mode='r')
-    reader = Reader(infile)
-    # read the data for groups a and c where area is > 0 and less than 4
-    #reader.tab(columns=['group', 'count', 'area'], group=['a', 'c'],
-    #        area='>0 and <= 10')
-    reader.peek()
-    result = list(reader.read())
-
-    #infile.close()
-    os.remove(fp.name) # explicitly remove the tempfile
-
+    reader.close()
