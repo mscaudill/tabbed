@@ -1,13 +1,10 @@
 # requirements for tabbed's development environment
 name: tabbed
 dependencies:
-    - numpy
     - ipython
     - notebook
-    - pandas
     # testing
     - pytest
-    - pytest-cov
     # Linting & format
     - isort
     - mypy
@@ -16,6 +13,7 @@ dependencies:
     - pip
     - pip:
         - clevercsv
+        - tabulate
         # formatting
         - black
         # spell checking
