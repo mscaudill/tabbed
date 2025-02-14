@@ -10,6 +10,7 @@
 from collections import abc
 from collections import deque
 import csv
+import itertools
 import re
 from types import SimpleNamespace
 from typing import Callable, Deque, Dict, Iterator, List, Optional, Sequence
@@ -396,7 +397,7 @@ class Reader(ReprMixin):
         self,
         line: int,
         row: dict[str, str],
-        castings: dict[str, type],
+        castings: dict[str, CellType],
         raise_error: bool,
     ) -> Dict[str, CellType]:
         """Applies named castings to a dictionary row.
@@ -476,8 +477,10 @@ class Reader(ReprMixin):
             skips:
                 A Sequence of integer line numbers to skip during reading.
             indices:
-                An optional sequence of line numbers to read rows from. If None,
-                all rows from start that are not in skips will be read.
+                An optional Sequence of line numbers to read rows from. If None,
+                all rows from start not in skips will be read. If reading
+                a slice of the file, a range instance will have improved
+                performance over other Sequence types.
             chunksize:
                 The number of data lines to read at a time. Changing this
                 argument to lower values results in lower memory overhead but
@@ -520,6 +523,13 @@ class Reader(ReprMixin):
         riter = csv.DictReader(
             self.infile, self.header.names, dialect=self.dialect
         )
+
+        # slice reader for speed if reading contiguous indexed section
+        if isinstance(indices, range):
+            start, stop, step = indices.start, indices.stop, indices.step
+            # slice DictReader gives a DictReader
+            riter = itertools.islice(riter, start, stop, step) # type: ignore
+
         fifo: Deque[Dict[str, CellType]] = deque()
         for line, dic in enumerate(riter, start):
 
@@ -544,7 +554,7 @@ class Reader(ReprMixin):
         yield list(fifo)
         self.infile.seek(0)
 
-    def peek(self, start: int = 0, count: int = 10, **kwargs) -> str:
+    def peek(self, start: int = 0, count: int = 10, **kwargs) -> None:
         """Prints count number of lines from the start of the data section.
 
         Args:
@@ -560,14 +570,12 @@ class Reader(ReprMixin):
 
         # set the start position relative to the datastart using autostart
         a = self._autostart() + start
-        b = a + count
-        data = []
-        rows = self.read(indices=range(a, b), **kwargs)
-        [data.extend(chunk) for chunk in rows]
+        rows = self.read(indices=range(a, a + count), **kwargs)
+        data = itertools.chain.from_iterable(rows)
         table: str = tabulate(data, headers='keys', tablefmt='simple_grid')
         print(table)
 
-        return table
+        return None
 
     def close(self):
         """Closes the infile resource."""
@@ -582,10 +590,11 @@ class Reader(ReprMixin):
 
 if __name__ == '__main__':
 
-    # import doctest
+    import doctest
 
-    # doctest.testmod()
+    doctest.testmod()
 
+    """
     import time
 
     fp = '/home/matt/python/nri/tabbed/__data__/fly_sample.txt'
@@ -609,4 +618,5 @@ if __name__ == '__main__':
         result.extend(chunk)
 
     print(f'elapsed time: {time.perf_counter() - t0}')
-    reader.close()
+    #reader.close()
+    """
