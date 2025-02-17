@@ -523,13 +523,11 @@ class Reader(ReprMixin):
         )
 
         # slice reader to stop for speed if indices are contiguous
+        stop, step = None, None
         if isinstance(indices, range):
-            start, stop, step = indices.start, indices.stop, indices.step
-            # slice DictReader gives a DictReader
-            riter = itertools.islice(riter, start, stop, step) # type: ignore
-        else:
-            # slice DictReader gives a DictReader
-            riter = itertools.islice(riter, start, None) # type: ignore
+            stop, step = indices.stop, indices.step
+        # slice DictReader gives a DictReader
+        riter = itertools.islice(riter, start, stop, step) # type: ignore
 
         fifo: Deque[Dict[str, CellType]] = deque()
         for line, dic in enumerate(riter, start):
