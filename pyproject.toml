@@ -23,7 +23,7 @@ classifiers = [
     "License :: OSI Approved :: BSD License",
     "Topic :: File Formats",
     "Topic :: Text Processing",
-    "Topic :: Scientific/Engineering"
+    "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Information Analysis"
 ]
 dependencies = [
@@ -101,7 +101,7 @@ variable-naming-style = "any"
 attr-naming-style = "any"
 
 [tool.pylint.messages_control]
-disable = ["ungrouped-imports"] #isort handles this
+disable = ["ungrouped-imports"]
 
 [tool.isort]
 profile = 'google'
