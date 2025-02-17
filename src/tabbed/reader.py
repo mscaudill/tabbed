@@ -7,7 +7,6 @@
     - Iterative reading of rows from the input file.
 """
 
-from collections import abc
 from collections import deque
 import csv
 import itertools
@@ -436,7 +435,7 @@ class Reader(ReprMixin):
             try:
                 result[name] = castings[name](value)
             # slight speed boost if ignore exception type (Value, Overflow)
-            # pylint: disable-next broad-exception-caught
+            # pylint: disable-next=broad-exception-caught
             except Exception as e:
                 msg = "Casting error occurred on line = {}, column = '{}'"
                 msg = msg.format(line, name)
@@ -512,23 +511,25 @@ class Reader(ReprMixin):
         # init None args and reset errors to fresh empty for this read
         start = self._autostart() if not start else start
         skips = [] if not skips else skips
-        indices = range(0, len(self)) if not indices else indices
+        indices = range(start, len(self)) if not indices else indices
         self.errors = SimpleNamespace(casting=[], ragged=[])
         # update typecasts with castings
         typecasts = self.typecasts()
         typecasts.update(castings if castings else {})
 
-        # advance to data section, build row iterator and fifo
-        _ = [self.infile.readline() for _ in range(start)]
+        # build row iterator and slice from start
         riter = csv.DictReader(
             self.infile, self.header.names, dialect=self.dialect
         )
 
-        # slice reader for speed if reading contiguous indexed section
+        # slice reader to stop for speed if indices are contiguous
         if isinstance(indices, range):
             start, stop, step = indices.start, indices.stop, indices.step
             # slice DictReader gives a DictReader
             riter = itertools.islice(riter, start, stop, step) # type: ignore
+        else:
+            # slice DictReader gives a DictReader
+            riter = itertools.islice(riter, start, None) # type: ignore
 
         fifo: Deque[Dict[str, CellType]] = deque()
         for line, dic in enumerate(riter, start):
@@ -590,11 +591,10 @@ class Reader(ReprMixin):
 
 if __name__ == '__main__':
 
-    import doctest
+    #import doctest
 
-    doctest.testmod()
+    #doctest.testmod()
 
-    """
     import time
 
     fp = '/home/matt/python/nri/tabbed/__data__/fly_sample.txt'
@@ -619,4 +619,3 @@ if __name__ == '__main__':
 
     print(f'elapsed time: {time.perf_counter() - t0}')
     #reader.close()
-    """
