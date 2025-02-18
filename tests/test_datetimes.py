@@ -39,10 +39,15 @@ def separators():
 
     return set(' /-.')
 
-
 @pytest.fixture(params=['January', 'Jan', '01', '1'])
 def valid_month(request):
     """Returns a valid month using all possible month fmts."""
+
+    return request.param
+
+@pytest.fixture(params=['Janua', '20', "10.5", "-1", "J"])
+def invalid_month(request):
+    """Returns invalid month"""
 
     return request.param
 
@@ -53,12 +58,63 @@ def valid_day(request):
 
     return request.param
 
+@pytest.fixture(params=["-1", "50", "10.4", "Tuesday"])
+def invalid_day(request):
+    """Returns invalid day"""
+
+    return request.param
 
 @pytest.fixture(params=['2025', '25'])
 def valid_year(request):
     """Returns a valid year using all possible year fmts."""
 
     return request.param
+
+@pytest.fixture(params=["-20", "Twenty Twenty-Five", "25.01"])
+def invalid_year(request):
+    """Returns an invalid year"""
+
+    return request.param
+
+@pytest.fixture(params=set(' /.-'))
+def invalid_date_month(request, invalid_month, valid_day, valid_year):
+    """Returns a list of invalid dates where the invalid part is the month
+
+    These dates are all month first
+    """
+
+    x = f'{invalid_month}{request.param}{valid_day}{request.param}{valid_year}'
+    return x
+
+@pytest.fixture(params=set(' /.-'))
+def invalid_date_day(request, valid_month, invalid_day, valid_year):
+    """Returns a list of invalid dates where the invalid part is the day
+
+    These dates are all month first
+    """
+
+    x = f'{valid_month}{request.param}{invalid_day}{request.param}{valid_year}'
+    return x
+
+@pytest.fixture(params=set(' /.-'))
+def invalid_date_year(request, valid_month, valid_day, invalid_year):
+    """Returns a list of invalid dates where the invalid part is the year
+
+    These dates are all month first
+    """
+
+    x = f'{valid_month}{request.param}{valid_day}{request.param}{invalid_year}'
+    return x
+
+@pytest.fixture(params=set('*:\\~,;|_&'))
+def invalid_date_separator(request, valid_month, valid_day, valid_year):
+    """Returns a list of invalid dates where the invalid part is the separator
+    
+    These dates are all month first
+    """
+
+    x = f'{valid_month}{request.param}{valid_day}{request.param}{valid_year}'
+    return x
 
 
 @pytest.fixture(params=set(' /.-'))
@@ -123,8 +179,31 @@ def test_date_format_count(month, year, separators):
 def test_find_valid_date(valid_date):
     """Test that find format locates a format given a valid date."""
 
-    print(valid_date)
     assert celltyping.find_format(valid_date, celltyping.date_formats())
+
+@pytest.mark.xfail
+def test_find_date_invalid_date_month(invalid_date_month):
+    """Test that find format does not find any format for a date with an invalid month"""
+
+    assert celltyping.find_format(invalid_date_month, celltyping.date_formats())
+
+@pytest.mark.xfail
+def test_find_date_invalid_date_day(invalid_date_day):
+    """Test that find format does not find any format for a date with an invalid day"""
+
+    assert celltyping.find_format(invalid_date_day, celltyping.date_formats())
+
+@pytest.mark.xfail
+def test_find_date_invalid_date_year(invalid_date_year):
+    """Test that find format does not find any format for a date with an invalid year"""
+
+    assert celltyping.find_format(invalid_date_year, celltyping.date_formats())
+
+@pytest.mark.xfail
+def test_find_date_invalid_date_separator(invalid_date_separator):
+    """Test that find format does not find any format for a date with an invalid separator"""
+
+    assert celltyping.find_format(invalid_date_separator, celltyping.date_formats())
 
 @pytest.mark.xfail
 def test_find_date_no_digit_string(no_digit_string):
@@ -201,11 +280,27 @@ def valid_hour_diurnal_pair(request):
 
     return request.param
 
+@pytest.fixture(
+    params=[["13", "PM"],["-1", ""], ["26", ""], ["16", "AM"], ["0", ""]]
+)
+def invalid_hour_diurnal_pair(request):
+    """Returns an invalid (hour, diurnal) pair"""
+
+    return request.param
+
 @pytest.fixture
 def valid_minute():
     """Returns a valid minute using all possible minute formats"""
 
     return "01"
+
+@pytest.fixture(
+    params=["-3", "0003", "70", "20.3"]
+)
+def invalid_minute(request):
+    """Returns an invalid minute"""
+
+    return request.param
 
 @pytest.fixture
 def valid_second():
@@ -214,11 +309,26 @@ def valid_second():
     return "01"
 
 @pytest.fixture(
+    params=["-3", "0005", "70", "24.3"]
+)
+def invalid_second(request):
+    """Returns an invalid second"""
+
+    return request.param
+
+
+@pytest.fixture(
     params=["", ".434623", ":434623"],
     ids=lambda val: f'microsecond={val}'    
 )
 def valid_microsecond(request):
     """Returns a valid microsecond using all the possible microsecond formats"""
+
+    return request.param
+
+@pytest.fixture(params=[".34", ":4345", ".42423423552", ":43234235235", "342"])
+def invalid_microsecond(request):
+    """Returns an invalid microsecond"""
 
     return request.param
 
@@ -231,6 +341,41 @@ def valid_time(valid_hour_diurnal_pair, valid_minute, valid_second, valid_micros
     x = f'{valid_hour}:{valid_minute}:{valid_second}{valid_microsecond}{valid_diurnal}'
     return x
 
+@pytest.fixture
+def invalid_time_microsecond(valid_hour_diurnal_pair, valid_minute, valid_second, invalid_microsecond):
+    """Returns a list of invalid times where the invalid part is the microsecond"""
+    
+    valid_hour = valid_hour_diurnal_pair[0]
+    valid_diurnal = valid_hour_diurnal_pair[1]
+    x = f'{valid_hour}:{valid_minute}:{valid_second}{invalid_microsecond}{valid_diurnal}'
+    return x
+    
+@pytest.fixture
+def invalid_time_minute(valid_hour_diurnal_pair, invalid_minute, valid_second, valid_microsecond):
+    """Returns a list of invalid times where the invalid part is the microsecond"""
+    
+    valid_hour = valid_hour_diurnal_pair[0]
+    valid_diurnal = valid_hour_diurnal_pair[1]
+    x = f'{valid_hour}:{invalid_minute}:{valid_second}{valid_microsecond}{valid_diurnal}'
+    return x
+
+@pytest.fixture
+def invalid_time_second(valid_hour_diurnal_pair, valid_minute, invalid_second, valid_microsecond):
+    """Returns a list of invalid times where the invalid part is the second"""
+    
+    valid_hour = valid_hour_diurnal_pair[0]
+    valid_diurnal = valid_hour_diurnal_pair[1]
+    x = f'{valid_hour}:{valid_minute}:{invalid_second}{valid_microsecond}{valid_diurnal}'
+    return x
+
+@pytest.fixture
+def invalid_time_hour_diurnal_pair(invalid_hour_diurnal_pair, valid_minute, valid_second, valid_microsecond):
+    """Returns a list of invalid times where the invalid part is the (hour, diurnal) pair"""
+    
+    invalid_hour = invalid_hour_diurnal_pair[0]
+    invalid_diurnal = invalid_hour_diurnal_pair[1]
+    x = f'{invalid_hour}:{valid_minute}:{valid_second}{valid_microsecond}{invalid_diurnal}'
+    return x
 
 def test_time_format_count(hour, microsecond):
     """Test that the number of formats is the twice the product of the number of
@@ -243,6 +388,30 @@ def test_find_valid_time(valid_time):
     """Test that find format locates a format given a valid time."""
 
     assert celltyping.find_format(valid_time, celltyping.time_formats())
+
+@pytest.mark.xfail
+def test_find_invalid_time_microsecond(invalid_time_microsecond):
+    """Test that find format does not locate a format given a time with an invalid microsecond"""
+
+    assert celltyping.find_format(invalid_time_microsecond, celltyping.time_formats())
+
+@pytest.mark.xfail
+def test_find_invalid_time_second(invalid_time_second):
+    """Test that find format does not locate a format given a time with an invalid second"""
+
+    assert celltyping.find_format(invalid_time_second, celltyping.time_formats())
+
+@pytest.mark.xfail
+def test_find_invalid_time_minute(invalid_time_minute):
+    """Test that find format does not locate a format given a time with an invalid minute"""
+
+    assert celltyping.find_format(invalid_time_minute, celltyping.time_formats())
+
+@pytest.mark.xfail
+def test_find_invalid_time_hour_diurnal(invalid_time_hour_diurnal_pair):
+    """Test that find format does not locate a format given a time with an invalid hour and diurnal pair"""
+
+    assert celltyping.find_format(invalid_time_hour_diurnal_pair, celltyping.time_formats())
 
 @pytest.mark.xfail
 def test_find_time_no_digit_string(no_digit_string):
