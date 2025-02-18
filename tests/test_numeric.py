@@ -5,24 +5,31 @@ import string
 
 from tabbed.utils import celltyping
 
+# Fixture for returning a random number generator
+@pytest.fixture
+def rn_generator():
+    """Returns a random number generator with the seed 1"""
+
+    return random.Random(1)
+
 @pytest.fixture(params=range(100)) # Now will call this fixture 100 times, each returning random integer
-def valid_integer(request):
+def valid_integer(request, rn_generator):
     """Returns valid integer as a string"""
 
-    return str(random.randint(-100000, 100000))
+    return str(rn_generator.randint(-100000, 100000))
 
 @pytest.fixture(params=range(100))
-def valid_float(request):
+def valid_float(request, rn_generator):
     """Returns valid float as a string"""
 
-    return str(random.uniform(-100000, 100000))
+    return str(rn_generator.uniform(-100000, 100000))
 
 @pytest.fixture(params=range(100))
-def valid_scientific_notation_float(request):
+def valid_scientific_notation_float(request, rn_generator):
     """Returns a valid float with scientific notation as a string"""
 
-    significand = random.uniform(-10, 10)
-    exponent = random.randint(-100, 100)
+    significand = rn_generator.uniform(-10, 10)
+    exponent = rn_generator.randint(-100, 100)
     if (request.param > 50):
         return str(significand) + "E" + str(exponent)
     else:
@@ -30,11 +37,11 @@ def valid_scientific_notation_float(request):
 
 
 @pytest.fixture(params=range(100))
-def valid_complex(request):
+def valid_complex(request, rn_generator):
     """Returns valid complex number as a string"""
 
-    real_part = random.uniform(-100000, 100000)
-    imag_part = random.uniform(-100000, 100000)
+    real_part = rn_generator.uniform(-100000, 100000)
+    imag_part = rn_generator.uniform(-100000, 100000)
 
     if (imag_part < 0):
         add_plus = False
@@ -50,16 +57,16 @@ def valid_complex(request):
         return real_part_str + imag_part_str
 
 @pytest.fixture(params=range(100))
-def non_numeric(request):
+def non_numeric(request, rn_generator):
     """Returns a random non-numeric string"""
 
-    length = random.randint(1, 20)
+    length = rn_generator.randint(1, 20)
     all_chars = string.printable.strip()
 
-    rand_str = "".join(random.choices(all_chars, k=length))
+    rand_str = "".join(rn_generator.choices(all_chars, k=length))
 
-    non_numeric_insert_pos = random.randint(0, length+1)
-    non_numeric_char = random.choice(string.ascii_letters + string.punctuation)
+    non_numeric_insert_pos = rn_generator.randint(0, length+1)
+    non_numeric_char = rn_generator.choice(string.ascii_letters + string.punctuation)
 
     # Inserting a non-numeric character always ensures the whole string is non-numeric
     rand_non_numeric = rand_str[:non_numeric_insert_pos] + non_numeric_char + rand_str[non_numeric_insert_pos:]
@@ -99,22 +106,22 @@ def test_classify_non_numeric(non_numeric):
 def test_as_numeric_valid_integer(valid_integer):
     """Test that as_numeric does not return a string for valid integer (indicating failure)"""
 
-    assert not isinstance(celltyping.as_numeric(valid_integer), str)
+    assert isinstance(celltyping.as_numeric(valid_integer), int)
 
 def test_as_numeric_valid_float(valid_float):
     """Test that as_numeric does not return a string for valid float (indicating failure)"""
 
-    assert not isinstance(celltyping.as_numeric(valid_float), str)
+    assert isinstance(celltyping.as_numeric(valid_float), float)
 
 def test_as_numeric_valid_complex(valid_complex):
     """Test that as_numeric does not return a string for a valid complex number (indicating failure)"""
 
-    assert not isinstance(celltyping.as_numeric(valid_complex), str)
+    assert isinstance(celltyping.as_numeric(valid_complex), complex)
 
 def test_as_numeric_valid_float_scientific(valid_scientific_notation_float):
     """Test that as_numeric does not return a string for valid scientific notation float (indicating failure)"""
 
-    assert not isinstance(celltyping.as_numeric(valid_scientific_notation_float), str)
+    assert isinstance(celltyping.as_numeric(valid_scientific_notation_float), float)
 
 @pytest.mark.xfail
 def test_as_numeric_non_numeric(non_numeric):
@@ -127,19 +134,19 @@ def test_as_numeric_non_numeric(non_numeric):
 def test_convert_valid_integer(valid_integer):
     """Test that convert does not return a string for a valid integer (which indicates failure)"""
 
-    assert not isinstance(celltyping.convert(valid_integer), str)
+    assert isinstance(celltyping.convert(valid_integer), int)
 
 def test_convert_valid_float(valid_float):
     """Test that convert does not return a string for a valid float (which indicates failure)"""
 
-    assert not isinstance(celltyping.convert(valid_float), str)
+    assert isinstance(celltyping.convert(valid_float), float)
 
 def test_convert_valid_complex(valid_complex):
     """Test that convert does not return a string for a valid complex number (which indicates failure)"""
 
-    assert not isinstance(celltyping.convert(valid_complex), str)
+    assert isinstance(celltyping.convert(valid_complex), complex)
 
 def test_convert_valid_float_scientific(valid_scientific_notation_float):
     """Test that convert does not return a string for a valid scientific notation float (which indicates failure)"""
 
-    assert not isinstance(celltyping.convert(valid_scientific_notation_float), str)
+    assert isinstance(celltyping.convert(valid_scientific_notation_float), float)

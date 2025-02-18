@@ -6,8 +6,17 @@ from itertools import product
 import re
 import random
 import string
+import datetime
 
 from tabbed.utils import celltyping
+
+# Fixture for returning a random number generator
+@pytest.fixture
+def rn_generator():
+    """Returns a random number generator with the seed 1"""
+
+    return random.Random(1)
+
 
 # Date format tests
 
@@ -63,12 +72,12 @@ def valid_date(request, valid_month, valid_day, valid_year):
     return x
 
 @pytest.fixture(params=range(10))
-def no_digit_string(request):
+def no_digit_string(request, rn_generator):
     """Returns strings that have no digits"""
 
-    length = random.randint(1, 20)
+    length = rn_generator.randint(1, 20)
     chars = string.ascii_letters + string.punctuation + " "
-    return ''.join(random.choices(chars, k=length))
+    return ''.join(rn_generator.choices(chars, k=length))
 
 def test_date_format_months(month):
     """Test that tabbed's date formats include a month format code."""
@@ -133,12 +142,12 @@ def test_as_datetime_valid_date(valid_date):
 
     fmt = celltyping.find_format(valid_date, celltyping.date_formats())
     assert fmt
-    assert not isinstance(celltyping.as_datetime(valid_date, fmt), str)
+    assert isinstance(celltyping.as_datetime(valid_date, fmt).date(), datetime.date)
 
 def test_convert_valid_date(valid_date):
     """Test that convert does not return a string for a valid date (which indicates failure)"""
 
-    assert not isinstance(celltyping.convert(valid_date), str)
+    assert isinstance(celltyping.convert(valid_date).date(), datetime.date)
 
 # Time format tests
 
@@ -251,12 +260,12 @@ def test_as_datetime_valid_time(valid_time):
 
     fmt = celltyping.find_format(valid_time, celltyping.time_formats())
     assert fmt
-    assert not isinstance(celltyping.as_datetime(valid_time, fmt), str)
+    assert isinstance(celltyping.as_datetime(valid_time, fmt).time(), datetime.time)
 
 def test_convert_valid_time(valid_time):
     """Test that convert does not return a string for a valid time (which indicates failure)"""
 
-    assert not isinstance(celltyping.convert(valid_time), str)
+    assert isinstance(celltyping.convert(valid_time).time(), datetime.time)
 
 # Datetime format tests
 
@@ -288,9 +297,8 @@ def test_datetime_format_year(year):
     """Test that tabbed's datetime formats include a year format code."""
 
     for fmt in celltyping.datetime_formats():
-        seps = [re.escape(fmt[2]), " "]
-        pattern = "|".join(seps)
-        parts = re.split(pattern, fmt)
+        patterns = f"[{fmt[2]} ]"
+        parts = re.split(patterns, fmt)
         assert year.intersection(parts)
 
 def test_datetime_format_hour(hour):
@@ -335,9 +343,9 @@ def test_as_datetime_valid_datetime(valid_datetime):
 
     fmt = celltyping.find_format(valid_datetime, celltyping.datetime_formats())
     assert fmt
-    assert not isinstance(celltyping.as_datetime(valid_datetime, fmt), str)
+    assert isinstance(celltyping.as_datetime(valid_datetime, fmt), datetime.datetime)
 
 def test_convert_valid_datetime(valid_datetime):
     """Test that convert does not return a string for a valid datetime (which indicates failure)"""
 
-    assert not isinstance(celltyping.convert(valid_datetime), str)
+    assert isinstance(celltyping.convert(valid_datetime), datetime.datetime)
