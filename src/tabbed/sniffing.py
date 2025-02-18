@@ -307,9 +307,10 @@ class Sniffer(ReprMixin):
             msg = "Dialect could not be determined from Sniffer's sample"
             warnings.warn(msg)
 
-        # python 3.11 deprecated '' escapechars that clever csv defaults to
+        # python 3.11 deprecated '' escape & quotechars that clevercsv defaults
         escapechar = result.escapechar
         result.escapechar = None if escapechar == '' else escapechar
+        result.quotechar = '"' if not result.quotechar else result.quotechar
 
         return result
 
