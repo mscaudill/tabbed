@@ -3,7 +3,7 @@ from itertools import product
 import random
 import string
 
-from tabbed.utils import celltyping
+from src.tabbed.utils import celltyping
 
 # Fixture for returning a random number generator
 @pytest.fixture

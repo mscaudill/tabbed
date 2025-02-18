@@ -8,7 +8,7 @@ import random
 import string
 import datetime
 
-from tabbed.utils import celltyping
+from src.tabbed.utils import celltyping
 
 # Fixture for returning a random number generator
 @pytest.fixture
