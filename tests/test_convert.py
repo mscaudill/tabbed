@@ -4,7 +4,7 @@ import random
 import string
 from datetime import datetime
 
-from src.tabbed.utils import celltyping
+from tabbed.utils import celltyping
 
 def test_convert():
     all_vals = ["2", 
