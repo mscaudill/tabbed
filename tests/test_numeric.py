@@ -2,151 +2,147 @@ import pytest
 from itertools import product
 import random
 import string
+from helpers import assert_n_generated_values
 
 from src.tabbed.utils import celltyping
 
-# Fixture for returning a random number generator
 @pytest.fixture
-def rn_generator():
-    """Returns a random number generator with the seed 1"""
+def valid_integer_gen(integer_generator):
+    """Returns a generator of valid integers as strings"""
 
-    return random.Random(1)
+    def valid_integer_gen():
+        while True:
+            int_val = next(integer_generator)
+            yield str(int_val)
 
-@pytest.fixture(params=range(100)) # Now will call this fixture 100 times, each returning random integer
-def valid_integer(request, rn_generator):
-    """Returns valid integer as a string"""
+    return valid_integer_gen()
 
-    return str(rn_generator.randint(-100000, 100000))
+@pytest.fixture
+def valid_float_gen(float_generator):
+    """Returns generator of valid float as a string"""
 
-@pytest.fixture(params=range(100))
-def valid_float(request, rn_generator):
-    """Returns valid float as a string"""
+    def valid_float_gen():
+        while True:
+            float_val = next(float_generator)
+            yield str(float_val)
 
-    return str(rn_generator.uniform(-100000, 100000))
+    return valid_float_gen()
 
-@pytest.fixture(params=range(100))
-def valid_scientific_notation_float(request, rn_generator):
-    """Returns a valid float with scientific notation as a string"""
+@pytest.fixture
+def valid_scientific_notation_float_gen(rn_generator):
+    """Returns generator of valid float with scientific notation as a string"""
 
-    significand = rn_generator.uniform(-10, 10)
-    exponent = rn_generator.randint(-100, 100)
-    if (request.param > 50):
-        return str(significand) + "E" + str(exponent)
-    else:
-        return str(significand) + "e" + str(exponent)
+    def sci_not_float_gen():
+        while True:
+            significand = rn_generator.uniform(-10, 10)
+            exponent = rn_generator.randint(-100, 100)
+            if (rn_generator.random() > .5):
+                yield str(significand) + "E" + str(exponent)
+            else:
+                yield str(significand) + "e" + str(exponent)
+            
+    return sci_not_float_gen()
+    
 
+@pytest.fixture
+def valid_complex_gen(complex_generator):
+    """Returns generator of valid complex number as a string"""
 
-@pytest.fixture(params=range(100))
-def valid_complex(request, rn_generator):
-    """Returns valid complex number as a string"""
+    def valid_complex_gen():
+        while True:
+            complex_val = next(complex_generator)
+            yield repr(complex_val)
 
-    real_part = rn_generator.uniform(-100000, 100000)
-    imag_part = rn_generator.uniform(-100000, 100000)
+    return valid_complex_gen()
 
-    if (imag_part < 0):
-        add_plus = False
-    else:
-        add_plus = True
+@pytest.fixture
+def non_numeric_gen(non_numeric_generator):
+    """Returns generator of random non-numeric string"""
 
-    real_part_str = str(real_part)
-    imag_part_str = str(imag_part) + "j"
+    def non_numeric_gen():
+        while True:
+            non_numeric_val = next(non_numeric_generator)
+            yield str(non_numeric_val)
 
-    if add_plus:
-        return real_part_str + "+" + imag_part_str
-    else:
-        return real_part_str + imag_part_str
-
-@pytest.fixture(params=range(100))
-def non_numeric(request, rn_generator):
-    """Returns a random non-numeric string"""
-
-    length = rn_generator.randint(1, 20)
-    all_chars = string.printable.strip()
-
-    rand_str = "".join(rn_generator.choices(all_chars, k=length))
-
-    non_numeric_insert_pos = rn_generator.randint(0, length+1)
-    non_numeric_char = rn_generator.choice(string.ascii_letters + string.punctuation)
-
-    # Inserting a non-numeric character always ensures the whole string is non-numeric
-    rand_non_numeric = rand_str[:non_numeric_insert_pos] + non_numeric_char + rand_str[non_numeric_insert_pos:]
-
-    return rand_non_numeric
+    return non_numeric_gen()
 
 # is_numeric tests
 
-def test_classify_valid_integer(valid_integer):
+def test_classify_valid_integer(valid_integer_gen):
     """Test that is_numeric returns true for a valid integer"""
 
-    assert celltyping.is_numeric(valid_integer)
+    assert_n_generated_values(valid_integer_gen, 100, celltyping.is_numeric)
 
-def test_classify_valid_float(valid_float):
+
+def test_classify_valid_float(valid_float_gen):
     """Test that is_numeric returns true for a valid float"""
 
-    assert celltyping.is_numeric(valid_float)
+    assert_n_generated_values(valid_float_gen, 100, celltyping.is_numeric)
 
-def test_classify_valid_float_scientific(valid_scientific_notation_float):
+def test_classify_valid_float_scientific(valid_scientific_notation_float_gen):
     """Test that is_numeric returns true for valid scientific notation float"""
 
-    assert celltyping.is_numeric(valid_scientific_notation_float)
+    assert_n_generated_values(valid_scientific_notation_float_gen, 100, celltyping.is_numeric)
 
-def test_classify_valid_complex(valid_complex):
+def test_classify_valid_complex(valid_complex_gen):
     """Test that is_numeric returns true for a valid complex number"""
 
-    assert celltyping.is_numeric(valid_complex)
+    assert_n_generated_values(valid_complex_gen, 100, celltyping.is_numeric)
 
 @pytest.mark.xfail
-def test_classify_non_numeric(non_numeric):
+def test_classify_non_numeric(non_numeric_generator):
     """Test that is_numeric returns false for a non numeric value"""
 
-    assert celltyping.is_numeric(non_numeric)
+    assert_n_generated_values(non_numeric_generator, 100, celltyping.is_numeric)
 
 # as_numeric tests
 
-def test_as_numeric_valid_integer(valid_integer):
+def test_as_numeric_valid_integer(valid_integer_gen):
     """Test that as_numeric does not return a string for valid integer (indicating failure)"""
 
-    assert isinstance(celltyping.as_numeric(valid_integer), int)
+    test_func = lambda val: isinstance(celltyping.as_numeric(val), int)
+    assert_n_generated_values(valid_integer_gen, 100, test_func)
 
-def test_as_numeric_valid_float(valid_float):
+def test_as_numeric_valid_float(valid_float_gen):
     """Test that as_numeric does not return a string for valid float (indicating failure)"""
 
-    assert isinstance(celltyping.as_numeric(valid_float), float)
+    test_func = lambda val: isinstance(celltyping.as_numeric(val), float)
+    assert_n_generated_values(valid_float_gen, 100, test_func)
 
-def test_as_numeric_valid_complex(valid_complex):
+def test_as_numeric_valid_complex(valid_complex_gen):
     """Test that as_numeric does not return a string for a valid complex number (indicating failure)"""
+    
+    test_func = lambda val: isinstance(celltyping.as_numeric(val), complex)
+    assert_n_generated_values(valid_complex_gen, 100, test_func)
 
-    assert isinstance(celltyping.as_numeric(valid_complex), complex)
-
-def test_as_numeric_valid_float_scientific(valid_scientific_notation_float):
+def test_as_numeric_valid_float_scientific(valid_scientific_notation_float_gen):
     """Test that as_numeric does not return a string for valid scientific notation float (indicating failure)"""
 
-    assert isinstance(celltyping.as_numeric(valid_scientific_notation_float), float)
-
-@pytest.mark.xfail
-def test_as_numeric_non_numeric(non_numeric):
-    """Test that as_numeric returns a string (failure) for a non-numeric value"""
-
-    assert not isinstance(celltyping.as_numeric(non_numeric))
+    test_func = lambda val: isinstance(celltyping.as_numeric(val), float)
+    assert_n_generated_values(valid_scientific_notation_float_gen, 100, test_func)
 
 # Convert tests with valid numeric values
 
-def test_convert_valid_integer(valid_integer):
+def test_convert_valid_integer(valid_integer_gen):
     """Test that convert does not return a string for a valid integer (which indicates failure)"""
 
-    assert isinstance(celltyping.convert(valid_integer), int)
+    test_func = lambda val: isinstance(celltyping.convert(val), int)
+    assert_n_generated_values(valid_integer_gen, 100, test_func)
 
-def test_convert_valid_float(valid_float):
+def test_convert_valid_float(valid_float_gen):
     """Test that convert does not return a string for a valid float (which indicates failure)"""
 
-    assert isinstance(celltyping.convert(valid_float), float)
+    test_func = lambda val: isinstance(celltyping.convert(val), float)
+    assert_n_generated_values(valid_float_gen, 100, test_func)
 
-def test_convert_valid_complex(valid_complex):
+def test_convert_valid_complex(valid_complex_gen):
     """Test that convert does not return a string for a valid complex number (which indicates failure)"""
 
-    assert isinstance(celltyping.convert(valid_complex), complex)
+    test_func = lambda val: isinstance(celltyping.convert(val), complex)
+    assert_n_generated_values(valid_complex_gen, 100, test_func)
 
-def test_convert_valid_float_scientific(valid_scientific_notation_float):
+def test_convert_valid_float_scientific(valid_scientific_notation_float_gen):
     """Test that convert does not return a string for a valid scientific notation float (which indicates failure)"""
 
-    assert isinstance(celltyping.convert(valid_scientific_notation_float), float)
+    test_func = lambda val: isinstance(celltyping.convert(val), float)
+    assert_n_generated_values(valid_scientific_notation_float_gen, 100, test_func)
