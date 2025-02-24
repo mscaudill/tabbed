@@ -2,7 +2,7 @@ import pytest
 import random
 import string
 from typing import Callable, Generator, TypeVar
-
+import re
 
 
 # Fixture for returning a random number generator
@@ -19,7 +19,7 @@ def integer_generator(rn_generator):
 
     def integer_generator():
         while True:
-            yield rn_generator.randint(-100000, 100000)
+            yield str(rn_generator.randint(-100000, 100000))
     return integer_generator()
 
 @pytest.fixture
@@ -28,7 +28,7 @@ def float_generator(rn_generator):
 
     def float_generator():
         while True:
-            yield rn_generator.uniform(-100000, 100000)
+            yield str(rn_generator.uniform(-100000, 100000))
     return float_generator()
 
 @pytest.fixture
@@ -41,9 +41,24 @@ def complex_generator(rn_generator):
             imag_part = rn_generator.uniform(-100000, 100000)
             num = complex(real_part, imag_part)
 
-            yield num
+            yield str(num)
 
     return complex_generator()
+
+@pytest.fixture
+def scientific_notation_float_generator(rn_generator):
+    """Returns generator of valid float with scientific notation as a string"""
+
+    def sci_not_float_gen():
+        while True:
+            significand = rn_generator.uniform(-10, 10)
+            exponent = rn_generator.randint(-100, 100)
+            if (rn_generator.random() > .5):
+                yield str(significand) + "E" + str(exponent)
+            else:
+                yield str(significand) + "e" + str(exponent)
+    
+    return sci_not_float_gen()
 
 @pytest.fixture
 def numeric_generator(rn_generator, integer_generator, float_generator, complex_generator):
@@ -72,7 +87,10 @@ def non_numeric_generator(rn_generator):
             rand_str = "".join(rn_generator.choices(all_chars, k=length))
 
             non_numeric_insert_pos = rn_generator.randint(0, length+1)
-            non_numeric_char = rn_generator.choice(string.ascii_letters + string.punctuation)
+
+            non_numeric_punctuation = re.sub(r"[.,\+\-]", "", string.punctuation)
+            non_numeric_ascii = re.sub(r"[jJeE]", "", string.ascii_letters)
+            non_numeric_char = rn_generator.choice(non_numeric_ascii + non_numeric_punctuation)
 
             # Inserting a non-numeric character always ensures the whole string is non-numeric
             rand_non_numeric = rand_str[:non_numeric_insert_pos] + non_numeric_char + rand_str[non_numeric_insert_pos:]
@@ -80,3 +98,17 @@ def non_numeric_generator(rn_generator):
             yield rand_non_numeric
 
     return non_numeric_generator()
+
+@pytest.fixture
+def string_generator(rn_generator):
+    """Returns a generator of random strings"""
+
+    def string_generator():
+        while True:
+            length = rn_generator.randint(0, 30)
+            all_chars = string.printable.strip()
+            rand_str = "".join(rn_generator.choices(all_chars, k=length))
+
+            yield rand_str
+
+    return string_generator()

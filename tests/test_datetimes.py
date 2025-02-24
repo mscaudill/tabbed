@@ -4,19 +4,10 @@ functions for type determination and conversion."""
 import pytest
 from itertools import product
 import re
-import random
 import string
 import datetime
 
 from tabbed.utils import celltyping
-
-# Fixture for returning a random number generator
-@pytest.fixture
-def rn_generator():
-    """Returns a random number generator with the seed 1"""
-
-    return random.Random(1)
-
 
 # Date format tests
 
