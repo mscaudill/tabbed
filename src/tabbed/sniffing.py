@@ -24,7 +24,9 @@ class Header:
             The line number of the file this header represents. It may be None
             indicating the header was not derived from the file.
         names:
-            The string names of each of the columns comprising the header.
+            The string names of each of the columns comprising the header. These
+            names may be amended to ensure they contain no spaces and are
+            unique.
         string:
             The original line string from infile that was split to create names.
             It may be None to indicate the names were not derived from the file.
@@ -37,9 +39,32 @@ class Header:
     def __post_init__(self) -> None:
         """Replace any ' ' characters in names with underscores."""
 
-        # replace any blank chars with underscores
-        names = [name.replace(' ', '_') for name in self.names]
+        # relabel the names to replace spaces, repeats etc.
+        names = self._amend()
         super().__setattr__('names', names)
+
+    def _amend(self):
+        """Ensures header names have no spaces and are unique.
+
+        Header names may not have spaces. This function replaces spaces with
+        underscores. Header names must be unique. This function adds an
+        underscore plus an integer to names that repeat.
+        """
+
+        # replace any blank chars with underscores
+        names = [name.strip().replace(' ', '_') for name in self.names]
+
+        # replace repeating names with name_i variants for i in [0, inf)
+        counted = Counter(names)
+        mapping = {
+            name: (
+                [name] if cnt < 2 else [name + '_' + str(v) for v in range(cnt)]
+            )
+            for name, cnt in counted.items()
+        }
+
+        result = [mapping[name].pop(0) for name in names]
+        return result
 
 
 @dataclass(frozen=True)
