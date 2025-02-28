@@ -270,6 +270,9 @@ class Reader(ReprMixin):
         # on header change reset tabulator
         self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
 
+    # FIXME this is a little confusing this returns a function requiring
+    # a header. It should instead get the header to pass to sniffer or not be
+    # a property at all
     @property
     def metadata(self) -> MetaData:
         """Returns this Reader's metadata dataclass from sniffer."""
@@ -584,6 +587,7 @@ class Reader(ReprMixin):
     def __len__(self):
         """Returns the number of lines in the infile."""
 
+        # TODO consider if this should return lines to read vs all lines
         return self.sniffer.line_count
 
 
@@ -599,8 +603,6 @@ if __name__ == '__main__':
 
     infile = open(fp, 'r')
     reader = Reader(infile)
-    # reader = Reader(infile)
-    print(reader.header)
 
     reader.tab(
         columns=['Trial_time', 'X_center', 'Y_center', 'Area'], Area='>0.01'
@@ -610,10 +612,11 @@ if __name__ == '__main__':
     )
 
     t0 = time.perf_counter()
-    result = []
+    data = []
+    cnt = 0
     for idx, chunk in enumerate(datagen):
-        print(idx, len(chunk))
-        result.extend(chunk)
-
+        cnt += len(chunk)
+        data.extend([list(row.values()) for row in chunk])
+        print(f'Chunk: {idx}, Rows read = {cnt}')
     print(f'elapsed time: {time.perf_counter() - t0}')
     #reader.close()
