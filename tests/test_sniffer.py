@@ -5,6 +5,26 @@ import pytest
 
 from tabbed.sniffing import Sniffer
 
+@pytest.fixture(params=[range(10, 100)]])
+def num_rows(request):
+    """Returns a single row count."""
+
+    return request.param
+
+@pytest.fixture
+def string_table(num_rows):
+    """Returns 10 string columns each with numrows."""
+
+    # build list of list of ascii strings excluding 
+    pass
+
+@pytest.fixture
+def table():
+    """Randomly picks columns from tables of different types and combines them
+    into a single table returning a string."""
+
+    pass
+
 @pytest.fixture
 def sample_file():
     """Sets up and tears down a sample delimited text file."""

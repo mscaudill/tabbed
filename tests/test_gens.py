@@ -63,16 +63,42 @@ def random_integers(rng, request):
 
     return [rng.randint(0, 1000) for _ in range(request.param)]
 
+# ignore -- dont like
+@pytest.fixture
+def random100_integers(rng):
+    """ """
+
+    return [rng.randint(0, 1000) for _ in range(100)]
+
+@pytest.fixture
+def random_floats(rng, request):
+    """Returns request param count number of floats."""
+
+    a, b = -1000, 1000
+    return [rng.uniform(a, b) for _ in range(request.param)]
+
+
+# FAILS -- fixtures ignore marks so cannot except parameterizable fixtures
+@pytest.fixture
+@pytest.mark.parametrize("random_integers", [100], indirect=True)
+@pytest.mark.parametrize("random_floats", [100], indirect=True)
+def random_real(random_integers, random_floats):
+    """First attempt at mixing parameterizable fixtures."""
+
+    print(random_integers)
+    print(random_floats)
+
+    assert True
+
+# We like this
 # indirect allows the fixture to be parameterized dynamically -- when the test
 # occurs not when the fixture is made
 @pytest.mark.parametrize("random_integers", [100], indirect=True)
-def test_function_iseven1(random_integers):
+@pytest.mark.parametrize("random_floats", [100], indirect=True)
+def test_function_iseven1(random_integers, random_floats):
     """ """
 
-    for num in random_integers:
-        assert num % 2 == 0
+    print(random_integers)
+    print(random_floats)
 
-
-
-
-
+    assert True
