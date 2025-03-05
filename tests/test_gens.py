@@ -9,9 +9,6 @@ def rng():
     return random.Random(1)
 
 
-
-
-
 # Current Approach using redirection
 @pytest.fixture
 def agenerator(rng):
