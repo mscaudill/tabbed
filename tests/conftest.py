@@ -54,7 +54,7 @@ def random_complex_numbers(rn_generator, request):
 
         return str(num)
 
-    return [make_random_complex_num() for _ in range(request.param)]
+    return [make_random_complex_num(rn_generator) for _ in range(request.param)]
 
 
 

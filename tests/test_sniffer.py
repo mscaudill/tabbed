@@ -55,9 +55,28 @@ def num_metadata_delimeters(request):
     return request.param
 
 @pytest.fixture
-def random_str_table(rn_generator, num_data_rows, num_str_columns):
-    """Returns a table of strings that is num_columns by num_data_rows where the number of columns is 
-    specified through indirect parameterization"""
+def total_num_columns(num_str_columns, num_int_columns, num_float_columns, num_date_columns, num_datetime_columns,
+                      num_time_columns, num_sci_not_columns, num_complex_columns):
+    """Returns the total number of columns in the table"""
+
+    return num_str_columns + num_complex_columns + num_date_columns + num_datetime_columns + num_float_columns + num_int_columns + num_sci_not_columns + num_time_columns
+    
+
+@pytest.fixture
+def random_column_positions(rn_generator, total_num_columns):
+    """Returns a list of random column positions that will be used to shuffle the columns when the final table is made."""
+
+    shuffled_positions = list(range(total_num_columns))
+
+    rn_generator.shuffle(shuffled_positions)
+
+    return shuffled_positions
+    
+@pytest.fixture
+def random_list_of_str_lists(rn_generator, num_data_rows, num_str_columns):
+    """Returns a list of lists of strings with each row corresponding to a column in future table to be generated.
+    Number rows is specified by num_str_columns and number of items in each row specified by num_data_rows both
+    by indirect parameterization."""
 
     def make_random_string():
         all_chars = string.ascii_letters + string.digits
@@ -69,33 +88,36 @@ def random_str_table(rn_generator, num_data_rows, num_str_columns):
     return [[make_random_string() for _ in range(num_data_rows)] for _ in range(num_str_columns)]
 
 @pytest.fixture
-def random_int_table(rn_generator, num_data_rows, num_int_columns):
-    """Returns a table of ints that is num_columns by num_data_rows where the number of columns is 
-    specified through indirect parameterization"""
+def random_list_of_int_lists(rn_generator, num_data_rows, num_int_columns):
+    """Returns a list of lists of ints with each row corresponding to a column in future table to be generated.
+    Number rows is specified by num_int_columns and number of items in each row specified by num_data_rows both
+    by indirect parameterization."""
 
     def make_random_integer():
-        return str(rn_generator.randint(-100000, 100000))
+        return str(rn_generator.randint(-10000, 10000))
     
     return [[make_random_integer() for _ in range(num_data_rows)] for _ in range(num_int_columns)]
 
 @pytest.fixture
-def random_float_table(rn_generator, num_data_rows, num_float_columns):
-    """Returns a table of floats that is num_columns by num_data_rows where the number of columns is 
-    specified through indirect parameterization"""
+def random_list_of_float_lists(rn_generator, num_data_rows, num_float_columns):
+    """Returns a list of lists of floats with each row corresponding to a column in future table to be generated.
+    Number rows is specified by num_float_columns and number of items in each row specified by num_data_rows both
+    by indirect parameterization."""
 
     def make_random_float():
-        return str(rn_generator.uniform(-100000, 100000))
+        return str(rn_generator.uniform(-10000, 10000))
     
     return [[make_random_float() for _ in range(num_data_rows)] for _ in range(num_float_columns)]
 
 @pytest.fixture
-def random_complex_table(rn_generator, num_data_rows, num_complex_columns):
-    """Returns a table of complex numbers that is num_columns by num_data_rows where the number of columns is 
-    specified through indirect parameterization"""
+def random_list_of_complex_lists(rn_generator, num_data_rows, num_complex_columns):
+    """Returns a list of lists of complex numbers with each row corresponding to a column in future table to be generated.
+    Number rows is specified by num_complex_columns and number of items in each row specified by num_data_rows both
+    by indirect parameterization."""
 
     def make_random_complex_num():
-        real_part = rn_generator.uniform(-100000, 100000)
-        imag_part = rn_generator.uniform(-100000, 100000)
+        real_part = rn_generator.uniform(-10000, 10000)
+        imag_part = rn_generator.uniform(-10000, 10000)
         num = complex(real_part, imag_part)
 
         return str(num)
@@ -103,13 +125,14 @@ def random_complex_table(rn_generator, num_data_rows, num_complex_columns):
     return [[make_random_complex_num() for _ in range(num_data_rows)] for _ in range(num_complex_columns)]
 
 @pytest.fixture
-def random_scientific_notation_table(rn_generator, num_data_rows, num_sci_not_columns):
-    """Returns a table of scientific notation floats that is num_columns by num_data_rows where the number of columns is 
-    specified through indirect parameterization"""
+def random_list_of_scientific_notation_lists(rn_generator, num_data_rows, num_sci_not_columns):
+    """Returns a list of lists of scientific notation floats with each row corresponding to a column in future table to be generated.
+    Number rows is specified by num_sci_not_columns and number of items in each row specified by num_data_rows both
+    by indirect parameterization."""
 
     def make_random_sci_not_float():
         significand = rn_generator.uniform(-10, 10)
-        exponent = rn_generator.randint(-100, 100)
+        exponent = rn_generator.randint(-10, 10)
         if (rn_generator.random() > .5):
             return str(significand) + "E" + str(exponent)
         else:
@@ -118,9 +141,10 @@ def random_scientific_notation_table(rn_generator, num_data_rows, num_sci_not_co
     return [[make_random_sci_not_float() for _ in range(num_data_rows)] for _ in range(num_sci_not_columns)]
 
 @pytest.fixture
-def random_date_table(rn_generator, date_formats, num_data_rows, num_date_columns):
-    """Returns a table of dates that is num_columns by num_data_rows where the number of columns is specified
-    through indirect parameterization"""
+def random_list_of_date_lists(rn_generator, date_formats, num_data_rows, num_date_columns):
+    """Returns a list of lists of dates with each row corresponding to a column in future table to be generated.
+    Number rows is specified by num_date_columns and number of items in each row specified by num_data_rows both
+    by indirect parameterization."""
 
     def make_random_date():
         start_year = rn_generator.randint(1990, 2025)
@@ -139,9 +163,10 @@ def random_date_table(rn_generator, date_formats, num_data_rows, num_date_column
     return [[make_random_date() for _ in range(num_data_rows)] for _ in range(num_date_columns)]
 
 @pytest.fixture
-def random_time_table(rn_generator, time_formats, num_data_rows, num_time_columns):
-    """Returns a table of times that is num_columns by num_data_rows where the number of columns is specified
-    through indirect parameterization"""
+def random_list_of_time_lists(rn_generator, time_formats, num_data_rows, num_time_columns):
+    """Returns a list of lists of times with each row corresponding to a column in future table to be generated.
+    Number rows is specified by num_time_columns and number of items in each row specified by num_data_rows both
+    by indirect parameterization."""
 
     def make_random_time():
         minute = rn_generator.randint(0, 59)
@@ -157,9 +182,10 @@ def random_time_table(rn_generator, time_formats, num_data_rows, num_time_column
     return [[make_random_time() for _ in range(num_data_rows)] for _ in range(num_time_columns)]
 
 @pytest.fixture
-def random_datetime_table(rn_generator, time_formats, date_formats, num_data_rows, num_datetime_columns):
-    """Returns a table of datetimes that is num_columns by num_data_rows where the number of columns is specified
-    through indirect parameterization"""
+def random_list_of_datetime_lists(rn_generator, time_formats, date_formats, num_data_rows, num_datetime_columns):
+    """Returns a list of lists of datetimes with each row corresponding to a column in future table to be generated.
+    Number rows is specified by num_datetime_columns and number of items in each row specified by num_data_rows both
+    by indirect parameterization."""
 
     def make_random_time():
         minute = rn_generator.randint(0, 59)
@@ -189,29 +215,38 @@ def random_datetime_table(rn_generator, time_formats, date_formats, num_data_row
     return [[f"{make_random_date()} {make_random_time()}" for _ in range(num_data_rows)] for _ in range(num_datetime_columns)]
 
 @pytest.fixture
-def sample_rows(random_str_table, random_int_table, random_float_table, random_scientific_notation_table,
-                         random_date_table, random_time_table, random_datetime_table, random_complex_table):
+def sample_types(num_str_columns, num_int_columns, num_float_columns, num_date_columns, num_datetime_columns,
+                      num_time_columns, num_sci_not_columns, num_complex_columns, random_column_positions):
+    types_list = [str] * num_str_columns + [int] * num_int_columns + [float] * num_float_columns + [float] * num_sci_not_columns + [datetime.datetime] * num_date_columns + [datetime.datetime] * num_time_columns + [datetime.datetime] * num_datetime_columns+ [complex] * num_complex_columns
+
+    shuffled_types = [types_list[position] for position in random_column_positions]
+
+    return shuffled_types
+
+@pytest.fixture
+def sample_rows(random_list_of_str_lists, random_list_of_int_lists, random_list_of_float_lists, random_list_of_scientific_notation_lists,
+                random_list_of_date_lists, random_list_of_time_lists, random_list_of_datetime_lists, random_list_of_complex_lists, total_num_columns,
+                random_column_positions):
     """Returns a table where column types are randomly mixed between all 8 types. When using this fixture
     must use indirect parameterization to specify the number of columns of each type."""
 
     mixture_table = []
-    mixture_table.extend(random_str_table)
-    mixture_table.extend(random_int_table)
-    mixture_table.extend(random_float_table)
-    mixture_table.extend(random_scientific_notation_table)
-    mixture_table.extend(random_date_table)
-    mixture_table.extend(random_time_table)
-    mixture_table.extend(random_datetime_table)
-    mixture_table.extend(random_complex_table)
-    random.shuffle(mixture_table)
+    mixture_table.extend(random_list_of_str_lists)
+    mixture_table.extend(random_list_of_int_lists)
+    mixture_table.extend(random_list_of_float_lists)
+    mixture_table.extend(random_list_of_scientific_notation_lists)
+    mixture_table.extend(random_list_of_date_lists)
+    mixture_table.extend(random_list_of_time_lists)
+    mixture_table.extend(random_list_of_datetime_lists)
+    mixture_table.extend(random_list_of_complex_lists)
 
-    return list(zip(*mixture_table))
+    shuffled_mixture_table = [mixture_table[position] for position in random_column_positions]
+
+    return [list(row) for row in zip(*shuffled_mixture_table)]
 
 @pytest.fixture
-def sample_header(rn_generator, num_str_columns, num_complex_columns, num_date_columns, num_datetime_columns, num_float_columns, num_int_columns, num_sci_not_columns, num_time_columns):
+def sample_header(rn_generator, total_num_columns):
     """Creates a header with random strings, and whose length is the sum of all the column lengths"""
-
-    total_num_columns = num_str_columns + num_complex_columns + num_date_columns + num_datetime_columns + num_float_columns + num_int_columns + num_sci_not_columns + num_time_columns
     
     def make_random_string():
         all_chars = string.ascii_letters + string.digits
@@ -221,7 +256,6 @@ def sample_header(rn_generator, num_str_columns, num_complex_columns, num_date_c
         return rand_str
 
     return [make_random_string() for _ in range(total_num_columns)]
-
 
 
 @pytest.fixture
@@ -267,13 +301,293 @@ def sample_file(sample_metadata, sample_header, sample_rows, delimeter):
 
 @pytest.mark.parametrize(
     "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
-    [(100, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10)]
+    [(10, 10, 0, 0, 0, 0, 0, 0, 0, 10, 10)]
 )
-def test_line_count(sample_file, num_data_rows, num_metadata_newlines):
-    """ """
+def test_line_count_strings(sample_file, num_data_rows, num_metadata_newlines):
+    """Test for making sure the line count measured by the sniffer is accurate"""
 
     sniffer = Sniffer(sample_file)
     num_total_newlines = num_metadata_newlines + (num_data_rows - 1) + 2
     assert sniffer.line_count == num_total_newlines + 1
 
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 10, 0, 0, 0, 0, 0, 0, 0, 10, 10)]
+)
+def test_start_strings(sample_file):
+    """Test for making sure the start line measured by the sniffer is accurate"""
 
+    sniffer = Sniffer(sample_file)
+    assert sniffer.start == 0
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 100, 0, 0, 0, 0, 0, 0, 0, 10, 10)]
+)
+def test_header_strings(sample_file, sample_header):
+    sniffer = Sniffer(sample_file)
+
+    assert sniffer.header().names == sample_header
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 10, 0, 0, 0, 0, 0, 0, 0, 10, 10)]
+)
+def test_delimeter_strings(sample_file, delimeter):
+    sniffer = Sniffer(sample_file)
+
+    assert sniffer.dialect.delimiter == delimeter
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 10, 0, 0, 0, 0, 0, 0, 0, 10, 10)]
+)
+def test_amount_strings(sample_file, num_data_rows, num_metadata_newlines):
+    """Test for making sure the amount of lines measured by the sniffer is accurate"""
+
+    sniffer = Sniffer(sample_file)
+    num_total_newlines = num_metadata_newlines + (num_data_rows - 1) + 2
+    assert sniffer.amount == min(100, num_total_newlines + 1)
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 10, 0, 0, 0, 0, 0, 0, 0, 10, 10)]
+)
+def test_rows_strings(sample_file, sample_rows, sample_metadata, sample_header, delimeter):
+    sniffer = Sniffer(sample_file)
+
+    all_rows = []
+    metadata_as_rows = [single_line.split(delimeter) for single_line in sample_metadata.split("\n")]
+    all_rows.extend(metadata_as_rows)
+    all_rows.append(sample_header)
+    all_rows.extend(sample_rows)
+
+    for row_idx in range(len(sniffer.rows())):
+        
+        sniffer_row = sniffer.rows()[row_idx]
+        sample_row = all_rows[row_idx]
+
+        assert sniffer_row == sample_row
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 0, 10, 0, 0, 10, 0, 10, 10, 10, 10)]
+)
+def test_line_count_numerics(sample_file, num_data_rows, num_metadata_newlines):
+    """Test for making sure the line count measured by the sniffer is accurate"""
+
+    sniffer = Sniffer(sample_file)
+    num_total_newlines = num_metadata_newlines + (num_data_rows - 1) + 2
+    assert sniffer.line_count == num_total_newlines + 1
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 0, 10, 0, 0, 10, 0, 10, 10, 10, 10)]
+)
+def test_start_numerics(sample_file):
+    """Test for making sure the start line measured by the sniffer is accurate"""
+
+    sniffer = Sniffer(sample_file)
+    assert sniffer.start == 0
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 0, 100, 0, 0, 100, 0, 100, 100, 10, 10)]
+)
+def test_header_numerics(sample_file, sample_header):
+    sniffer = Sniffer(sample_file)
+
+    for expected, actual in zip(sample_header, sniffer.header().names):
+        assert expected in actual, f"'{expected}' not in '{actual}'"
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 0, 10, 0, 0, 10, 0, 10, 10, 10, 10)]
+)
+def test_delimeter_numerics(sample_file, delimeter):
+    sniffer = Sniffer(sample_file)
+
+    assert sniffer.dialect.delimiter == delimeter
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 0, 10, 0, 0, 10, 0, 10, 10, 10, 10)]
+)
+def test_amount_numerics(sample_file, num_data_rows, num_metadata_newlines):
+    """Test for making sure the amount of lines measured by the sniffer is accurate"""
+
+    sniffer = Sniffer(sample_file)
+    num_total_newlines = num_metadata_newlines + (num_data_rows - 1) + 2
+    assert sniffer.amount == min(100, num_total_newlines + 1)
+
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 0, 10, 0, 0, 10, 0, 10, 10, 10, 10)]
+)
+def test_rows_numerics(sample_file, sample_rows, sample_metadata, sample_header, delimeter):
+    sniffer = Sniffer(sample_file)
+
+    all_rows = []
+    metadata_as_rows = [single_line.split(delimeter) for single_line in sample_metadata.split("\n")]
+    all_rows.extend(metadata_as_rows)
+    all_rows.append(sample_header)
+    all_rows.extend(sample_rows)
+
+    for row_idx in range(len(sniffer.rows())):
+        
+        sniffer_row = sniffer.rows()[row_idx]
+        sample_row = all_rows[row_idx]
+
+        assert sniffer_row == sample_row
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 0, 0, 10, 10, 0, 10, 0, 0, 10, 10)]
+)
+def test_line_count_datetimes(sample_file, num_data_rows, num_metadata_newlines):
+    """Test for making sure the line count measured by the sniffer is accurate"""
+
+    sniffer = Sniffer(sample_file)
+    num_total_newlines = num_metadata_newlines + (num_data_rows - 1) + 2
+    assert sniffer.line_count == num_total_newlines + 1
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 0, 0, 10, 10, 0, 10, 0, 0, 10, 10)]
+)
+def test_start_datetimes(sample_file):
+    """Test for making sure the start line measured by the sniffer is accurate"""
+
+    sniffer = Sniffer(sample_file)
+    assert sniffer.start == 0
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 0, 0, 10, 10, 0, 10, 0, 0, 10, 10)]
+)
+def test_header_datetimes(sample_file, sample_header):
+    sniffer = Sniffer(sample_file)
+
+    assert sniffer.header().names == sample_header
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 0, 0, 10, 10, 0, 10, 0, 0, 10, 10)]
+)
+def test_delimeter_datetimes(sample_file, delimeter):
+    sniffer = Sniffer(sample_file)
+
+    assert sniffer.dialect.delimiter == delimeter
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 0, 0, 10, 10, 0, 10, 0, 0, 10, 10)]
+)
+def test_amount_datetimes(sample_file, num_data_rows, num_metadata_newlines):
+    """Test for making sure the amount of lines measured by the sniffer is accurate"""
+
+    sniffer = Sniffer(sample_file)
+    num_total_newlines = num_metadata_newlines + (num_data_rows - 1) + 2
+    assert sniffer.amount == min(100, num_total_newlines + 1)
+
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 0, 0, 10, 10, 0, 10, 0, 0, 10, 10)]
+)
+def test_rows_datetimes(sample_file, sample_rows, sample_metadata, sample_header, delimeter):
+    sniffer = Sniffer(sample_file)
+
+    all_rows = []
+    metadata_as_rows = [single_line.split(delimeter) for single_line in sample_metadata.split("\n")]
+    all_rows.extend(metadata_as_rows)
+    all_rows.append(sample_header)
+    all_rows.extend(sample_rows)
+
+    for row_idx in range(len(sniffer.rows())):
+        
+        sniffer_row = sniffer.rows()[row_idx]
+        sample_row = all_rows[row_idx]
+
+        assert sniffer_row == sample_row
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10)]
+)
+def test_line_count_mixture(sample_file, num_data_rows, num_metadata_newlines):
+    """Test for making sure the line count measured by the sniffer is accurate"""
+
+    sniffer = Sniffer(sample_file)
+    num_total_newlines = num_metadata_newlines + (num_data_rows - 1) + 2
+    assert sniffer.line_count == num_total_newlines + 1
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10)]
+)
+def test_start_mixture(sample_file):
+    """Test for making sure the start line measured by the sniffer is accurate"""
+
+    sniffer = Sniffer(sample_file)
+    assert sniffer.start == 0
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10)]
+)
+def test_amount_mixture(sample_file, num_data_rows, num_metadata_newlines):
+    """Test for making sure the amount of lines measured by the sniffer is accurate"""
+
+    sniffer = Sniffer(sample_file)
+    num_total_newlines = num_metadata_newlines + (num_data_rows - 1) + 2
+    assert sniffer.amount == min(100, num_total_newlines + 1)
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10)]
+)
+def test_header_mixture(sample_file, sample_header):
+    sniffer = Sniffer(sample_file)
+
+    for expected, actual in zip(sample_header, sniffer.header().names):
+        assert expected in actual, f"'{expected}' not in '{actual}'"
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10)]
+)
+def test_delimeter_mixture(sample_file, delimeter):
+    sniffer = Sniffer(sample_file)
+
+    assert sniffer.dialect.delimiter == delimeter
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 100, 100, 100, 100, 100, 100, 100, 100, 10, 10)]
+)
+def test_types_mixture(sample_file, sample_types):
+    sniffer = Sniffer(sample_file)
+
+    assert sniffer.types() == sample_types
+
+@pytest.mark.parametrize(
+    "num_data_rows, num_str_columns, num_int_columns, num_date_columns, num_time_columns, num_sci_not_columns, num_datetime_columns, num_complex_columns, num_float_columns, num_metadata_newlines, num_metadata_delimeters",
+    [(10, 30, 30, 30, 30, 30, 30, 30, 30, 30, 10)]
+)
+def test_rows_mixture(sample_file, sample_rows, sample_metadata, sample_header, delimeter):
+    sniffer = Sniffer(sample_file)
+
+    all_rows = []
+    metadata_as_rows = [single_line.split(delimeter) for single_line in sample_metadata.split("\n")]
+    all_rows.extend(metadata_as_rows)
+    all_rows.append(sample_header)
+    all_rows.extend(sample_rows)
+
+    for row_idx in range(len(sniffer.rows())):
+        
+        sniffer_row = sniffer.rows()[row_idx]
+        sample_row = all_rows[row_idx]
+
+        assert sniffer_row == sample_row
