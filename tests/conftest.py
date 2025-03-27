@@ -5,9 +5,11 @@ import re
 import datetime
 import itertools
 
+
 @pytest.fixture
 def cell_types():
     return ["str", "int", "float", "complex", "date", "time", "datetime"]
+
 
 # Fixture for returning a random number generator
 @pytest.fixture
@@ -26,7 +28,6 @@ def random_integers(rn_generator, request):
         return str(rn_generator.randint(-100000, 100000))
 
     return [make_random_integer() for _ in range(request.param)]
-    
 
 
 @pytest.fixture
@@ -39,12 +40,10 @@ def random_floats(rn_generator, request):
     return [make_random_float() for _ in range(request.param)]
 
 
-
 @pytest.fixture
 def random_complex_numbers(rn_generator, request):
     """This returns a list of n random complex numbers. n is passed in through indirect parameterization"""
 
-        
     def make_random_complex_num(rn_generator):
         """Generates a random complex numbers and takes a random number generator as input"""
 
@@ -57,7 +56,6 @@ def random_complex_numbers(rn_generator, request):
     return [make_random_complex_num(rn_generator) for _ in range(request.param)]
 
 
-
 @pytest.fixture
 def random_scientific_notation_floats(rn_generator, request):
     """Returns a list of n scientific notation floats. n is passed in through indirect parameterization"""
@@ -65,7 +63,7 @@ def random_scientific_notation_floats(rn_generator, request):
     def make_random_sci_not_float():
         significand = rn_generator.uniform(-10, 10)
         exponent = rn_generator.randint(-100, 100)
-        if (rn_generator.random() > .5):
+        if rn_generator.random() > 0.5:
             return str(significand) + "E" + str(exponent)
         else:
             return str(significand) + "e" + str(exponent)
@@ -73,9 +71,13 @@ def random_scientific_notation_floats(rn_generator, request):
     return [make_random_sci_not_float() for _ in range(request.param)]
 
 
-
 @pytest.fixture
-def random_numerics(random_integers, random_floats, random_complex_numbers, random_scientific_notation_floats):
+def random_numerics(
+    random_integers,
+    random_floats,
+    random_complex_numbers,
+    random_scientific_notation_floats,
+):
     """Returns a list of numerics. MUST specify the number of each of the counts of the fixtures it relies on via
     indirect parameterization before using this fixture"""
 
@@ -88,7 +90,6 @@ def random_numerics(random_integers, random_floats, random_complex_numbers, rand
     return mixed_numerics
 
 
-
 @pytest.fixture
 def random_non_numerics(rn_generator, request):
     """Returns a list of n non-numerics. n is specified is an indirect parameter"""
@@ -99,13 +100,17 @@ def random_non_numerics(rn_generator, request):
 
         rand_str = "".join(rn_generator.choices(all_chars, k=length))
 
-        non_numeric_insert_pos = rn_generator.randint(0, length+1)
+        non_numeric_insert_pos = rn_generator.randint(0, length + 1)
 
         non_numeric_ascii = re.sub(r"[jJeE]", "", string.ascii_letters)
         non_numeric_char = rn_generator.choice(non_numeric_ascii)
 
         # Inserting a non-numeric character always ensures the whole string is non-numeric
-        rand_non_numeric = rand_str[:non_numeric_insert_pos] + non_numeric_char + rand_str[non_numeric_insert_pos:]
+        rand_non_numeric = (
+            rand_str[:non_numeric_insert_pos]
+            + non_numeric_char
+            + rand_str[non_numeric_insert_pos:]
+        )
 
         return rand_non_numeric
 
@@ -125,6 +130,7 @@ def random_strings(rn_generator, request):
 
     return [make_random_string() for _ in range(request.param)]
 
+
 @pytest.fixture
 def date_formats():
     """Creates commonly used date format specifiers to be used for strftime"""
@@ -137,6 +143,7 @@ def date_formats():
         fmts.extend(x)
 
     return fmts
+
 
 @pytest.fixture
 def random_dates(rn_generator, date_formats, request):
@@ -155,13 +162,13 @@ def random_dates(rn_generator, date_formats, request):
         date_format = rn_generator.choice(date_formats)
 
         return date.strftime(date_format)
-    
+
     return [make_random_date() for _ in range(request.param)]
+
 
 @pytest.fixture
 def time_formats():
-    """Creates commonly used time format specifiers to be used for strftime
-    """
+    """Creates commonly used time format specifiers to be used for strftime"""
 
     fmts = []
     hours, microsecs = ['I', 'H'], ['', ':%f', '.%f']
@@ -178,6 +185,7 @@ def time_formats():
 
     return fmts
 
+
 @pytest.fixture
 def random_times(rn_generator, time_formats, request):
     """Generates a random time in a random format"""
@@ -188,9 +196,11 @@ def random_times(rn_generator, time_formats, request):
         microsecond = rn_generator.randint(0, 999999)
         hour = rn_generator.randint(1, 23)
 
-        time = datetime.time(hour=hour, minute=minute, second=second, microsecond=microsecond)
+        time = datetime.time(
+            hour=hour, minute=minute, second=second, microsecond=microsecond
+        )
         time_format = rn_generator.choice(time_formats)
 
         return time.strftime(time_format)
-    
+
     return [make_random_time() for _ in range(request.param)]
