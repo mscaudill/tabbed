@@ -30,6 +30,7 @@ def date_formats() -> List[str]:
     return fmts
 
 
+# FIXME diurnal spacing or Better do this in find_format
 def time_formats() -> List[str]:
     """Creates commonly used time format specifiers.
 
@@ -42,15 +43,8 @@ def time_formats() -> List[str]:
 
     fmts = []
     hours, microsecs = ['I', 'H'], ['', ':%f', '.%f']
-    # Issue: now time formats is generating invalid format where you can have military
-    # time but also have a diurnal. Also allowing 12 hour format to be given without a diurnal
-    # which is problematic.
-    # Proposed Change:
     for hrs, micro in itertools.product(hours, microsecs):
-        if hrs == "I":
-            diurnal = " %p"
-        else:
-            diurnal = ''
+        diurnal = '%p' if hrs == 'I' else ''
         fmts.append(f'%{hrs}:%M:%S{micro}{diurnal}')
 
     return fmts

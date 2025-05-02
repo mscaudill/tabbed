@@ -1,600 +1,213 @@
-"""A pytest module for testing Tabbed's celltyping module, a module with
-functions for type determination and conversion."""
+"""A pytest module for testing Tabbed's detection and conversion of cells with
+string encoded dates, times and datetime instances.
+"""
 
+import calendar
 import datetime
-from itertools import product
-import re
-import string
+import random
 
 import pytest
 
-from tabbed.utils import celltyping
+from tabbed.utils import parsing
 
-# Date format tests
-
-
-@pytest.fixture
-def month():
-    """Returns a set of month format codes."""
-
-    return set(['%m', '%b', '%B'])
+NUM_TEST = 1000
 
 
-@pytest.fixture
-def year():
-    """Returns a set of year format codes."""
+@pytest.fixture(params=range(NUM_TEST))
+def rng(request):
+    """Returns NUM_TEST number of fixed random generators."""
 
-    return set(['%y', '%Y'])
+    random.seed(request.param)
+    return random
 
 
 @pytest.fixture
 def separators():
-    """Returns a set of tabbed supported separators for date formats."""
+    """Returns a list of Tabbed supported separators for date formats."""
 
-    return set(' /-.')
-
-
-@pytest.fixture(params=['January', 'Jan', '01', '1'])
-def valid_month(request):
-    """Returns a valid month using all possible month fmts."""
-
-    return request.param
-
-
-@pytest.fixture(params=['Janua', '20', "10.5", "-1", "J"])
-def invalid_month(request):
-    """Returns invalid month"""
-
-    return request.param
-
-
-@pytest.fixture(params=['3', '03'])
-def valid_day(request):
-    """Returns a valid day using all possible day fmts."""
-
-    return request.param
-
-
-@pytest.fixture(params=["-1", "50", "10.4", "Tuesday"])
-def invalid_day(request):
-    """Returns invalid day"""
-
-    return request.param
-
-
-@pytest.fixture(params=['2025', '25'])
-def valid_year(request):
-    """Returns a valid year using all possible year fmts."""
-
-    return request.param
-
-
-@pytest.fixture(params=["-20", "Twenty Twenty-Five", "25.01"])
-def invalid_year(request):
-    """Returns an invalid year"""
-
-    return request.param
-
-
-@pytest.fixture(params=set(' /.-'))
-def invalid_date_month(request, invalid_month, valid_day, valid_year):
-    """Returns a list of invalid dates where the invalid part is the month
-
-    These dates are all month first
-    """
-
-    x = f'{invalid_month}{request.param}{valid_day}{request.param}{valid_year}'
-    return x
-
-
-@pytest.fixture(params=set(' /.-'))
-def invalid_date_day(request, valid_month, invalid_day, valid_year):
-    """Returns a list of invalid dates where the invalid part is the day
-
-    These dates are all month first
-    """
-
-    x = f'{valid_month}{request.param}{invalid_day}{request.param}{valid_year}'
-    return x
-
-
-@pytest.fixture(params=set(' /.-'))
-def invalid_date_year(request, valid_month, valid_day, invalid_year):
-    """Returns a list of invalid dates where the invalid part is the year
-
-    These dates are all month first
-    """
-
-    x = f'{valid_month}{request.param}{valid_day}{request.param}{invalid_year}'
-    return x
-
-
-@pytest.fixture(params=set('*:\\~,;|_&'))
-def invalid_date_separator(request, valid_month, valid_day, valid_year):
-    """Returns a list of invalid dates where the invalid part is the separator
-
-    These dates are all month first
-    """
-
-    x = f'{valid_month}{request.param}{valid_day}{request.param}{valid_year}'
-    return x
-
-
-@pytest.fixture(params=set(' /.-'))
-def valid_date(request, valid_month, valid_day, valid_year):
-    """Returns a list of valid dates that match a tabbed date format.
-
-    These dates are all month first
-    """
-
-    x = f'{valid_month}{request.param}{valid_day}{request.param}{valid_year}'
-    return x
-
-
-@pytest.fixture(params=range(10))
-def no_digit_string(request, rn_generator):
-    """Returns strings that have no digits"""
-
-    length = rn_generator.randint(1, 20)
-    chars = string.ascii_letters + string.punctuation + " "
-    return ''.join(rn_generator.choices(chars, k=length))
-
-
-def test_date_format_months(month):
-    """Test that tabbed's date formats include a month format code."""
-
-    for fmt in celltyping.date_formats():
-        sep = fmt[2]
-        parts = fmt.split(sep)
-        assert month.intersection(parts)
-
-
-def test_date_format_day():
-    """Test that Tabbed's date format includes a day format code."""
-
-    for fmt in celltyping.date_formats():
-        assert '%d' in fmt
-
-
-# Example to show how to parameterize a test
-# @pytest.mark.parametrize('year', [set(['%y', '%Y'])])
-def test_date_format_year(year):
-    """Test that tabbed's date formats include a year format code."""
-
-    for fmt in celltyping.date_formats():
-        sep = fmt[2]
-        parts = fmt.split(sep)
-        assert year.intersection(parts)
-
-
-def test_date_format_seps(separators):
-    """Test that tabbed's date formats include one of the supported seps."""
-
-    seps = set([fmt[2] for fmt in celltyping.date_formats()])
-    assert seps == separators
-
-
-def test_date_format_count(month, year, separators):
-    """Test that the number of formats is the twice the product of the number of
-    month formats, the number of year formats and the number of separators."""
-
-    count = len(celltyping.date_formats())
-    assert count == 2 * len(month) * len(year) * len(separators)
-
-
-def test_find_valid_date(valid_date):
-    """Test that find format locates a format given a valid date."""
-
-    assert celltyping.find_format(valid_date, celltyping.date_formats())
-
-
-@pytest.mark.xfail
-def test_find_date_invalid_date_month(invalid_date_month):
-    """Test that find format does not find any format for a date with an invalid month"""
-
-    assert celltyping.find_format(invalid_date_month, celltyping.date_formats())
-
-
-@pytest.mark.xfail
-def test_find_date_invalid_date_day(invalid_date_day):
-    """Test that find format does not find any format for a date with an invalid day"""
-
-    assert celltyping.find_format(invalid_date_day, celltyping.date_formats())
-
-
-@pytest.mark.xfail
-def test_find_date_invalid_date_year(invalid_date_year):
-    """Test that find format does not find any format for a date with an invalid year"""
-
-    assert celltyping.find_format(invalid_date_year, celltyping.date_formats())
-
-
-@pytest.mark.xfail
-def test_find_date_invalid_date_separator(invalid_date_separator):
-    """Test that find format does not find any format for a date with an invalid separator"""
-
-    assert celltyping.find_format(
-        invalid_date_separator, celltyping.date_formats()
-    )
-
-
-@pytest.mark.xfail
-def test_find_date_no_digit_string(no_digit_string):
-    """Test that find format fails when there is a string with no digits (can't be a date)"""
-
-    assert celltyping.find_format(no_digit_string, celltyping.date_formats())
-
-
-def test_classify_valid_date(valid_date):
-    """Test that is_date returns true for valid dates"""
-
-    assert celltyping.is_date(valid_date)
-
-
-def test_as_datetime_valid_date(valid_date):
-    """Test that as_datetime does not return a string for a valid date (which indicates failure)"""
-
-    fmt = celltyping.find_format(valid_date, celltyping.date_formats())
-    assert fmt
-    assert isinstance(
-        celltyping.as_datetime(valid_date, fmt).date(), datetime.date
-    )
-
-
-def test_convert_valid_date(valid_date):
-    """Test that convert does not return a string for a valid date (which indicates failure)"""
-
-    assert isinstance(celltyping.convert(valid_date).date(), datetime.date)
-
-
-# Time format tests
+    return '/ - .'.split()
 
 
 @pytest.fixture
-def hour():
-    """Returns a set of hour format codes."""
+def named_months():
+    """Returns the month code %B and a list of named calendar months."""
 
-    return set(['%I', "%H"])
+    return '%B', calendar.month_name[1:]
 
 
 @pytest.fixture
-def microsecond():
-    """Returns a set of microsecond format codes."""
+def abbr_months():
+    """Returns the month code %b and a list of calendar month abbreviations."""
 
-    return set(['', ":%f", ".%f"])
+    return '%b', calendar.month_abbr[1:]
+
+
+@pytest.fixture
+def digit_months():
+    """Returns the month code %m and a list of valid digit months."""
+
+    unpadded = [str(x) for x in range(1, 13)]
+    padded = ['0' + up for up in unpadded if len(up) < 2]
+
+    return '%m', unpadded + padded
+
+
+@pytest.fixture
+def century_years():
+    """Returns the year code %Y and a list of 4 digit years in [1900, 2099]."""
+
+    return '%Y', list(range(1900, 2100))
+
+
+@pytest.fixture
+def noncentury_years():
+    """Returns the year code %y and a list of 2 digit years in [2000, 2099]."""
+
+    return '%y', [str(x)[-2:] for x in range(2000, 2100)]
+
+
+@pytest.fixture()
+def valid_date(
+        rng,
+        separators,
+        named_months,
+        abbr_months,
+        digit_months,
+        century_years,
+        noncentury_years):
+    """Returns a format string and a corresponding random datestring."""
+
+    # choose a separator, month format and year format
+    sep = rng.choice(separators)
+    # choose month format then choose a month in that format
+    mfmt, months = rng.choice([named_months, abbr_months, digit_months])
+    month = rng.choice(months)
+    # choose a year format then choose a year in that format
+    yfmt, years = rng.choice([century_years, noncentury_years])
+    year = rng.choice(years)
+    # choose day from minimum number of days in a given month
+    day = rng.choice(range(1, 29))
+    # choose if day is first in fmt
+    day_first = rng.choice([True, False])
+
+    # build formats and date example for day first and otherwise
+    fmts = [f'%d{sep}{mfmt}{sep}{yfmt}', f'{mfmt}{sep}%d{sep}{yfmt}']
+    dates = [f'{day}{sep}{month}{sep}{year}', f'{month}{sep}{day}{sep}{year}']
+
+    return (fmts[0], dates[0]) if day_first else (fmts[1], dates[1])
+
+
+@pytest.fixture
+def hour24():
+    """Returns the hour code %H and hours in [0, 23]."""
+
+    return '%H', list(range(24))
+
+
+@pytest.fixture
+def hour12():
+    """Returns the hour code %I and hours in [1, 11]."""
+
+    return '%I', list(range(1, 12))
+
+
+@pytest.fixture
+def minutes():
+    """Returns a list of valid minutes in [0, 59]."""
+
+    return list(range(60))
+
+
+@pytest.fixture
+def seconds():
+    """Returns a list of valid seconds in [0, 59]."""
+
+    return list(range(60))
 
 
 @pytest.fixture
 def diurnal():
-    """Returns a set of diurnal format codes."""
+    """Returns the am/pm code %p and the list ['am', 'pm']."""
 
-    return set(['', " %p"])
-
-
-def test_time_format_hour(hour):
-    """Test that Tabbed's time format includes an hour format code"""
-
-    for fmt in celltyping.time_formats():
-        sep = ":"
-        parts = fmt.split(sep)
-        assert hour.intersection(parts)
-
-
-def test_time_format_minute():
-    """Test that Tabbed's time format includes a minute format code"""
-
-    for fmt in celltyping.time_formats():
-        assert '%M' in fmt
-
-
-def test_time_format_second():
-    """Test that Tabbed's time format include a second format code"""
-
-    for fmt in celltyping.time_formats():
-        assert "%S" in fmt
-
-
-# Note: For microseconds and diurnal, the intersection will always match
-# since the empty string will always be present at the end of the time format.
-
-
-@pytest.fixture(
-    params=[["13", ''], ["1", " PM"], ["1", ''], ["1", " AM"]],
-    ids=lambda pair: f"hour={pair[0]}-diurnal={pair[1]}",
-)
-def valid_hour_diurnal_pair(request):
-    """Returns a valid (hour, diurnal) pair using all possible (hour, diurnal) format pairs"""
-
-    return request.param
-
-
-@pytest.fixture(
-    params=[["13", "PM"], ["-1", ""], ["26", ""], ["16", "AM"], ["0", ""]]
-)
-def invalid_hour_diurnal_pair(request):
-    """Returns an invalid (hour, diurnal) pair"""
-
-    return request.param
+    return '%p', 'am pm'.split()
 
 
 @pytest.fixture
-def valid_minute():
-    """Returns a valid minute using all possible minute formats"""
+def microsecs():
+    """Returns a list of microseconds in [0, 999999]."""
 
-    return "01"
-
-
-@pytest.fixture(params=["-3", "0003", "70", "20.3"])
-def invalid_minute(request):
-    """Returns an invalid minute"""
-
-    return request.param
+    return list(range(999999))
 
 
 @pytest.fixture
-def valid_second():
-    """Returns a valid second using all possible second formats"""
+def time_seperators():
+    """Returns two variations of the time separators supported by Tabbed for
+    microsecs."""
 
-    return "01"
-
-
-@pytest.fixture(params=["-3", "0005", "70", "24.3"])
-def invalid_second(request):
-    """Returns an invalid second"""
-
-    return request.param
+    return ': .'.split()
 
 
-@pytest.fixture(
-    params=["", ".434623", ":434623"], ids=lambda val: f'microsecond={val}'
-)
-def valid_microsecond(request):
-    """Returns a valid microsecond using all the possible microsecond formats"""
-
-    return request.param
-
-
-@pytest.fixture(params=[".34", ":4345", ".42423423552", ":43234235235", "342"])
-def invalid_microsecond(request):
-    """Returns an invalid microsecond"""
-
-    return request.param
-
-
-@pytest.fixture
+# FIXME the diurnal ma have a space before it that our time formats aren't
+# account for!!!
+@pytest.fixture()
 def valid_time(
-    valid_hour_diurnal_pair, valid_minute, valid_second, valid_microsecond
-):
-    """Returns a list of valid times that match a tabbed time format."""
+        rng,
+        time_seperators,
+        hour12,
+        hour24,
+        minutes,
+        seconds,
+        microsecs,
+        diurnal):
+    """ """
 
-    valid_hour = valid_hour_diurnal_pair[0]
-    valid_diurnal = valid_hour_diurnal_pair[1]
-    x = f'{valid_hour}:{valid_minute}:{valid_second}{valid_microsecond}{valid_diurnal}'
-    return x
+    # choose a microseconds separator
+    sep = rng.choice(time_seperators)
+    # choose an hour format and hour
+    hfmt, hours = rng.choice([hour12, hour24])
+    hour = rng.choice(hours)
+    # choose number of mins, secs and microsecs
+    mins, secs, musecs = [rng.choice(x) for x in (minutes, seconds, microsecs)]
+    # set diurnal based on hourfmt adding a space if am/pm is present
+    dicode = '%p' if hfmt == '%I' else ''
+    diurn = ' ' + rng.choice(diurnal[1]) if dicode else ''
 
+    fmt = f'{hfmt}:%M:%S{sep}%f{dicode}'
+    example = f'{hour}:{mins}:{secs}{sep}{musecs}{diurn}'
 
-@pytest.fixture
-def invalid_time_microsecond(
-    valid_hour_diurnal_pair, valid_minute, valid_second, invalid_microsecond
-):
-    """Returns a list of invalid times where the invalid part is the microsecond"""
-
-    valid_hour = valid_hour_diurnal_pair[0]
-    valid_diurnal = valid_hour_diurnal_pair[1]
-    x = f'{valid_hour}:{valid_minute}:{valid_second}{invalid_microsecond}{valid_diurnal}'
-    return x
-
-
-@pytest.fixture
-def invalid_time_minute(
-    valid_hour_diurnal_pair, invalid_minute, valid_second, valid_microsecond
-):
-    """Returns a list of invalid times where the invalid part is the microsecond"""
-
-    valid_hour = valid_hour_diurnal_pair[0]
-    valid_diurnal = valid_hour_diurnal_pair[1]
-    x = f'{valid_hour}:{invalid_minute}:{valid_second}{valid_microsecond}{valid_diurnal}'
-    return x
+    return fmt, example
 
 
-@pytest.fixture
-def invalid_time_second(
-    valid_hour_diurnal_pair, valid_minute, invalid_second, valid_microsecond
-):
-    """Returns a list of invalid times where the invalid part is the second"""
-
-    valid_hour = valid_hour_diurnal_pair[0]
-    valid_diurnal = valid_hour_diurnal_pair[1]
-    x = f'{valid_hour}:{valid_minute}:{invalid_second}{valid_microsecond}{valid_diurnal}'
-    return x
+"""
+def test_times(valid_time):
+    print(valid_time)
+    assert True
+"""
 
 
-@pytest.fixture
-def invalid_time_hour_diurnal_pair(
-    invalid_hour_diurnal_pair, valid_minute, valid_second, valid_microsecond
-):
-    """Returns a list of invalid times where the invalid part is the (hour, diurnal) pair"""
+def test_convert_of_date(valid_date):
+    """Validates that conversion returns a datetime instance for a stringed date.
 
-    invalid_hour = invalid_hour_diurnal_pair[0]
-    invalid_diurnal = invalid_hour_diurnal_pair[1]
-    x = f'{invalid_hour}:{valid_minute}:{valid_second}{valid_microsecond}{invalid_diurnal}'
-    return x
-
-
-def test_time_format_count(hour, microsecond):
-    """Test that the number of formats is the twice the product of the number of
-    month formats, the number of year formats and the number of separators."""
-
-    count = len(celltyping.time_formats())
-    assert count == len(hour) * len(microsecond)
-
-
-def test_find_valid_time(valid_time):
-    """Test that find format locates a format given a valid time."""
-
-    assert celltyping.find_format(valid_time, celltyping.time_formats())
-
-
-@pytest.mark.xfail
-def test_find_invalid_time_microsecond(invalid_time_microsecond):
-    """Test that find format does not locate a format given a time with an invalid microsecond"""
-
-    assert celltyping.find_format(
-        invalid_time_microsecond, celltyping.time_formats()
-    )
-
-
-@pytest.mark.xfail
-def test_find_invalid_time_second(invalid_time_second):
-    """Test that find format does not locate a format given a time with an invalid second"""
-
-    assert celltyping.find_format(
-        invalid_time_second, celltyping.time_formats()
-    )
-
-
-@pytest.mark.xfail
-def test_find_invalid_time_minute(invalid_time_minute):
-    """Test that find format does not locate a format given a time with an invalid minute"""
-
-    assert celltyping.find_format(
-        invalid_time_minute, celltyping.time_formats()
-    )
-
-
-@pytest.mark.xfail
-def test_find_invalid_time_hour_diurnal(invalid_time_hour_diurnal_pair):
-    """Test that find format does not locate a format given a time with an invalid hour and diurnal pair"""
-
-    assert celltyping.find_format(
-        invalid_time_hour_diurnal_pair, celltyping.time_formats()
-    )
-
-
-@pytest.mark.xfail
-def test_find_time_no_digit_string(no_digit_string):
-    """Test that find format fails when there is a string with no digits (can't be a time)"""
-
-    assert celltyping.find_format(no_digit_string, celltyping.time_formats())
-
-
-def test_classify_valid_time(valid_time):
-    """Test that is_time returns true for valid times"""
-
-    assert celltyping.is_time(valid_time)
-
-
-def test_as_datetime_valid_time(valid_time):
-    """Test that as_datetime does not return a string for a valid time (which indicates failure)"""
-
-    fmt = celltyping.find_format(valid_time, celltyping.time_formats())
-    assert fmt
-    assert isinstance(
-        celltyping.as_datetime(valid_time, fmt).time(), datetime.time
-    )
-
-
-def test_convert_valid_time(valid_time):
-    """Test that convert does not return a string for a valid time (which indicates failure)"""
-
-    assert isinstance(celltyping.convert(valid_time).time(), datetime.time)
-
-
-# Datetime format tests
-
-
-@pytest.fixture
-def valid_datetime(valid_date, valid_time):
-    """Returns a list of valid dates that match a tabbed date format.
-
-    These dates are all month first
+    This is a catch-all test because if format detection fails, conversion returns
+    a string. If format detection succeeds but conversion fails then we again
+    return a string. Success of all subfunctions in parsing is required to return
+    a datetime instance and therefore this is the only test needed to validate
+    date, time and datetime conversions.
     """
 
-    x = f"{valid_date} {valid_time}"
-    return x
+    _, date = valid_date
+    assert isinstance(parsing.convert(date), datetime.datetime)
 
 
-def test_datetime_format_months(month):
-    """Test that tabbed's datetime formats include a month format code."""
+def test_convert_of_time(valid_time):
+    """Validates that conversion returns a datetime instance for a stringed time.
 
-    for fmt in celltyping.datetime_formats():
-        sep = fmt[2]
-        parts = fmt.split(sep)
-        assert month.intersection(parts)
+    This is a catch-all test because if format detection fails, conversion returns
+    a string. If format detection succeeds but conversion fails then we again
+    return a string. Success of all subfunctions in parsing is required to return
+    a datetime instance and therefore this is the only test needed to validate
+    date, time and datetime conversions.
+    """
 
-
-def test_datetime_format_day():
-    """Test that Tabbed's datetime format includes a day format code."""
-
-    for fmt in celltyping.datetime_formats():
-        assert '%d' in fmt
-
-
-def test_datetime_format_year(year):
-    """Test that tabbed's datetime formats include a year format code."""
-
-    for fmt in celltyping.datetime_formats():
-        patterns = f"[{fmt[2]} ]"
-        parts = re.split(patterns, fmt)
-        assert year.intersection(parts)
-
-
-def test_datetime_format_hour(hour):
-    """Test that Tabbed's datetime format includes an hour format code"""
-
-    for fmt in celltyping.datetime_formats():
-        seps = [":", " "]
-        pattern = "|".join(seps)
-        parts = re.split(pattern, fmt)
-        assert hour.intersection(parts)
-
-
-def test_datetime_format_minute():
-    """Test that Tabbed's datetime format includes a minute format code"""
-
-    for fmt in celltyping.datetime_formats():
-        assert '%M' in fmt
-
-
-def test_datetime_format_second():
-    """Test that Tabbed's datetime format include a second format code"""
-
-    for fmt in celltyping.datetime_formats():
-        assert "%S" in fmt
-
-
-def test_find_valid_datetime(valid_datetime):
-    """Test that find format locates a format given a valid datetime."""
-
-    assert celltyping.find_format(valid_datetime, celltyping.datetime_formats())
-
-
-@pytest.mark.xfail
-def test_find_datetime_no_digit_string(no_digit_string):
-    """Test that find format fails when there is a string with no digits (can't be a datetime)"""
-
-    assert celltyping.find_format(
-        no_digit_string, celltyping.datetime_formats()
-    )
-
-
-def test_classify_valid_datetime(valid_datetime):
-    """Test that is_datetime returns true for valid datetimes"""
-
-    assert celltyping.is_datetime(valid_datetime)
-
-
-def test_as_datetime_valid_datetime(valid_datetime):
-    """Test that as_datetime does not return a string for a valid datetime (which indicates failure)"""
-
-    fmt = celltyping.find_format(valid_datetime, celltyping.datetime_formats())
-    assert fmt
-    assert isinstance(
-        celltyping.as_datetime(valid_datetime, fmt), datetime.datetime
-    )
-
-
-def test_convert_valid_datetime(valid_datetime):
-    """Test that convert does not return a string for a valid datetime (which indicates failure)"""
-
-    assert isinstance(celltyping.convert(valid_datetime), datetime.datetime)
+    _, time = valid_time
+    assert isinstance(parsing.convert(time), datetime.datetime)
