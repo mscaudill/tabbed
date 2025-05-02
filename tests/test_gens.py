@@ -1,6 +1,8 @@
-# import itertools
-# import random
-# import pytest
+import itertools
+import random
+import pytest
+
+from conftest import random_strings
 
 # @pytest.fixture
 # def rng():
@@ -35,8 +37,6 @@
 #         assert number % 2 == 0
 
 
-
-
 # # Direct parameterization -- notice we are in-between hard coding the count and
 # # a real parameter its partially parameterizable
 # @pytest.fixture(params=[100])
@@ -52,7 +52,6 @@
 #         assert num % 2 == 0
 
 
-
 # # Indirect parameterization -- fully parameterizable
 # @pytest.fixture
 # def random_integers(rng, request):
@@ -66,12 +65,14 @@
 # def test_function_iseven1(random_integers):
 #     """ """
 
+
 # Indirect parameterization -- fully parameterizable
 @pytest.fixture
 def random_integers(rng, request):
-    #Returns param count number of random integers.
+    # Returns param count number of random integers.
 
     return [rng.randint(0, 1000) for _ in range(request.param)]
+
 
 # ignore -- dont like
 @pytest.fixture
@@ -79,6 +80,7 @@ def random100_integers(rng):
     """ """
 
     return [rng.randint(0, 1000) for _ in range(100)]
+
 
 @pytest.fixture
 def random_floats(rng, request):
@@ -89,16 +91,19 @@ def random_floats(rng, request):
 
 
 # FAILS -- fixtures ignore marks so cannot except parameterizable fixtures
+"""
 @pytest.fixture
 @pytest.mark.parametrize("random_integers", [100], indirect=True)
 @pytest.mark.parametrize("random_floats", [100], indirect=True)
 def random_real(random_integers, random_floats):
-    """First attempt at mixing parameterizable fixtures."""
+    #First attempt at mixing parameterizable fixtures.
 
     print(random_integers)
     print(random_floats)
 
     assert True
+"""
+
 
 # We like this
 # indirect allows the fixture to be parameterized dynamically -- when the test
@@ -112,3 +117,18 @@ def test_function_iseven1(random_integers, random_floats):
     print(random_floats)
 
     assert True
+
+@pytest.fixture(params=[4])
+def string_table(request, rn_generator, random_strings, num_rows):
+    """ """
+
+    rows = [random_strings(rn_generator, request.param) for _ in
+            range(num_rows)]
+
+    return rows
+
+@pytest.mark.parametrize("num_rows", [10])
+def test_str_table(string_table):
+    """ """
+
+    assert len(string_table) == 10
