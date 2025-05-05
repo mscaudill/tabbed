@@ -1,5 +1,9 @@
-"""A module for detecting & converting strs to python intrinsic types."""
+"""A module for detecting & converting strs to python intrinsic types.
 
+Dates and Datetime instances currently support ...
+"""
+
+from collections import Counter
 from datetime import datetime
 import itertools
 import re
@@ -30,7 +34,6 @@ def date_formats() -> List[str]:
     return fmts
 
 
-# FIXME diurnal spacing or Better do this in find_format
 def time_formats() -> List[str]:
     """Creates commonly used time format specifiers.
 
@@ -43,9 +46,14 @@ def time_formats() -> List[str]:
 
     fmts = []
     hours, microsecs = ['I', 'H'], ['', ':%f', '.%f']
+    diurnal = '%p'
     for hrs, micro in itertools.product(hours, microsecs):
-        diurnal = '%p' if hrs == 'I' else ''
-        fmts.append(f'%{hrs}:%M:%S{micro}{diurnal}')
+        if hrs == 'I':
+            # If 12 hour clock allow for possible space before am/pm
+            fmts.append(f'%{hrs}:%M:%S{micro}{diurnal}')
+            fmts.append(f'%{hrs}:%M:%S{micro} {diurnal}')
+        else:
+            fmts.append(f'%{hrs}:%M:%S{micro}')
 
     return fmts
 
@@ -138,8 +146,8 @@ def is_time(astring: str) -> bool:
         True if astring can be converted to a datetime and False otherwise.
     """
 
-    # all time formats have colon separators
-    if ':' not in astring:
+    # all times contain 2 ':' separators
+    if Counter(astring)[':'] < 2:
         return False
 
     # another method to time detect without fmt testing could give speedup
