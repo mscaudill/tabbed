@@ -10,8 +10,8 @@ import warnings
 import clevercsv
 from clevercsv.dialect import SimpleDialect
 
-from tabbed.utils.celltyping import convert
-from tabbed.utils.celltyping import is_numeric
+from tabbed.utils.parsing import convert
+from tabbed.utils.parsing import is_numeric
 from tabbed.utils.mixins import ReprMixin
 
 
@@ -490,7 +490,7 @@ class Sniffer(ReprMixin):
            a substring representing a numeric, then the first row from the end
            of rows with no numeric string, having no empty strings, and a length
            matching the last row will be taken as the header.
-        2. If the last line of rows contains only strings. We look for the
+        2. If the last line of rows contains only non numerics. We look for the
            first row from the end of the rows with no empty strings and
            contains no items in common with all the rows below it.
 

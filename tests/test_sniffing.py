@@ -8,7 +8,8 @@ import pytest
 import random
 from itertools import batched
 
-from tabbed.sniffing import Sniffer
+from tabbed.sniffing import Header, MetaData, Sniffer
+from tabbed.utils import parsing
 
 
 NUM_TEST = 3
@@ -21,27 +22,25 @@ def rng(request):
     return random
 
 
-@pytest.fixture(params=[',', ';', '|', r'\t'])
-def delimiters(request):
-    """Returns a subset of tabbed compatible delimiters."""
+def delimiters():
+    """Returns all of tabbed's compatible delimiters."""
 
-    return request.param
+    return [',', ';', '|', r'\t']
 
 
 @pytest.fixture
 def valid_chars():
     """Returns a string of all valid characters.
 
-    Invalid characters are a delimiters and quote chars
+    Invalid characters are a delimiter and quote chars
     """
 
     chars = list(string.ascii_letters +
                  string.digits +
                  string.punctuation +
                  ' ')
-    invalid = set([',', ';', '|', '\t', '\'', '"'])
 
-    return [char for char in chars if char not in invalid]
+    return [char for char in chars if char not in delimiters()]
 
 
 @pytest.fixture
@@ -125,7 +124,7 @@ def enotation_table(rng):
 
 
 @pytest.fixture
-def time_table(rng, time_formats):
+def time_table(rng):
     """Returns a function for building random tables of stringed times."""
 
     def make_table(rows, cols):
@@ -140,7 +139,7 @@ def time_table(rng, time_formats):
                 datetime.time(hour=h, minute=m, second=s, microsecond=mu)
                 for h, m, s, mu in zip(hours, mins, secs, micros)
                 ]
-        fmts = [rng.choice(time_formats) for _ in range(cnt)]
+        fmts = [rng.choice(parsing.time_formats()) for _ in range(cnt)]
         cells = [time.strftime(fmt) for time, fmt in zip(times, fmts)]
 
         return [list(row) for row in batched(cells, cols)]
@@ -149,7 +148,7 @@ def time_table(rng, time_formats):
 
 
 @pytest.fixture
-def date_table(rng, date_formats):
+def date_table(rng):
     """Returns a function for building random tables of stringed dates."""
 
     def make_table(rows, cols):
@@ -160,7 +159,7 @@ def date_table(rng, date_formats):
         months = [rng.randint(1, 12) for _ in range(cnt)]
         days = [rng.randint(1, 28) for _ in range(cnt)]
         dates = [datetime.date(y, m, d) for y, m, d in zip(years, months, days)]
-        fmts = [rng.choice(date_formats) for _ in range(cnt)]
+        fmts = [rng.choice(parsing.date_formats()) for _ in range(cnt)]
         cells = [date.strftime(fmt) for date, fmt in zip(dates, fmts)]
 
         return [list(row) for row in batched(cells, cols)]
@@ -188,19 +187,8 @@ def datetime_table(time_table, date_table):
 
 
 @pytest.fixture
-def shape(rng):
-    """Returns a reproducible random shape tuple for a table."""
-
-    row_count = rng.randint(1, 200)
-    col_count = rng.randint(1, 20)
-
-    return row_count, col_count
-
-
-@pytest.fixture
-def table(
+def composite_table(
         rng,
-        shape,
         string_table,
         integer_table,
         float_table,
@@ -209,31 +197,27 @@ def table(
         date_table,
         datetime_table,
 ):
-    """Returns a randomly shaped table for each rng of the rng fixture.
-
-    This table is constructed from single type tables for all types supported by
-    Tabbed.
-    """
+    """Returns a randomly shaped table a composite of single type tables
+    supported by Tabbed."""
 
     args = locals()
     rng = args.pop('rng')
-    rows, cols = args.pop('shape')
 
-    # build each table type then conncatenate along columns
-    subtables = [atable(rows, cols) for atable in args.values()]
-    combined = [sum(row_tuple, start=[]) for row_tuple in zip(*subtables)]
+    def make_table(rows, cols):
+        """Returns a rows x cols table of mixed table types."""
 
-    # randomly choose cols from combined
-    transpose = list(zip(*combined))
-    chosen = rng.choices(transpose, k=cols)
+        # build each table type then conncatenate along columns
+        subtables = [atable(rows, cols) for atable in args.values()]
+        combined = [sum(row_tuple, start=[]) for row_tuple in zip(*subtables)]
 
-    # transpose back to cols by rows and return
-    return list(zip(*chosen))
+        # randomly choose cols from combined
+        transpose = list(zip(*combined))
+        chosen = rng.choices(transpose, k=cols)
 
+        # transpose back to cols by rows and return
+        return list(zip(*chosen))
 
-# TODO test what happens for invalid tables, specifically
-# 1. tables with invalid types (expect string returns) e.g. stringed tuples
-# 2. ragged tables with rows of different numbers of columns
+    return make_table
 
 
 @pytest.fixture
@@ -243,7 +227,12 @@ def header(rng, valid_chars):
     def make_header(cols):
         """Returns a list of valid header names."""
 
-        return [''.join(rng.choices(valid_chars, k=15)) for _ in range(cols)]
+        delimiter = rng.choice(delimiters())
+        names = [''.join(rng.choices(valid_chars, k=15)) for _ in range(cols)]
+        string = delimiter.join(names)
+        line = rng.randint(0, 100)
+
+        return Header(line, names, string)
 
     return make_header
 
@@ -255,73 +244,43 @@ def repeating_header(rng, valid_chars):
     def make_header(cols):
         """Returns a list of valid header names with repeats of length cols."""
 
-        names = [''.join(rng.choices(valid_chars, k=15)) for _ in range(cols)]
-        indices = rng.choices(range(len(names)), k=min(len(names) // 2, 1))
-        for idx in indices:
-            names[idx] = names[0]
+        delimiter = rng.choice(delimiters())
+        # set cols//2 to be unique names and choose cols from this set
+        cnt = max(cols//2, 1)
+        unames = [''.join(rng.choices(valid_chars, k=15)) for _ in range(cnt)]
+        names = rng.choices(unames, k=cols)
+        string = delimiter.join(names)
+        line = rng.randint(0, 100)
 
-        return names
-
-    return make_header
-
-
-@pytest.fixture
-def numeric_header(rng):
-    """Returns a function for building an invalid numeric header."""
-
-    def make_header(cols):
-        """Returns a list of stringed numeric names."""
-
-        return [str(rng.randint(0, 100)) for _ in range(cols)]
+        return Header(line, names, string)
 
     return make_header
 
 
 @pytest.fixture
-def date_header(rng):
-    """Returns invalid headers composed of stringed date names."""
+def metadata(rng, valid_chars):
+    """Returns a function for building metadatas that use delimiters.
 
-    def make_header(cols):
-        """Returns a list of stringed date names."""
+    Metadata may not include delimiters but to ensure headers are detected
+    correctly we test metadata that can look like a header (i.e. it has
+    delimiters).
+    """
 
-        start = datetime.datetime(2023, 9, 13)
-        days = [rng.randint(0, 500) for _ in range(cols)]
-        deltas = [datetime.timedelta(days=d) for d in days]
+    def make_metadata():
+        """Constructs a metadata string with delimiters."""
 
-        return [str((start + delta).date()) for delta in deltas]
+        delimiter = rng.choice(delimiters())
+        num_lines = rng.randint(1, 30)
+        cell_counts = [rng.randint(1, 8) for _ in range(num_lines)]
 
-    return make_header
+        lines = []
+        for cell_count in cell_counts:
+            line = [''.join(rng.choices(valid_chars, k=16)) for _ in range(cell_count)]
+            lines.append(delimiter.join(line))
 
+        return '\n'.join(lines)
 
-@pytest.fixture
-def time_header(rng):
-    """Returns invalid headers composed of stringed time names."""
-
-    def make_header(cols):
-        """Returns a list of stringed time names."""
-
-        start = datetime.datetime(1, 1, 1, 10, 32, 15, 63200)
-        secs = [rng.randint(0, 10000) for _ in range(cols)]
-        deltas = [datetime.timedelta(seconds=sec) for sec in secs]
-
-        return [str((start + delta).time()) for delta in deltas]
-
-    return make_header
-
-
-@pytest.fixture
-def metadata(rng, valid_chars, delimiters):
-    """Return valid metadata strings for each rng and delimiter."""
-
-    num_lines = rng.randint(1, 30)
-    cell_counts = [rng.randint(1, 8) for _ in range(num_lines)]
-
-    lines = []
-    for cell_count in cell_counts:
-        line = [''.join(rng.choices(valid_chars, k=16)) for _ in range(cell_count)]
-        lines.append(delimiters.join(line))
-
-    return '\n'.join(lines)
+    return make_metadata
 
 
 @pytest.fixture
@@ -335,11 +294,81 @@ def empty_metadata():
 def skipping_metadata(rng, valid_chars):
     """Returns a metadata with a blank line."""
 
+    delimiter = rng.choice(delimiters)
     rows = list(batched(rng.choices(valid_chars, k=100), 5))
-    lines = [';'.join(row) for row in rows]
+    lines = [delimiter.join(row) for row in rows]
     lines[3] = ''
 
     return '\n'.join(lines)
+
+
+# TODO WIP here
+@pytest.fixture
+def textfile(rng, metadata, header, table, shape):
+    """ """
+
+    def make_file():
+        """ """
+
+        delimiter = rng.choice(delimiters)
+        rows, cols = shape
+        meta = metadata(delimiter)
+        heading = header()
+        pass
+
+    pass
+
+
+
+
+# ##############
+# Header Tests #
+# ##############
+
+def test_header_names(header):
+    """Validates header names contain no spaces and has correct length."""
+
+    # make a header of 20 columns with a '\t' delimiter
+    aheader = header(20)
+    has_empty = any(' ' in s for s in aheader.names)
+
+    assert has_empty is False and len(aheader.names) == 20
+
+
+def test_header_uniqueness(repeating_header):
+    """Validates header names are unique when given repeating header names."""
+
+    # make a 30 column header with repeating names
+    aheader = repeating_header(30)
+
+    assert len(set(aheader.names)) == 30
+
+
+def test_header_immutability(header):
+    """Asserts the immmutability of a header instance."""
+
+    aheader = header(4)
+    with pytest.raises(AttributeError) as err:
+        aheader.names = 'a b c d'.split()
+
+
+##################
+# Metadata Tests #
+# ################
+
+def test_metadata_immutability(metadata):
+    """Asserts the immutability of a MetaData instance"""
+
+    meta = metadata()
+    with pytest.raises(AttributeError) as err:
+        meta.string = 'the cat and the fiddle'
+
+
+#################
+# Sniffer Tests #
+#################
+
+
 
 
 
@@ -385,22 +414,24 @@ def test_datetable(date_table):
 
 
 """
-def test_table(table):
+def test_table(composite_table):
 
-    print('shape =', len(table), len(table[0]))
-    for row in table:
+    composite = composite_table(100, 4)
+    print('shape =', len(composite), len(composite[0]))
+    for row in composite:
         print(row)
 
     assert True
 """
 
-"""
+
 def test_header(header):
 
     print(header(5))
 
     assert True
-"""
+
+
 
 """
 def test_repeat_header(repeating_header):
@@ -409,6 +440,7 @@ def test_repeat_header(repeating_header):
 
     assert True
 """
+
 
 """
 def test_numericheader(numeric_header):
@@ -440,9 +472,10 @@ def test_metadata(metadata):
     assert True
 """
 
+"""
 def test_skippingmetadata(skipping_metadata):
 
     print(skipping_metadata)
 
     assert True
-
+"""
