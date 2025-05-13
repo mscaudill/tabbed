@@ -6,7 +6,7 @@ import string
 import datetime
 import pytest
 import random
-from itertools import batched
+from itertools import batched, chain
 
 from tabbed.sniffing import Header, MetaData, Sniffer
 from tabbed.utils import parsing
@@ -39,6 +39,8 @@ def valid_chars():
                  string.digits +
                  string.punctuation +
                  ' ')
+    # remove '\' to avoid escaped char choices
+    chars.remove('\\')
 
     return [char for char in chars if char not in delimiters()]
 
@@ -125,7 +127,11 @@ def enotation_table(rng):
 
 @pytest.fixture
 def time_table(rng):
-    """Returns a function for building random tables of stringed times."""
+    """Returns a function for building random tables of stringed times.
+
+    Note:
+        The format of the dates will be consistent across all table cells.
+    """
 
     def make_table(rows, cols):
         """Returns a rows x cols table of times."""
@@ -139,8 +145,8 @@ def time_table(rng):
                 datetime.time(hour=h, minute=m, second=s, microsecond=mu)
                 for h, m, s, mu in zip(hours, mins, secs, micros)
                 ]
-        fmts = [rng.choice(parsing.time_formats()) for _ in range(cnt)]
-        cells = [time.strftime(fmt) for time, fmt in zip(times, fmts)]
+        fmt = rng.choice(parsing.time_formats())
+        cells = [time.strftime(fmt) for time  in times]
 
         return [list(row) for row in batched(cells, cols)]
 
@@ -149,8 +155,13 @@ def time_table(rng):
 
 @pytest.fixture
 def date_table(rng):
-    """Returns a function for building random tables of stringed dates."""
+    """Returns a function for building random tables of stringed dates.
 
+    Note:
+        The format of the dates will be consistent across all table cells.
+    """
+
+    fmt = rng.choice(parsing.date_formats())
     def make_table(rows, cols):
         """Returns a rows x cols table of dates."""
 
@@ -159,8 +170,7 @@ def date_table(rng):
         months = [rng.randint(1, 12) for _ in range(cnt)]
         days = [rng.randint(1, 28) for _ in range(cnt)]
         dates = [datetime.date(y, m, d) for y, m, d in zip(years, months, days)]
-        fmts = [rng.choice(parsing.date_formats()) for _ in range(cnt)]
-        cells = [date.strftime(fmt) for date, fmt in zip(dates, fmts)]
+        cells = [date.strftime(fmt) for date in dates]
 
         return [list(row) for row in batched(cells, cols)]
 
@@ -212,7 +222,7 @@ def composite_table(
 
         # randomly choose cols from combined
         transpose = list(zip(*combined))
-        chosen = rng.choices(transpose, k=cols)
+        chosen = rng.sample(transpose, k=cols)
 
         # transpose back to cols by rows and return
         return list(zip(*chosen))
@@ -224,10 +234,9 @@ def composite_table(
 def header(rng, valid_chars):
     """Returns a function for building a random valid header."""
 
-    def make_header(cols):
+    def make_header(cols, delimiter=','):
         """Returns a list of valid header names."""
 
-        delimiter = rng.choice(delimiters())
         names = [''.join(rng.choices(valid_chars, k=15)) for _ in range(cols)]
         string = delimiter.join(names)
         line = rng.randint(0, 100)
@@ -241,10 +250,9 @@ def header(rng, valid_chars):
 def repeating_header(rng, valid_chars):
     """Returns a function for building headers with repeating names."""
 
-    def make_header(cols):
+    def make_header(cols, delimiter=','):
         """Returns a list of valid header names with repeats of length cols."""
 
-        delimiter = rng.choice(delimiters())
         # set cols//2 to be unique names and choose cols from this set
         cnt = max(cols//2, 1)
         unames = [''.join(rng.choices(valid_chars, k=15)) for _ in range(cnt)]
@@ -258,7 +266,7 @@ def repeating_header(rng, valid_chars):
 
 
 @pytest.fixture
-def metadata(rng, valid_chars):
+def delimited_metadata(rng, valid_chars):
     """Returns a function for building metadatas that use delimiters.
 
     Metadata may not include delimiters but to ensure headers are detected
@@ -266,10 +274,9 @@ def metadata(rng, valid_chars):
     delimiters).
     """
 
-    def make_metadata():
+    def make_metadata(delimiter=','):
         """Constructs a metadata string with delimiters."""
 
-        delimiter = rng.choice(delimiters())
         num_lines = rng.randint(1, 30)
         cell_counts = [rng.randint(1, 8) for _ in range(num_lines)]
 
@@ -304,19 +311,29 @@ def skipping_metadata(rng, valid_chars):
 
 # TODO WIP here
 @pytest.fixture
-def textfile(rng, metadata, header, table, shape):
+def composite_file(rng, delimited_metadata, header, composite_table):
     """ """
 
-    def make_file():
+    def make_file(shape):
         """ """
 
-        delimiter = rng.choice(delimiters)
+        delimiter = rng.choice(delimiters())
         rows, cols = shape
-        meta = metadata(delimiter)
-        heading = header()
-        pass
+        metastr = delimited_metadata(delimiter=delimiter)
+        headstr = header(cols, delimiter=delimiter).string
+        lines = [delimiter.join(row) for row in composite_table(rows, cols)]
+        lines.insert(0, headstr)
+        lines.insert(0, metastr)
+        text = '\n'.join(lines)
 
-    pass
+        outfile = tempfile.TemporaryFile(mode='w+')
+        yield outfile
+
+        print('Removing temp file')
+        outfile.close()
+
+    return make_file
+
 
 
 
@@ -356,10 +373,10 @@ def test_header_immutability(header):
 # Metadata Tests #
 # ################
 
-def test_metadata_immutability(metadata):
+def test_metadata_immutability(delimited_metadata):
     """Asserts the immutability of a MetaData instance"""
 
-    meta = metadata()
+    meta = delimited_metadata()
     with pytest.raises(AttributeError) as err:
         meta.string = 'the cat and the fiddle'
 
@@ -407,16 +424,15 @@ def test_inttabel(integer_table):
 """
 def test_datetable(date_table):
 
-    print(date_table(3,6))
+    print(date_table(5,6))
 
     assert True
 """
 
-
 """
 def test_table(composite_table):
 
-    composite = composite_table(100, 4)
+    composite = composite_table(20, 5)
     print('shape =', len(composite), len(composite[0]))
     for row in composite:
         print(row)
@@ -425,12 +441,14 @@ def test_table(composite_table):
 """
 
 
+
+"""
 def test_header(header):
 
     print(header(5))
 
     assert True
-
+"""
 
 
 """
@@ -479,3 +497,10 @@ def test_skippingmetadata(skipping_metadata):
 
     assert True
 """
+
+def test_textfile(composite_file):
+    
+    outfile = composite_file((20, 5))
+    with open(outfile, 'rb') as fp:
+        for row in fp:
+            print(row)
