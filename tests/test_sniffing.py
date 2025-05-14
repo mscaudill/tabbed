@@ -46,6 +46,17 @@ def valid_chars():
 
 
 @pytest.fixture
+def shape(rng):
+    """Returns a rows, columns shape tuple for building tables."""
+
+    # set min/max rows and columns
+    rows = rng.randint(10, 100)
+    cols = rng.randint(1, 10)
+
+    return rows, cols
+
+
+@pytest.fixture
 def string_table(rng, valid_chars):
     """Returns a function for building random tables of valid string chars."""
 
@@ -207,8 +218,7 @@ def composite_table(
         date_table,
         datetime_table,
 ):
-    """Returns a randomly shaped table a composite of single type tables
-    supported by Tabbed."""
+    """Returns a table of mixed stringed types supported by Tabbed."""
 
     args = locals()
     rng = args.pop('rng')
@@ -266,7 +276,23 @@ def repeating_header(rng, valid_chars):
 
 
 @pytest.fixture
-def delimited_metadata(rng, valid_chars):
+def meta(rng, valid_chars):
+    """Returns a function for building metadata with no delimiters."""
+
+    def make_metadata():
+        """Constructs a metadata string without delimiters."""
+
+        num_lines = rng.randint(1, 30)
+        widths = rng.choices(range(100), k=num_lines)
+        lines = [''.join(rng.choices(valid_chars, k=w)) for w in widths]
+
+        return '\n'.join(lines)
+
+    return make_metadata
+
+
+@pytest.fixture
+def delimited_meta(rng, valid_chars):
     """Returns a function for building metadatas that use delimiters.
 
     Metadata may not include delimiters but to ensure headers are detected
@@ -291,7 +317,7 @@ def delimited_metadata(rng, valid_chars):
 
 
 @pytest.fixture
-def empty_metadata():
+def empty_meta():
     """Returns a metadata with only new line characters."""
 
     return '\n'.join([''] * 10)
@@ -309,33 +335,100 @@ def skipping_metadata(rng, valid_chars):
     return '\n'.join(lines)
 
 
-# TODO WIP here
+#########################################
+# Temporary Delimited Files For Testing #
+# #######################################
+
 @pytest.fixture
-def composite_file(rng, delimited_metadata, header, composite_table):
-    """ """
+def standard_file(rng, shape, delimited_meta, header, composite_table):
+    """A file with delimited metadata, header and mixed type data table."""
 
-    def make_file(shape):
-        """ """
+    delimiter = rng.choice(delimiters())
+    rows, cols = shape
 
-        delimiter = rng.choice(delimiters())
-        rows, cols = shape
-        metastr = delimited_metadata(delimiter=delimiter)
-        headstr = header(cols, delimiter=delimiter).string
-        lines = [delimiter.join(row) for row in composite_table(rows, cols)]
-        lines.insert(0, headstr)
-        lines.insert(0, metastr)
-        text = '\n'.join(lines)
+    # construct metadata, header and table
+    metadata = delimited_meta(delimiter=delimiter)
+    head = header(cols, delimiter=delimiter)
+    heading = head.string
+    tabled = [delimiter.join(row) for row in composite_table(rows, cols)]
+    lines = [metadata, heading] + tabled
+    text = '\n'.join(lines)
 
-        outfile = tempfile.TemporaryFile(mode='w+')
-        yield outfile
+    # complete setup by writing to a temp file
+    outfile = tempfile.TemporaryFile(mode='w+')
+    outfile.write(text)
+    outfile.seek(0)
+    yield outfile, delimiter, head
 
-        print('Removing temp file')
-        outfile.close()
-
-    return make_file
+    # on Teardown, close and remove temp file
+    outfile.close()
 
 
+@pytest.fixture
+def empty_metadata_file(rng, shape, header, composite_table):
+    """A file with no metadata, a header and a mixed type data table."""
 
+    delimiter = rng.choice(delimiters())
+    rows, cols = shape
+
+    # construct header and table
+    head = header(cols, delimiter=delimiter)
+    heading = head.string
+    tabled = [delimiter.join(row) for row in composite_table(rows, cols)]
+    lines = [heading] + tabled
+    text = '\n'.join(lines)
+
+    # complete setup by writing to a temp file
+    outfile = tempfile.TemporaryFile(mode='w+')
+    outfile.write(text)
+    outfile.seek(0)
+    yield outfile, delimiter, head.line
+
+    # on Teardown, close and remove temp file
+    outfile.close()
+
+
+@pytest.fixture
+def empty_header_file(rng, shape, meta, header, composite_table):
+    """A file with a non-delimited metadata, no header & mixed table type."""
+
+    delimiter = rng.choice(delimiters())
+    rows, cols = shape
+
+    # construct metadata and table
+    tabled = [delimiter.join(row) for row in composite_table(rows, cols)]
+    lines = [meta()] + tabled
+    text = '\n'.join(lines)
+
+    # complete setup by writing to a temp file
+    outfile = tempfile.TemporaryFile(mode='w+')
+    outfile.write(text)
+    outfile.seek(0)
+    yield outfile, delimiter, None
+
+    # on Teardown, close and remove temp file
+    outfile.close()
+
+
+@pytest.fixture
+def empty_meta_empty_header_file(rng, shape, composite_table):
+    """A file with no metadata and no header and a a mixed type data table."""
+
+    delimiter = rng.choice(delimiters())
+    rows, cols = shape
+
+    # construct metadata and table
+    lines = [delimiter.join(row) for row in composite_table(rows, cols)]
+    text = '\n'.join(lines)
+
+    # complete setup by writing to a temp file
+    outfile = tempfile.TemporaryFile(mode='w+')
+    outfile.write(text)
+    outfile.seek(0)
+    yield outfile, delimiter, None
+
+    # on Teardown, close and remove temp file
+    outfile.close()
 
 
 # ##############
@@ -373,10 +466,10 @@ def test_header_immutability(header):
 # Metadata Tests #
 # ################
 
-def test_metadata_immutability(delimited_metadata):
+def test_metadata_immutability(delimited_meta):
     """Asserts the immutability of a MetaData instance"""
 
-    meta = delimited_metadata()
+    meta = delimited_meta()
     with pytest.raises(AttributeError) as err:
         meta.string = 'the cat and the fiddle'
 
@@ -385,11 +478,100 @@ def test_metadata_immutability(delimited_metadata):
 # Sniffer Tests #
 #################
 
+def test_line_count(standard_file):
+    """Validate the Sniffer's line count."""
+
+    infile, delim, _ = standard_file
+    sniffer = Sniffer(infile)
+    measured = sniffer.line_count
+    expected = len(infile.readlines())
+
+    assert measured == expected
 
 
+def test_dialect(standard_file):
+    """Validate the Sniffers detected dialect for a file with header and
+    metadata.
+
+    Notes:
+        Our metadata fixture is at most 30 lines and the default sniffing sample
+        amount is 100 lines. This will ensure data rows are seen in sniffing.
+    """
+
+    infile, delim, _ = standard_file
+    sniffer = Sniffer(infile)
+    measured = sniffer.dialect.delimiter
+
+    assert measured == delim
 
 
+def test_dialect_no_metadata(empty_metadata_file):
+    """Validate the Sniffers detected dialect for a file without metadata."""
 
+    infile, delim, _ = empty_metadata_file
+    sniffer = Sniffer(infile)
+    measured = sniffer.dialect.delimiter
+
+    assert measured == delim
+
+
+def test_dialect_no_header(empty_header_file):
+    """Validate the Sniffers detected dialect for a file without a header"""
+
+    infile, delim, _ = empty_header_file
+    sniffer = Sniffer(infile)
+    measured = sniffer.dialect.delimiter
+
+    assert measured == delim
+
+
+def test_start_change(standard_file):
+    """Validate sniffing sample changes when sniff start changes."""
+
+    infile, delim, _ = standard_file
+    sniffer = Sniffer(infile)
+    sample_rows = sniffer.rows()
+    sniffer.start = 4
+
+    assert sample_rows[4] == sniffer.rows()[0]
+
+
+def test_amount_change(standard_file):
+    """Validate sniffing sample change when sniffing amount changes."""
+
+
+    infile, delim, _ = standard_file
+    sniffer = Sniffer(infile)
+    sample_rows = sniffer.rows()
+    sniffer.amount = min(sniffer.line_count, 20)
+
+    assert sniffer.rows() == sample_rows[:20]
+
+
+def test_skip_change(standard_file):
+    """Validate sniffing sample changes when skip parameter changes."""
+
+    infile, delim, _ = standard_file
+    sniffer = Sniffer(infile)
+    sample_rows = sniffer.rows()
+    sniffer.skips = [1, 2, 5]
+    expected = [row for idx, row in enumerate(sample_rows) if idx not in
+            sniffer.skips]
+
+    assert sniffer.rows() == expected
+
+
+# TODO start here 5/15
+def test_header_standard(standard_file):
+    """Validates the line number of the sniffed header."""
+
+    infile, delim, head = standard_file
+    sniffer = Sniffer(infile)
+    aheader = sniffer.header()
+    for idx, row in enumerate(sniffer.rows()):
+        print(idx, row)
+
+    assert aheader.line == head.line
 
 
 
@@ -397,110 +579,14 @@ def test_metadata_immutability(delimited_metadata):
 
 
 """
-def test_validchars(valid_chars):
+def test_textfile(empty_metadata_file):
 
-    print(valid_chars)
-
-    assert True
+    print(empty_metadata_file.read())
 """
 
 
 """
-def test_stringtable(string_table):
+def test_textfile(empty_header_file):
 
-    print(string_table(4, 5))
-
-    assert True
+    print(empty_header_file.read())
 """
-
-"""
-def test_inttabel(integer_table):
-
-    print(integer_table(4, 5))
-
-    assert True
-"""
-
-"""
-def test_datetable(date_table):
-
-    print(date_table(5,6))
-
-    assert True
-"""
-
-"""
-def test_table(composite_table):
-
-    composite = composite_table(20, 5)
-    print('shape =', len(composite), len(composite[0]))
-    for row in composite:
-        print(row)
-
-    assert True
-"""
-
-
-
-"""
-def test_header(header):
-
-    print(header(5))
-
-    assert True
-"""
-
-
-"""
-def test_repeat_header(repeating_header):
-
-    print(repeating_header(4))
-
-    assert True
-"""
-
-
-"""
-def test_numericheader(numeric_header):
-
-    print(numeric_header)
-    assert True
-"""
-
-"""
-def test_dateheader(date_header):
-
-    print(date_header(6))
-    assert True
-"""
-
-"""
-def test_timeheader(time_header):
-
-    print(time_header(10))
-
-    assert True
-"""
-
-"""
-def test_metadata(metadata):
-
-    print(metadata)
-
-    assert True
-"""
-
-"""
-def test_skippingmetadata(skipping_metadata):
-
-    print(skipping_metadata)
-
-    assert True
-"""
-
-def test_textfile(composite_file):
-    
-    outfile = composite_file((20, 5))
-    with open(outfile, 'rb') as fp:
-        for row in fp:
-            print(row)
