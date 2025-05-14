@@ -168,12 +168,14 @@ class Sniffer(ReprMixin):
         >>> outfile.close()
     """
 
+
     def __init__(
         self,
         infile: IO[str],
         start: int = 0,
         amount: int = 100,
         skips: Optional[List[int]] = None,
+        delimiters: List[str] = [',', ';', '|', r'\t'],
     ) -> None:
         """Initialize this sniffer.
 
@@ -188,6 +190,10 @@ class Sniffer(ReprMixin):
                 to the smaller of the infiles length or 100 lines.
             skips:
                 Line numbers to ignore during sample collection.
+            delimiters:
+                A list of possibly valid delimiter strings to improve dialect
+                detection. If None, any character will be considered a valid
+                delimiter.
 
         Notes:
             Sniffer deviates from Python's Sniffer in that infile is strictly an
@@ -201,7 +207,7 @@ class Sniffer(ReprMixin):
         self._skips = skips if skips else []
         self._sample = self._resample()
         # perform initial sniff from initialized sample
-        self.dialect = self.sniff()
+        self.dialect = self.sniff(delimiters)
 
     @property
     def line_count(self) -> int:
@@ -337,8 +343,10 @@ class Sniffer(ReprMixin):
         result.escapechar = None if escapechar == '' else escapechar
         result.quotechar = '"' if not result.quotechar else result.quotechar
 
+        self.dialect = result
         return result
 
+    # TODO should this be a protected method?
     def rows(self, delimiter: Optional[str] = None) -> List[List[str]]:
         """Transforms a sample string into rows containing string cells.
 
@@ -449,7 +457,7 @@ class Sniffer(ReprMixin):
         line_nums: List[int],
     ) -> int | None:
         """Finds the largest indexed row whose length does not match the length
-        of the last row.
+        of the last sampled row.
 
         Metadata rows are not required to be the same length as data rows. The
         first row above a data section in the absence of a header whose length
