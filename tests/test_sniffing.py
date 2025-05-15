@@ -244,12 +244,11 @@ def composite_table(
 def header(rng, valid_chars):
     """Returns a function for building a random valid header."""
 
-    def make_header(cols, delimiter=','):
+    def make_header(cols, delimiter=',', line=None):
         """Returns a list of valid header names."""
 
         names = [''.join(rng.choices(valid_chars, k=15)) for _ in range(cols)]
         string = delimiter.join(names)
-        line = rng.randint(0, 100)
 
         return Header(line, names, string)
 
@@ -260,7 +259,7 @@ def header(rng, valid_chars):
 def repeating_header(rng, valid_chars):
     """Returns a function for building headers with repeating names."""
 
-    def make_header(cols, delimiter=','):
+    def make_header(cols, delimiter=',', line=None):
         """Returns a list of valid header names with repeats of length cols."""
 
         # set cols//2 to be unique names and choose cols from this set
@@ -268,7 +267,6 @@ def repeating_header(rng, valid_chars):
         unames = [''.join(rng.choices(valid_chars, k=15)) for _ in range(cnt)]
         names = rng.choices(unames, k=cols)
         string = delimiter.join(names)
-        line = rng.randint(0, 100)
 
         return Header(line, names, string)
 
@@ -285,8 +283,10 @@ def meta(rng, valid_chars):
         num_lines = rng.randint(1, 30)
         widths = rng.choices(range(100), k=num_lines)
         lines = [''.join(rng.choices(valid_chars, k=w)) for w in widths]
+        metastring = '\n'.join(lines)
 
-        return '\n'.join(lines)
+        return MetaData((0, num_lines), metastring)
+
 
     return make_metadata
 
@@ -311,18 +311,14 @@ def delimited_meta(rng, valid_chars):
             line = [''.join(rng.choices(valid_chars, k=16)) for _ in range(cell_count)]
             lines.append(delimiter.join(line))
 
-        return '\n'.join(lines)
+        metastring = '\n'.join(lines)
+
+        return MetaData((0, num_lines), metastring)
 
     return make_metadata
 
 
-@pytest.fixture
-def empty_meta():
-    """Returns a metadata with only new line characters."""
-
-    return '\n'.join([''] * 10)
-
-
+# TODO make a function returner and use it
 @pytest.fixture
 def skipping_metadata(rng, valid_chars):
     """Returns a metadata with a blank line."""
@@ -332,7 +328,7 @@ def skipping_metadata(rng, valid_chars):
     lines = [delimiter.join(row) for row in rows]
     lines[3] = ''
 
-    return '\n'.join(lines)
+    return '\n'.join(lines), num_lines
 
 
 #########################################
@@ -348,10 +344,9 @@ def standard_file(rng, shape, delimited_meta, header, composite_table):
 
     # construct metadata, header and table
     metadata = delimited_meta(delimiter=delimiter)
-    head = header(cols, delimiter=delimiter)
-    heading = head.string
+    head = header(cols, delimiter=delimiter, line=metadata.lines[-1])
     tabled = [delimiter.join(row) for row in composite_table(rows, cols)]
-    lines = [metadata, heading] + tabled
+    lines = [metadata.string, head.string] + tabled
     text = '\n'.join(lines)
 
     # complete setup by writing to a temp file
@@ -372,17 +367,16 @@ def empty_metadata_file(rng, shape, header, composite_table):
     rows, cols = shape
 
     # construct header and table
-    head = header(cols, delimiter=delimiter)
-    heading = head.string
+    head = header(cols, delimiter=delimiter, line=0)
     tabled = [delimiter.join(row) for row in composite_table(rows, cols)]
-    lines = [heading] + tabled
+    lines = [head.string] + tabled
     text = '\n'.join(lines)
 
     # complete setup by writing to a temp file
     outfile = tempfile.TemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
-    yield outfile, delimiter, head.line
+    yield outfile, delimiter, head
 
     # on Teardown, close and remove temp file
     outfile.close()
