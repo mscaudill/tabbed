@@ -205,9 +205,9 @@ class Sniffer(ReprMixin):
         self._start = min(start, self.line_count - 1)
         self._amount = min(self.line_count - self._start, amount)
         self._skips = skips if skips else []
-        self._sample = self._resample()
-        # perform initial sniff from initialized sample
-        self.dialect = self.sniff(delimiters)
+        # get sample for infile and sniff
+        self._resample()
+        self._dialect = self.sniff(delimiters)
 
     @property
     def line_count(self) -> int:
@@ -221,13 +221,13 @@ class Sniffer(ReprMixin):
 
     @property
     def start(self) -> int:
-        """Returns the start line of this Sniffer's sample string."""
+        """Returns the start line of this Sniffer's sample."""
 
         return self._start
 
     @start.setter
     def start(self, value: int) -> None:
-        """Sets a start line and updates this Sniffer's sample string.
+        """Sets a start line and updates this Sniffer's sample
 
         Args:
             value:
@@ -239,17 +239,17 @@ class Sniffer(ReprMixin):
 
     @property
     def amount(self) -> int:
-        """Returns the number of joined lines in Sniffer's sample string."""
+        """Returns the number of joined lines in Sniffer's sample."""
 
         return self._amount
 
     @amount.setter
     def amount(self, value: int) -> None:
-        """Sets the number of lines & updates this Sniffer's sample string.
+        """Sets the number of lines & updates this Sniffer's sample.
 
         Args:
             value:
-                The new number of lines to join to build the sample string.
+                The new number of lines to join to build the sample.
         """
 
         self._amount = min(self.line_count, value)
@@ -257,22 +257,82 @@ class Sniffer(ReprMixin):
 
     @property
     def skips(self) -> List[int]:
-        """Returns the skipped lines excluded from this Sniffer's sample string."""
+        """Returns the skipped lines excluded from this Sniffer's sample."""
 
         return self._skips
 
     @skips.setter
     def skips(self, other: List[int]) -> None:
-        """Sets the lines to exclude from this Sniffer's sample string."""
+        """Sets the lines to exclude from this Sniffer's sample."""
 
         self._skips = other
         self._sample = self._resample()
 
     @property
-    def sample(self) -> Tuple[str, List[int]]:
-        """Returns a sample string and respective line numbers from infile."""
+    def sample(self) -> str:
+        """Returns a sample string from infile."""
 
         return self._sample
+
+    @property
+    def lines(self) -> List[int]:
+        """Returns the indices of the lines of infile comprising the sample."""
+
+        return self._lines
+
+    @property
+    def dialect(self) -> SimpleDialect | None:
+        """Returns the current dialect detected by this Sniffer."""
+
+        return self._dialect
+
+    @dialect.setter
+    def dialect(self, value: SimpleDialect) -> None:
+        """Sets the dialect of this Sniffer.
+
+        Args:
+            dialect:
+                A clevercsv SimpleDialect instance containing a delimiter,
+                escape character and quote character.
+
+        Returns:
+            None
+        """
+
+        # python 3.11 deprecated '' for escape & quotechars
+        escapechar = None if value.escapechar == '' else value.escapechar
+        quotechar = '"' if not value.quotechar else value.quotechar
+        value.escapechar = escapechar
+        value.quotechar = quotechar
+
+        self._dialect = value
+
+    @property
+    def rows(self) -> List[List[str]]:
+        """Returns the sample as a list of list of sample strings.
+
+        This method splits the sample string on new line chars, strips white
+        spaces and replaces all double-quotes with single quotes.
+
+        Returns:
+            A list of list of strings from the sample string
+        """
+
+        if self.dialect is None:
+            msg = "Dialect is unknown, please call sniff method or set dialect."
+            raise TypeError(msg)
+
+        result = []
+        # split sample_str on terminators, strip & split each line on delimiter
+        for line in self.sample.splitlines():
+            # lines may end in delimiter leading to empty trailing cells
+            stripped = line.rstrip(self.dialect.delimiter)
+            row = stripped.split(self.dialect.delimiter)
+            # remove any double quotes
+            row = [astring.replace('"', '') for astring in row]
+            result.append(row)
+
+        return result
 
     def _resample(self) -> Tuple[str, List[int]]:
         """Sample from the infile using the start, amount and skip properties.
@@ -295,7 +355,8 @@ class Sniffer(ReprMixin):
         # move line pointer back to start of the file
         self._move(0)
         sampled = ''.join(result.lines)
-        return sampled, result.line_nums
+        self._sample = sampled
+        self._lines = result.line_nums
 
     def _move(self, line: int) -> None:
         """Moves the line pointer in this file to line number.
@@ -332,130 +393,95 @@ class Sniffer(ReprMixin):
             1799–1820 (2019). https://doi.org/10.1007/s10618-019-00646-y
         """
 
-        sample_str = self.sample[0]
-        result = clevercsv.Sniffer().sniff(sample_str, delimiters=delimiters)
+        # result is None if clevercsv's sniff is indeterminant
+        result = clevercsv.Sniffer().sniff(self.sample, delimiters=delimiters)
         if not result:
             msg = "Dialect could not be determined from Sniffer's sample"
             warnings.warn(msg)
 
-        # python 3.11 deprecated '' escape & quotechars that clevercsv defaults
-        escapechar = result.escapechar
-        result.escapechar = None if escapechar == '' else escapechar
-        result.quotechar = '"' if not result.quotechar else result.quotechar
+        self._dialect = result
 
-        self.dialect = result
-        return result
-
-    # TODO should this be a protected method?
-    def rows(self, delimiter: Optional[str] = None) -> List[List[str]]:
-        """Transforms a sample string into rows containing string cells.
-
-        This protected method converts the sample string into a list of rows of
-        individual string items. As a protected method it is not intended for
-        external call and may change in the future.
+    def types(self, poll: int) -> List[str]:
+        """Infer the column types from the last poll count rows.
 
         Args:
-            delimiter:
-                An optional delimiter to split each line in sample string. If
-                None, the delimiter of the detected dialect will be used.
+            poll:
+                The number of last sample rows to poll for type.
 
         Returns:
-            A list of list representing each line in sample.
-
+            A list of type names and a boolean indicating if types are
+            consistent across rows.
         """
 
-        sample_str, _ = self.sample
+        rows = self.rows[-count:]
+        cols = list(zip(*rows))
+        type_cnts = [Counter([type(convert(el)) for el in col]) for col in cols]
+        consistent = all(len(cnt) == 1 for cnt in type_cnts)
+        common_types = [cnt.most_common(1)[0][0] for cnt in type_cnts]
 
-        if delimiter is None and self.dialect is None:
-            msg = "A delimiter str type must be given if dialect is None."
-            raise TypeError(msg)
-        # mypy fails to detect that one of these two is not None now
-        sep = delimiter if delimiter else self.dialect.delimiter  # type: ignore
+        return common_types, consistent
 
-        rows = []
-        # split sample_str on terminators, strip & split each line on delimiter
-        for line in sample_str.splitlines():
-            # lines may end in delimiter leading to empty trailing cells
-            stripped = line.rstrip(sep)
-            row = stripped.split(sep)
-            # remove any double quotes
-            row = [astring.replace('"', '') for astring in row]
-            rows.append(row)
+    def _type_diff(self, poll: int, exclude: List[str]) -> int | None:
+        """Locates first row from last whose types don't match last sample row.
 
-        return rows
-
-    def _nonnumeric(
-        self,
-        rows: List[List[str]],
-        line_nums: List[int],
-    ) -> int | None:
-        """Locates the largest indexed row containing no numeric strings, no
-        empty strings and whose length matches the last row.
-
-        A row containing only strings sitting above rows with numerical types
-        is likely a header row. This function finds that row assuming the row is
-        full (no empty strings) and is complete (length matches last row).
+        This heuristic locates the header row by looking for type changes as the
+        sample is read from the last row backwards. It assumes consistent
+        column types in the sample.
 
         Args:
-            rows:
-                A list of list of representing each file in sample.
-            line_nums:
-                The line numbers of each list in sample accounting for skip rows.
+            poll:
+                The number of last sample rows to poll for common types.
+            exclude:
+                A sequence of characters that indicate missing values. Rows
+                containing these strings will be ignored.
 
         Returns:
             An integer line number or None.
         """
 
-        # search rows from bottom to top to get largest indexed row
-        for num, row in reversed(list(zip(line_nums, rows))):
-            numeric = any(is_numeric(astring) for astring in row)
-            full = all(bool(el) for el in row)
+        types, consistent = types(self.rows[-poll:])
+        for idx, row in reversed(list(zip(self.lines, self.rows))):
+
+            # ignore rows that have missing values
+            if bool(set(exclude).intersection(row)):
+                continue
+
+            row_types = [type(convert(el)) for el in row]
+            # check types and completeness
+            match = row_types == types
             complete = len(row) == len(rows[-1])
-            if not numeric and full and complete:
-                return num
+            if not match and complete
+                return idx
 
         return None
 
-    def _disjointed(
-        self,
-        rows: List[List[str]],
-        line_nums: List[int],
-    ) -> int | None:
-        """Locates the largest indexed row that shares nothing in common with
-        all the rows below it.
-
-        Metadata and Header rows likely share no string values in common with
-        data rows. This function finds a largest indexed row that is disjoint
-        with all the rows below it.
+    def _string_diff(self, poll: int) -> int | None:
+        """Locates first row from last whose strings have no overlap with
+        strings in the last poll rows.
 
         Args:
-            rows:
-                A list of list of representing each file in sample.
-            line_nums:
-                The line numbers of each list in sample accounting for skip rows.
+            poll:
+                The number of last sample rows to poll for string values.
 
         Returns:
-            An integer line number or None.
-
+            An integer line number or None
         """
 
-        reversal = reversed(list(zip(line_nums, rows)))
+        reversal = reversed(list(zip(self.line_nums, self.rows)))
         # advance iterator to line above last row
         _, last = next(reversal)
         seen = [last]
-        for num, row in reversal:
-            if all(set(row).isdisjoint(others) for others in seen):
-                return num
+        for idx, row in reversal:
+            disjoint = all(set(row).isdisjoint(others) for others in seen)
+            complete = len(row) == len(rows[-1])
+            if disjoint and complete:
+                return idx
 
             seen.append(row)
 
         return None
 
-    def _mislengthed(
-        self,
-        rows: List[List[str]],
-        line_nums: List[int],
-    ) -> int | None:
+    def _length_diff(self, exclude: List[str]) -> int | None:
         """Finds the largest indexed row whose length does not match the length
         of the last sampled row.
 
@@ -463,44 +489,32 @@ class Sniffer(ReprMixin):
         first row above a data section in the absence of a header whose length
         does not match the last row is likely a metadata row.
 
-        Args:
-            rows:
-                A list of list of representing each file in sample.
-            line_nums:
-                The line numbers of each list in sample accounting for skip rows.
-
         Returns:
             An integer line number or None.
         """
 
         # search rows from bottom to top to get largest indexed row
-        for num, row in reversed(list(zip(line_nums, rows))):
+        for num, row in reversed(list(zip(self.lines, self.rows))):
+
+            # ignore rows that have missing value
+            if bool(set(exclude).intersection(row)):
+                continue
+
             if len(row) != len(rows[-1]):
                 return num
 
         return None
 
-    def header(self, delimiter: Optional[str] = None) -> Header:
+    def header(
+        self,
+        poll: int = 10,
+        exclude: List[str] = ['',' ','nan', 'NaN', 'NAN'],
+    ) -> Header:
         """Detects the header row (if any) in this Sniffer's sample.
 
         If no header is detected this method constructs a header. The names in
         this header are of the form; 'Column_1', ... 'Column_n' where n is the
         expected number of columns from the last row if the sample.
-
-        Args:
-            delimiter:
-                An optional delimiter to split each line in sample string. If
-                None, the delimiter of the detected dialect will be used.
-
-
-        Two methods are used to determine if the rows contain a header.
-        1. If the last line of rows (assumed to be a data section row) contains
-           a substring representing a numeric, then the first row from the end
-           of rows with no numeric string, having no empty strings, and a length
-           matching the last row will be taken as the header.
-        2. If the last line of rows contains only non numerics. We look for the
-           first row from the end of the rows with no empty strings and
-           contains no items in common with all the rows below it.
 
         Notes:
             Just like all other file sniffers, this heuristic will make
@@ -511,66 +525,38 @@ class Sniffer(ReprMixin):
             A Header dataclass instance.
         """
 
-        sample, line_nums = self.sample
+        rows = self.rows()
+        types, consistency = self.types(poll)
 
-        if delimiter is None and self.dialect is None:
-            msg = "A delimiter str type must be given if dialect is None."
-            raise TypeError(msg)
-        # mypy fails to detect that one of these two is not None now
-        sep = delimiter if delimiter else self.dialect.delimiter  # type: ignore
+        if all(types == str):
+            header_line = self._string_diff(rows, poll)
 
-        rows = self.rows(sep)
-        if any(is_numeric(astring) for astring in rows[-1]):
-            # locate by non-numeric method
-            num = self._nonnumeric(rows, line_nums)
         else:
-            # locate by disjoint method & assert len to match last row
-            num = self._disjointed(rows, line_nums)
-            idx = line_nums.index(num) if num else None
-            if idx and len(rows[idx]) != len(rows[-1]):
-                num = None
+            header_line = self._type_diff(rows, poll, exclude)
 
-        if num is None:
+        if header_line is None:
             ncols = len(self.rows()[-1])
             names = [f'Column_{i}' for i in range(ncols)]
+
             return Header(line=None, names=names, string=None)
 
-        # locate this idx and get corresponding row
-        row = rows[line_nums.index(num)]
+        row = rows[header_line]
+        string = self.sample.splitlines()[self.lines[header_line]]
 
-        # get the original string & return Header
-        s = sample.splitlines()[line_nums.index(num)]
+        return Header(line=header_line, names=row, string=string)
 
-        return Header(line=num, names=row, string=s)
-
+    # FIXME start here
     def metadata(
         self,
         header: Header | None,
-        delimiter: Optional[str] = None,
+        poll: int = 10,
+        exclude: List[str] = ['',' ','nan', 'NaN', 'NAN'],
     ) -> MetaData:
         """Detects the metadata section (if any) in this Sniffer's sample.
 
         Args:
             header:
                 A Header dataclass instance.
-            delimiter:
-                An optional delimiter to split each line in sample string. If
-                None, the delimiter of the detected dialect will be used.
-
-        Notes:
-            The detection of the metadata section when no header is present
-            follows this heuristic:
-            1. If last sample row strings all represent numerics, locate the row
-               closest to the last row that has non numeric strings or
-               a different length whichever occurs closest to last row.
-            2. If the last row contains at least one string representing
-               a numeric, look for the row closest to the last row that has
-               a different length, is disjointed or non-numeric taking the
-               closest to the last row if these rows differ.
-            3. If the last sample contains no strings representing numerics,
-               take the row closest to the last row that is disjointed with all
-               rows below or has a different from last row. If these differ take
-               the one closest to last row.
 
             This heuristic will make mistakes, A judicious choice for the sample
             and skips may improve detection.
@@ -579,20 +565,34 @@ class Sniffer(ReprMixin):
             A MetaData dataclass instance or None.
         """
 
-        sample, line_nums = self.sample
-
-        if delimiter is None and self.dialect is None:
-            msg = "A delimiter str type must be given if dialect is None."
-            raise TypeError(msg)
-        # mypy fails to detect that one of these two is not None now
-        sep = delimiter if delimiter else self.dialect.delimiter  # type: ignore
-
         # get rows upto header line if given
-        rows = self.rows(sep)
+        rows = self.rows(self.dialect.delimiter)
         if header and header.line:
-            idx = line_nums.index(header.line)
-            s = '\n'.join(sample.splitlines()[0:idx])
+            idx = self.lines.index(header.line)
+            s = '\n'.join(self.sample.splitlines()[0:idx])
             return MetaData((0, header.line), s)
+
+        length_diff = self._length_diff(exclude)
+        type_diff = self._type_diff(poll, exclude)
+
+
+
+        # mixed data types in file
+        if incomplete == type_diff:
+            idx = self.lines.index(incomplete) + 1
+            s = '\n'.join(self.sample.splitlines()[0:idx])
+            return MetaData((0, rows[:idx]), s)
+
+
+
+
+
+
+
+
+
+
+
 
         mislengthed = self._mislengthed(rows, line_nums)
         disjointed = self._disjointed(rows, line_nums)
@@ -624,35 +624,6 @@ class Sniffer(ReprMixin):
         s = sample.splitlines()[idx + 1]
 
         return MetaData((0, line_num), s)
-
-    def types(
-        self,
-        count: int = 5,
-        delimiter: Optional[str] = None,
-    ) -> List[str]:
-        """Infer the column types from the last rows of sniffed sample.
-
-        Args:
-            count:
-                The number of lines at the end of sniffed sample to poll for
-                type. Defaults to the last 5 rows of sample.
-            delimiter:
-                An optional delimiter to override the sniffed dialect delimiter.
-
-        Returns:
-            A list of type names. The length of the list matches the length of
-            the last row in the sample.
-        """
-
-        sep = delimiter if delimiter else self.dialect.delimiter  # type: ignore
-        rows = self.rows(sep)[-count:]
-        counters: List[Counter] = [Counter() for astring in rows[-1]]
-        for row in rows:
-            for counter, astring in zip(counters, row):
-                counter.update([type(convert(astring))])
-
-        common = [counter.most_common(1)[0] for counter in counters]
-        return [typed for typed, cnt in common]
 
 
 if __name__ == '__main__':
