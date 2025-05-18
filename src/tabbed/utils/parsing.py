@@ -12,6 +12,9 @@ from typing import Callable, List, Optional
 
 # define the supported intrinsic types for each list element read by Tabbed
 CellType = int | float | complex | datetime | str
+CellTypes = List[
+    type[int] | type[float] | type[complex] | type[datetime] | type[str]
+]
 
 
 def date_formats() -> List[str]:

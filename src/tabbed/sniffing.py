@@ -3,6 +3,7 @@ of a csv file that may contain metadata, header and data sections."""
 
 from collections import Counter
 from dataclasses import dataclass
+from itertools import chain
 from types import SimpleNamespace
 from typing import IO, List, Optional, Tuple
 import warnings
@@ -10,26 +11,26 @@ import warnings
 import clevercsv
 from clevercsv.dialect import SimpleDialect
 
-from tabbed.utils.parsing import convert
-from tabbed.utils.parsing import is_numeric
 from tabbed.utils.mixins import ReprMixin
+from tabbed.utils.parsing import CellTypes
+from tabbed.utils.parsing import convert
 
 
 @dataclass(frozen=True)
 class Header:
-    """An immutable dataclass representing a text file's header.
+    """An immutable dataclass representation of a text file's header.
 
     Attributes:
         line:
-            The line number of the file this header represents. It may be None
-            indicating the header was not derived from the file.
+            The integer line number of this Header. If None, the header was not
+            derived from a file.
         names:
-            The string names of each of the columns comprising the header. These
-            names may be amended to ensure they contain no spaces and are
-            unique.
+            The string names of each of the columns comprising the header. If
+            these names contain spaces or repeat, this representation
+            automatically amends them.
         string:
-            The original line string from infile that was split to create names.
-            It may be None to indicate the names were not derived from the file.
+            The original string that was split to create header names.  If None,
+            the names were not derived from a file.
     """
 
     line: int | None
@@ -37,7 +38,7 @@ class Header:
     string: str | None
 
     def __post_init__(self) -> None:
-        """Replace any ' ' characters in names with underscores."""
+        """Amend the names during initialization."""
 
         # relabel the names to replace spaces, repeats etc.
         names = self._amend()
@@ -73,13 +74,11 @@ class MetaData:
 
     Attributes:
         lines:
-            A start, stop tuple of the metadata section from a file instance.
-            The start is always 0. May be None to indicate the file does not
-            contain a metadata section.
+            A 2-tuple of start and stop of file lines containing metadata. If
+            None, the file does not contain a metadata section.
         string:
             The string of metadata with no conversion read from file instance.
-            The last element may be None to indicate the file does not contain
-            a metadata section.
+            If None, the file does not contain a metadata section.
     """
 
     lines: Tuple[int, int | None]
@@ -102,16 +101,17 @@ class Sniffer(ReprMixin):
 
     Attributes:
         infile:
-            An open file, and instance of IO.
+            An open file, an IO instance.
         line_count:
             The number of lines in infile.
         start:
             The start line of infile for collecting a sample of 'amount' number
             of lines.
         amount:
-            The number of infile lines to sample for dialect detection and
-            locating header and metadata positions. The initial value defaults
-            to the smaller of line_count or 100 lines.
+            The number of infile lines to sample for dialect, header and
+            metadata detection. The initial value defaults to the smaller of
+            line_count or 100 lines. The amount should be large enough to
+            include some of the data section of the file.
         skips:
             Line numbers to ignore during sample collection.
 
@@ -141,14 +141,14 @@ class Sniffer(ReprMixin):
         17
         >>> len(text)
         17
-        >>> # change the sample amount to 5 lines and skip line 4
+        >>> # change the sample amount to 10 lines and skip line 4
         >>> # you would know to do this by inspecting the sample property
         >>> # and seeing the problematic line 4
-        >>> sniffer.amount = 5
+        >>> sniffer.amount = 10
         >>> sniffer.skips = [4]
-        >>> dialect = sniffer.sniff()
-        >>> print(dialect)
-        SimpleDialect(';', '', '')
+        >>> sniffer.sniff()
+        >>> print(sniffer.dialect)
+        SimpleDialect(';', '"', None)
         >>> # ask the sniffer to return a Header
         >>> header = sniffer.header()
         >>> print(header)
@@ -161,21 +161,26 @@ class Sniffer(ReprMixin):
         ... #doctest: +NORMALIZE_WHITESPACE
         MetaData(lines=(0, 3),
         string='exp;3\nname;Paul Dirac\ndate;11/09/1942')
-        >>> # ask for the column types
-        >>> sniffer.types()
+        >>> # ask for the column types and consistency of types
+        >>> # by polling the last 4 rows
+        >>> types, consistent = sniffer.types(poll=4)
+        >>> print(types)
         [<class 'str'>, <class 'int'>, <class 'str'>]
+        >>> print(consistent)
+        True
         >>> # close the temp outfile resource
         >>> outfile.close()
     """
 
-
+    # help users set sane values for the sniffer
+    # pylint: disable-next=R0917, dangerous-default-value
     def __init__(
         self,
         infile: IO[str],
         start: int = 0,
         amount: int = 100,
         skips: Optional[List[int]] = None,
-        delimiters: List[str] = [',', ';', '|', r'\t'],
+        delimiters: List[str] | None = [',', ';', '|', '\t'],
     ) -> None:
         """Initialize this sniffer.
 
@@ -191,7 +196,7 @@ class Sniffer(ReprMixin):
             skips:
                 Line numbers to ignore during sample collection.
             delimiters:
-                A list of possibly valid delimiter strings to improve dialect
+                A restricted list of delimiter strings for improving dialect
                 detection. If None, any character will be considered a valid
                 delimiter.
 
@@ -207,11 +212,11 @@ class Sniffer(ReprMixin):
         self._skips = skips if skips else []
         # get sample for infile and sniff
         self._resample()
-        self._dialect = self.sniff(delimiters)
+        self.sniff(delimiters)
 
     @property
     def line_count(self) -> int:
-        """Returns the number of lines in this Sniffer's infile."""
+        """Returns the integer number of lines in this Sniffer's infile."""
 
         self._move(0)
         result = sum(1 for line in self.infile)
@@ -227,7 +232,7 @@ class Sniffer(ReprMixin):
 
     @start.setter
     def start(self, value: int) -> None:
-        """Sets a start line and updates this Sniffer's sample
+        """Sets the start line & updates this Sniffer's sample
 
         Args:
             value:
@@ -235,11 +240,11 @@ class Sniffer(ReprMixin):
         """
 
         self._start = min(self.line_count - 1, value)
-        self._sample = self._resample()
+        self._resample()
 
     @property
     def amount(self) -> int:
-        """Returns the number of joined lines in Sniffer's sample."""
+        """Returns the number of lines in Sniffer's sample."""
 
         return self._amount
 
@@ -249,11 +254,11 @@ class Sniffer(ReprMixin):
 
         Args:
             value:
-                The new number of lines to join to build the sample.
+                The new number of joined lines in the sample.
         """
 
         self._amount = min(self.line_count, value)
-        self._sample = self._resample()
+        self._resample()
 
     @property
     def skips(self) -> List[int]:
@@ -266,29 +271,29 @@ class Sniffer(ReprMixin):
         """Sets the lines to exclude from this Sniffer's sample."""
 
         self._skips = other
-        self._sample = self._resample()
+        self._resample()
 
     @property
     def sample(self) -> str:
-        """Returns a sample string from infile."""
+        """Returns this Sniffer's sample string."""
 
         return self._sample
 
     @property
     def lines(self) -> List[int]:
-        """Returns the indices of the lines of infile comprising the sample."""
+        """Returns a list of integer line numbers comprising the sample."""
 
         return self._lines
 
     @property
     def dialect(self) -> SimpleDialect | None:
-        """Returns the current dialect detected by this Sniffer."""
+        """Returns this Sniffer's dialect."""
 
         return self._dialect
 
     @dialect.setter
     def dialect(self, value: SimpleDialect) -> None:
-        """Sets the dialect of this Sniffer.
+        """Sets this Sniffer's dialect.
 
         Args:
             dialect:
@@ -309,7 +314,7 @@ class Sniffer(ReprMixin):
 
     @property
     def rows(self) -> List[List[str]]:
-        """Returns the sample as a list of list of sample strings.
+        """Returns list of sample rows from this Sniffer's sample string.
 
         This method splits the sample string on new line chars, strips white
         spaces and replaces all double-quotes with single quotes.
@@ -334,7 +339,22 @@ class Sniffer(ReprMixin):
 
         return result
 
-    def _resample(self) -> Tuple[str, List[int]]:
+    def _move(self, line: int) -> None:
+        """Moves the line pointer in this file to line number.
+
+        Args:
+            line:
+                A line number to move to within this Sniffer's infile.
+
+        Returns:
+            None but advances the line pointer to line.
+        """
+
+        self.infile.seek(0)
+        for _ in range(line):
+            next(self.infile)
+
+    def _resample(self) -> None:
         """Sample from the infile using the start, amount and skip properties.
 
         Returns:
@@ -355,25 +375,10 @@ class Sniffer(ReprMixin):
         # move line pointer back to start of the file
         self._move(0)
         sampled = ''.join(result.lines)
-        self._sample = sampled
-        self._lines = result.line_nums
+        self._sample: str = sampled
+        self._lines: List[int] = result.line_nums
 
-    def _move(self, line: int) -> None:
-        """Moves the line pointer in this file to line number.
-
-        Args:
-            line:
-                A line number to move to within this Sniffer's infile.
-
-        Returns:
-            None but advances the line pointer to line.
-        """
-
-        self.infile.seek(0)
-        for _ in range(line):
-            next(self.infile)
-
-    def sniff(self, delimiters: Optional[str] = None) -> SimpleDialect | None:
+    def sniff(self, delimiters: Optional[List[str]] = None) -> None:
         """Returns a clevercsv SimpleDialect from this instances sample.
 
         Dialect is detected using clevercsv's sniffer as it has shown improved
@@ -399,9 +404,9 @@ class Sniffer(ReprMixin):
             msg = "Dialect could not be determined from Sniffer's sample"
             warnings.warn(msg)
 
-        self._dialect = result
+        self.dialect = result
 
-    def types(self, poll: int) -> List[str]:
+    def types(self, poll: int) -> Tuple[CellTypes, bool]:
         """Infer the column types from the last poll count rows.
 
         Args:
@@ -410,10 +415,10 @@ class Sniffer(ReprMixin):
 
         Returns:
             A list of type names and a boolean indicating if types are
-            consistent across rows.
+            consistent across polled rows.
         """
 
-        rows = self.rows[-count:]
+        rows = self.rows[-poll:]
         cols = list(zip(*rows))
         type_cnts = [Counter([type(convert(el)) for el in col]) for col in cols]
         consistent = all(len(cnt) == 1 for cnt in type_cnts)
@@ -421,7 +426,11 @@ class Sniffer(ReprMixin):
 
         return common_types, consistent
 
-    def _type_diff(self, poll: int, exclude: List[str]) -> int | None:
+    def _type_diff(
+        self,
+        poll: int,
+        exclude: List[str],
+    ) -> Tuple[int | None, List[str] | None]:
         """Locates first row from last whose types don't match last sample row.
 
         This heuristic locates the header row by looking for type changes as the
@@ -436,10 +445,14 @@ class Sniffer(ReprMixin):
                 containing these strings will be ignored.
 
         Returns:
-            An integer line number or None.
+            An integer line number and header row or a 2-tuple of Nones
         """
 
-        types, consistent = types(self.rows[-poll:])
+        types, consistent = self.types(poll)
+        # if polled types are inconsistent type_diff will fail.
+        if not consistent:
+            return None, None
+
         for idx, row in reversed(list(zip(self.lines, self.rows))):
 
             # ignore rows that have missing values
@@ -448,14 +461,18 @@ class Sniffer(ReprMixin):
 
             row_types = [type(convert(el)) for el in row]
             # check types and completeness
-            match = row_types == types
-            complete = len(row) == len(rows[-1])
-            if not match and complete
-                return idx
+            type_mismatch = row_types != types
+            len_match = len(row) == len(self.rows[-1])
+            if type_mismatch and len_match:
+                return idx, row
 
-        return None
+        return None, None
 
-    def _string_diff(self, poll: int) -> int | None:
+    def _string_diff(
+        self,
+        poll: int,
+        exclude: List[str],
+    ) -> Tuple[int | None, List[str] | None]:
         """Locates first row from last whose strings have no overlap with
         strings in the last poll rows.
 
@@ -463,58 +480,78 @@ class Sniffer(ReprMixin):
             poll:
                 The number of last sample rows to poll for string values.
 
+            exclude:
+                A sequence of characters that indicate missing values. Rows
+                containing these strings will be ignored.
+
         Returns:
-            An integer line number or None
+            An integer line number and header row or a 2-tuple of Nones
         """
 
-        reversal = reversed(list(zip(self.line_nums, self.rows)))
-        # advance iterator to line above last row
-        _, last = next(reversal)
-        seen = [last]
-        for idx, row in reversal:
-            disjoint = all(set(row).isdisjoint(others) for others in seen)
-            complete = len(row) == len(rows[-1])
+        observed = set(chain.from_iterable(self.rows[-poll:]))
+        for idx, row in reversed(list(zip(self.lines, self.rows))):
+
+            items = set(row)
+            # ignore rows with missing values
+            if bool(set(exclude).intersection(items)):
+                continue
+
+            # check disjoint with observed and completeness
+            disjoint = items.isdisjoint(observed)
+            complete = len(row) == len(self.rows[-1])
             if disjoint and complete:
-                return idx
+                return idx, row
 
-            seen.append(row)
+            # add unseen items to observed
+            observed.update(items)
 
-        return None
+        return None, None
 
-    def _length_diff(self, exclude: List[str]) -> int | None:
+    def _length_diff(
+        self,
+        exclude: List[str],
+    ) -> Tuple[int | None, List[str] | None]:
         """Finds the largest indexed row whose length does not match the length
         of the last sampled row.
+
+        Args:
+            exclude:
+                A sequence of characters that indicate missing values. Rows
+                containing these strings will be ignored.
+
 
         Metadata rows are not required to be the same length as data rows. The
         first row above a data section in the absence of a header whose length
         does not match the last row is likely a metadata row.
 
         Returns:
-            An integer line number or None.
+            An integer line number and last metadata row or a 2-tuple of Nones
         """
 
         # search rows from bottom to top to get largest indexed row
-        for num, row in reversed(list(zip(self.lines, self.rows))):
+        for idx, row in reversed(list(zip(self.lines, self.rows))):
 
             # ignore rows that have missing value
             if bool(set(exclude).intersection(row)):
                 continue
 
-            if len(row) != len(rows[-1]):
-                return num
+            if len(row) != len(self.rows[-1]):
+                return idx, row
 
-        return None
+        return None, None
 
+    # no mutation of exclude list here
+    # pylint: disable-next=dangerous-default-value
     def header(
         self,
-        poll: int = 10,
-        exclude: List[str] = ['',' ','nan', 'NaN', 'NAN'],
+        poll: int = 5,
+        exclude: List[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
     ) -> Header:
-        """Detects the header row (if any) in this Sniffer's sample.
+        """Detects the header row (if any) from this Sniffers sample rows.
 
         If no header is detected this method constructs a header. The names in
         this header are of the form; 'Column_1', ... 'Column_n' where n is the
-        expected number of columns from the last row if the sample.
+        expected number of columns from the last row of the sample rows.
 
         Notes:
             Just like all other file sniffers, this heuristic will make
@@ -525,32 +562,30 @@ class Sniffer(ReprMixin):
             A Header dataclass instance.
         """
 
-        rows = self.rows()
-        types, consistency = self.types(poll)
-
-        if all(types == str):
-            header_line = self._string_diff(rows, poll)
+        types, _ = self.types(poll)
+        if all(isinstance(typ, str) for typ in types):
+            line, row = self._string_diff(poll, exclude)
 
         else:
-            header_line = self._type_diff(rows, poll, exclude)
+            line, row = self._type_diff(poll, exclude)
 
-        if header_line is None:
-            ncols = len(self.rows()[-1])
-            names = [f'Column_{i}' for i in range(ncols)]
+        if line is None:
+            row = [f'Column_{i}' for i in range(len(self.rows[-1]))]
 
-            return Header(line=None, names=names, string=None)
+        # type-narrow for mypy check-- row can no longer be None
+        assert isinstance(row, list)
+        # get original string if line
+        s = self.sample.splitlines()[self.lines.index(line)] if line else None
 
-        row = rows[header_line]
-        string = self.sample.splitlines()[self.lines[header_line]]
+        return Header(line=line, names=row, string=s)
 
-        return Header(line=header_line, names=row, string=string)
-
-    # FIXME start here
+    # no mutation of exclude list here
+    # pylint: disable-next=dangerous-default-value
     def metadata(
         self,
         header: Header | None,
         poll: int = 10,
-        exclude: List[str] = ['',' ','nan', 'NaN', 'NAN'],
+        exclude: List[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
     ) -> MetaData:
         """Detects the metadata section (if any) in this Sniffer's sample.
 
@@ -565,65 +600,27 @@ class Sniffer(ReprMixin):
             A MetaData dataclass instance or None.
         """
 
-        # get rows upto header line if given
-        rows = self.rows(self.dialect.delimiter)
+        # if header provided get lines upto header line
         if header and header.line:
             idx = self.lines.index(header.line)
             s = '\n'.join(self.sample.splitlines()[0:idx])
             return MetaData((0, header.line), s)
 
-        length_diff = self._length_diff(exclude)
-        type_diff = self._type_diff(poll, exclude)
-
-
-
-        # mixed data types in file
-        if incomplete == type_diff:
-            idx = self.lines.index(incomplete) + 1
-            s = '\n'.join(self.sample.splitlines()[0:idx])
-            return MetaData((0, rows[:idx]), s)
-
-
-
-
-
-
-
-
-
-
-
-
-        mislengthed = self._mislengthed(rows, line_nums)
-        disjointed = self._disjointed(rows, line_nums)
-        nonnumeric = self._nonnumeric(rows, line_nums)
-
-        line_num = None
-        if all(is_numeric(astring) for astring in rows[-1]):
-
-            # if all data is numeric find lowest of nonnumeric and mislengthed
-            nums = [x for x in [mislengthed, nonnumeric] if x]
-            line_num = max(nums) if nums else None
-
-        if any(is_numeric(astring) for astring in rows[-1]):
-
-            # if any but not all numeric in data find lowest for all rows
-            nums = [x for x in (mislengthed, disjointed, nonnumeric) if x]
-            line_num = max(nums) if nums else None
+        types, _ = self.types(poll)
+        if all(isinstance(typ, str) for typ in types):
+            # detect metadata based on length difference
+            last_line, _ = self._length_diff(exclude)
 
         else:
-            # all strings- look for lowest row that's disjoint or mislen
-            nums = [x for x in (mislengthed, disjointed) if x]
-            line_num = max(nums) if nums else None
+            last_line, _ = self._type_diff(poll, exclude)
 
-        if line_num is None:
-            return MetaData((0, None), None)
+        if last_line:
+            idx = self.lines.index[last_line]  # type: ignore[index]
+            metarows = self.sample.splitlines()[0 : idx + 1]
+            string = '\n'.join(metarows)
+            return MetaData((0, last_line), string)
 
-        # get index, original string & return Header
-        idx = line_nums.index(line_num)
-        s = sample.splitlines()[idx + 1]
-
-        return MetaData((0, line_num), s)
+        return MetaData((0, None), None)
 
 
 if __name__ == '__main__':
