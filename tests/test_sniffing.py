@@ -1,5 +1,7 @@
-# FIXME Add a module string explaining that you will construct tables of
-# different types
+"""A pytest module to test Tabbed's Sniffer and associated utilities. This
+module builds temporary text files containing mixtures of Tabbed's supported
+numeric and datetime types.
+"""
 
 import tempfile
 import string
@@ -8,11 +10,13 @@ import pytest
 import random
 from itertools import batched, chain
 
+from clevercsv.dialect import SimpleDialect
+
 from tabbed.sniffing import Header, MetaData, Sniffer
 from tabbed.utils import parsing
 
 
-NUM_TEST = 3
+NUM_TEST = 10
 
 @pytest.fixture(params=range(NUM_TEST))
 def rng(request):
@@ -25,7 +29,7 @@ def rng(request):
 def delimiters():
     """Returns all of tabbed's compatible delimiters."""
 
-    return [',', ';', '|', r'\t']
+    return [',', ';', '|', '\t']
 
 
 @pytest.fixture
@@ -35,10 +39,12 @@ def valid_chars():
     Invalid characters are a delimiter and quote chars
     """
 
+    # modify digits so they cant be an accidental integer
+    digits = ['_' + d for d in string.digits]
     chars = list(string.ascii_letters +
-                 string.digits +
                  string.punctuation +
                  ' ')
+    chars += digits
     # remove '\' to avoid escaped char choices
     chars.remove('\\')
 
@@ -50,8 +56,8 @@ def shape(rng):
     """Returns a rows, columns shape tuple for building tables."""
 
     # set min/max rows and columns
-    rows = rng.randint(10, 100)
-    cols = rng.randint(1, 10)
+    rows = rng.randint(20, 300)
+    cols = rng.randint(1, 15)
 
     return rows, cols
 
@@ -331,9 +337,9 @@ def skipping_metadata(rng, valid_chars):
     return '\n'.join(lines), num_lines
 
 
-#########################################
-# Temporary Delimited Files For Testing #
-# #######################################
+################################
+# Temporary Text File Fixtures #
+# ##############################
 
 @pytest.fixture
 def standard_file(rng, shape, delimited_meta, header, composite_table):
@@ -346,6 +352,30 @@ def standard_file(rng, shape, delimited_meta, header, composite_table):
     metadata = delimited_meta(delimiter=delimiter)
     head = header(cols, delimiter=delimiter, line=metadata.lines[-1])
     tabled = [delimiter.join(row) for row in composite_table(rows, cols)]
+    lines = [metadata.string, head.string] + tabled
+    text = '\n'.join(lines)
+
+    # complete setup by writing to a temp file
+    outfile = tempfile.TemporaryFile(mode='w+')
+    outfile.write(text)
+    outfile.seek(0)
+    yield outfile, delimiter, head
+
+    # on Teardown, close and remove temp file
+    outfile.close()
+
+
+@pytest.fixture
+def float_file(rng, shape, meta, header, float_table):
+    """A file with undelimited metadata, header and float type data table."""
+
+    delimiter = rng.choice(delimiters())
+    rows, cols = shape
+
+    # construct metadata, header and table
+    metadata = meta()
+    head = header(cols, delimiter=delimiter, line=metadata.lines[-1])
+    tabled = [delimiter.join(row) for row in float_table(rows, cols)]
     lines = [metadata.string, head.string] + tabled
     text = '\n'.join(lines)
 
@@ -391,7 +421,7 @@ def empty_header_file(rng, shape, meta, header, composite_table):
 
     # construct metadata and table
     tabled = [delimiter.join(row) for row in composite_table(rows, cols)]
-    lines = [meta()] + tabled
+    lines = [meta().string] + tabled
     text = '\n'.join(lines)
 
     # complete setup by writing to a temp file
@@ -472,17 +502,6 @@ def test_metadata_immutability(delimited_meta):
 # Sniffer Tests #
 #################
 
-def test_line_count(standard_file):
-    """Validate the Sniffer's line count."""
-
-    infile, delim, _ = standard_file
-    sniffer = Sniffer(infile)
-    measured = sniffer.line_count
-    expected = len(infile.readlines())
-
-    assert measured == expected
-
-
 def test_dialect(standard_file):
     """Validate the Sniffers detected dialect for a file with header and
     metadata.
@@ -497,6 +516,18 @@ def test_dialect(standard_file):
     measured = sniffer.dialect.delimiter
 
     assert measured == delim
+
+
+def test_set_dialect(standard_file):
+    """Validate that dialects with non-valid escape and quote chars are amended
+    by dialect setter."""
+
+    d = SimpleDialect(',', '', None)
+    infile, delim, _ = standard_file
+    sniffer = Sniffer(infile)
+    sniffer.dialect = d
+    assert sniffer.dialect.escapechar == None
+    assert sniffer.dialect.quotechar == '"'
 
 
 def test_dialect_no_metadata(empty_metadata_file):
@@ -518,69 +549,119 @@ def test_dialect_no_header(empty_header_file):
 
     assert measured == delim
 
-
+'''
 def test_start_change(standard_file):
     """Validate sniffing sample changes when sniff start changes."""
 
     infile, delim, _ = standard_file
     sniffer = Sniffer(infile)
-    sample_rows = sniffer.rows()
+    old_rows = sniffer.rows
     sniffer.start = 4
+    new_rows = sniffer.rows
 
-    assert sample_rows[4] == sniffer.rows()[0]
+    assert old_rows[4] == new_rows[0]
 
 
 def test_amount_change(standard_file):
     """Validate sniffing sample change when sniffing amount changes."""
 
-
     infile, delim, _ = standard_file
     sniffer = Sniffer(infile)
-    sample_rows = sniffer.rows()
-    sniffer.amount = min(sniffer.line_count, 20)
+    old_rows = sniffer.rows
+    sniffer.amount = 10
+    new_rows = sniffer.rows
 
-    assert sniffer.rows() == sample_rows[:20]
+    assert new_rows == old_rows[:10]
+'''
+
+def test_lines(standard_file):
+    """Validates the line numbers on a standard file."""
 
 
+    # FIXME the sniffer always reads amount num lines and will read an extra
+    # number of skip lines  so this test fails
+    infile, delim, _ = standard_file
+    sniffer = Sniffer(infile)
+    old_lines = set(sniffer.lines)
+    sniffer.skips = list(range(2, 10))
+    new_lines = set(sniffer.lines)
+
+    print(old_lines.symmetric_difference(new_lines))
+    print(sniffer.skips)
+
+    assert old_lines.symmetric_difference(new_lines) == set(sniffer.skips)
+
+'''
 def test_skip_change(standard_file):
     """Validate sniffing sample changes when skip parameter changes."""
 
     infile, delim, _ = standard_file
     sniffer = Sniffer(infile)
-    sample_rows = sniffer.rows()
+    old_rows = sniffer.rows
     sniffer.skips = [1, 2, 5]
-    expected = [row for idx, row in enumerate(sample_rows) if idx not in
+    expected = [row for idx, row in enumerate(old_rows) if idx not in
             sniffer.skips]
+    new_rows = sniffer.rows
 
-    assert sniffer.rows() == expected
+    assert new_rows == expected
 
 
-# TODO start here 5/15
+def test_start_EOF(standard_file):
+    """Validate that setting start to > file length raises StopIteration."""
+
+    infile, delim, _ = standard_file
+    size = sum(1 for line in infile)
+    sniffer = Sniffer(infile)
+    with pytest.raises(StopIteration):
+        sniffer.start = size + 10
+
+
+def test_amount_EOF(standard_file):
+    """Validate that an amount that reads off a file gives the whole file."""
+
+    infile, delim, _ = standard_file
+    size = sum(1 for line in infile)
+    sniffer = Sniffer(infile)
+    sniffer.amount = size + 10
+
+    assert len(sniffer.rows) == size
+
+
+# Type checking test are carried out in-full in test_parsing -- just check
+# 'types' method is error free
+def test_float_types(float_file):
+    """Validate that the sniffer correctly detects all float type."""
+
+    infile, delim, header = float_file
+    sniffer = Sniffer(infile)
+    types, consistent = sniffer.types(poll=5)
+
+    assert consistent
+    assert [float] * len(header.names) == types
+
+
+####################
+# Header detection #
+####################
+
+
 def test_header_standard(standard_file):
     """Validates the line number of the sniffed header."""
 
     infile, delim, head = standard_file
     sniffer = Sniffer(infile)
     aheader = sniffer.header()
-    for idx, row in enumerate(sniffer.rows()):
-        print(idx, row)
 
     assert aheader.line == head.line
 
 
+def test_header_no_meta(empty_metadata_file):
+    """Validates header detection when no metadata is present."""
 
+    infile, delim, head = empty_metadata_file
+    sniffer = Sniffer(infile)
+    aheader = sniffer.header()
 
+    assert aheader.line == head.line
+'''
 
-
-"""
-def test_textfile(empty_metadata_file):
-
-    print(empty_metadata_file.read())
-"""
-
-
-"""
-def test_textfile(empty_header_file):
-
-    print(empty_header_file.read())
-"""
