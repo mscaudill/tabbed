@@ -133,14 +133,9 @@ class Sniffer(ReprMixin):
         >>> text.extend(data)
         >>> # create a temp file and dump our text
         >>> outfile = tempfile.TemporaryFile(mode='w+')
-        >>> _ = outfile.write('\r\n'.join(text))
+        >>> _ = outfile.write('\n'.join(text))
         >>> # create a sniffer
         >>> sniffer = Sniffer(outfile)
-        >>> # ask sniffer to report number of lines
-        >>> sniffer.line_count
-        17
-        >>> len(text)
-        17
         >>> # change the sample amount to 10 lines and skip line 4
         >>> # you would know to do this by inspecting the sample property
         >>> # and seeing the problematic line 4
@@ -200,6 +195,9 @@ class Sniffer(ReprMixin):
                 detection. If None, any character will be considered a valid
                 delimiter.
 
+        Raises:
+            If start is greater than infile's size a StopIteration is raised.
+
         Notes:
             Sniffer deviates from Python's Sniffer in that infile is strictly an
             IO stream, not a list because detecting the metadata and header
@@ -207,22 +205,13 @@ class Sniffer(ReprMixin):
         """
 
         self.infile = infile
-        self._start = min(start, self.line_count - 1)
-        self._amount = min(self.line_count - self._start, amount)
+        self.infile.seek(0)
+        self._start = start
+        self._amount = amount
         self._skips = skips if skips else []
         # get sample for infile and sniff
         self._resample()
         self.sniff(delimiters)
-
-    @property
-    def line_count(self) -> int:
-        """Returns the integer number of lines in this Sniffer's infile."""
-
-        self._move(0)
-        result = sum(1 for line in self.infile)
-        self._move(0)
-
-        return result
 
     @property
     def start(self) -> int:
@@ -239,7 +228,7 @@ class Sniffer(ReprMixin):
                 A new sample start line.
         """
 
-        self._start = min(self.line_count - 1, value)
+        self._start = value
         self._resample()
 
     @property
@@ -257,7 +246,7 @@ class Sniffer(ReprMixin):
                 The new number of joined lines in the sample.
         """
 
-        self._amount = min(self.line_count, value)
+        self._amount = value
         self._resample()
 
     @property
@@ -348,6 +337,10 @@ class Sniffer(ReprMixin):
 
         Returns:
             None but advances the line pointer to line.
+
+        Raises:
+            A StopIteration is issued if line is greater than Sniffer's infile
+            size.
         """
 
         self.infile.seek(0)
@@ -366,6 +359,12 @@ class Sniffer(ReprMixin):
         while result.n < self.amount:
 
             line = self.infile.readline()
+
+            # EOF test
+            if not line:
+                break
+
+            # skip lines in skips
             if result.loc not in self.skips:
                 result.lines.append(line)
                 result.line_nums.append(result.loc)
