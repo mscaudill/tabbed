@@ -360,8 +360,8 @@ class Sniffer(ReprMixin):
 
             line = self.infile.readline()
 
-            # EOF test
-            if not line:
+            # EOF test -- metadata may contain blank-lines so look 50 back
+            if not line and not any(result.lines[-50:]):
                 break
 
             # skip lines in skips
@@ -400,10 +400,12 @@ class Sniffer(ReprMixin):
         # result is None if clevercsv's sniff is indeterminant
         result = clevercsv.Sniffer().sniff(self.sample, delimiters=delimiters)
         if not result:
-            msg = "Dialect could not be determined from Sniffer's sample"
-            warnings.warn(msg)
-
-        self.dialect = result
+            msg1 = "Dialect could not be determined from Sniffer's sample.  "
+            msg2 = "Please set this Sniffer's dialect attribute."
+            warnings.warn(msg1 + msg2)
+            self._dialect = None
+        else:
+            self.dialect = result
 
     def types(self, poll: int) -> Tuple[CellTypes, bool]:
         """Infer the column types from the last poll count rows.
