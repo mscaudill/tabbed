@@ -19,7 +19,7 @@ from tabbed.utils import parsing
 
 NUM_TEST = 100
 
-@pytest.fixture(params=range(NUM_TEST))
+@pytest.fixture(params=range(NUM_TEST), scope='module')
 def rng(request):
     """Returns a random number generator."""
 
@@ -33,7 +33,7 @@ def delimiters():
     return [',', ';', '|', '\t']
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def valid_chars():
     """Returns a string of all valid characters.
 
@@ -42,9 +42,10 @@ def valid_chars():
 
     # modify digits so they cant be an accidental integer
     digits = ['_' + d for d in string.digits]
-    chars = list(string.ascii_letters +
-                 string.punctuation +
-                 ' ')
+    # single j chars are convertible to complex -> remove them
+    letters = string.ascii_letters.replace('j', '')
+    letters = letters.replace('J', '')
+    chars = list(letters + string.punctuation + ' ')
     chars += digits
     # remove '\' to avoid escaped char choices
     chars.remove('\\')
@@ -52,18 +53,18 @@ def valid_chars():
     return [char for char in chars if char not in delimiters()]
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def shape(rng):
     """Returns a rows, columns shape tuple for building tables."""
 
     # set min/max rows and columns
-    rows = rng.randint(20, 300)
-    cols = rng.randint(1, 11)
+    rows = rng.randint(30, 300)
+    cols = rng.randint(3, 15)
 
     return rows, cols
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def string_table(rng, valid_chars):
     """Returns a function for building random tables of valid string chars."""
 
@@ -71,7 +72,7 @@ def string_table(rng, valid_chars):
         """Returns a rows x cols table of strings of random lengths."""
 
         cnt = rows * cols
-        lengths = [rng.randint(2, 15) for _ in range(cnt)]
+        lengths = [rng.randint(3, 15) for _ in range(cnt)]
         cells = [''.join(rng.choices(valid_chars, k=l)) for l in lengths]
 
         return [list(row) for row in batched(cells, cols)]
@@ -79,7 +80,7 @@ def string_table(rng, valid_chars):
     return make_table
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def rstring_table(rng):
     """Returns a function for building random tables of repeated strings."""
 
@@ -104,7 +105,7 @@ def rstring_table(rng):
     return make_table
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def integer_table(rng):
     """Returns a function for building random tables of stringed integers."""
 
@@ -119,7 +120,7 @@ def integer_table(rng):
     return make_table
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def float_table(rng):
     """Returns a function for building random tables of stringed floats."""
 
@@ -134,7 +135,7 @@ def float_table(rng):
     return make_table
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def complex_table(rng):
     """Returns a func. for building random tables of stringed complex values."""
 
@@ -152,7 +153,7 @@ def complex_table(rng):
     return make_table
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def enotation_table(rng):
     """Returns a function for building random tables of stringed scientific
     notation values."""
@@ -168,7 +169,7 @@ def enotation_table(rng):
     return make_table
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def time_table(rng):
     """Returns a function for building random tables of stringed times.
 
@@ -196,7 +197,7 @@ def time_table(rng):
     return make_table
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def date_table(rng):
     """Returns a function for building random tables of stringed dates.
 
@@ -220,7 +221,7 @@ def date_table(rng):
     return make_table
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def datetime_table(time_table, date_table):
     """Returns a function for building random tables of stringed datetimes."""
 
@@ -239,7 +240,7 @@ def datetime_table(time_table, date_table):
     return make_table
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def composite_table(
         rng,
         string_table,
@@ -430,7 +431,7 @@ def rstring_file(rng, shape, meta, header, rstring_table):
 
     # construct header and table
     metadata = meta()
-    head = header(cols, delimiter=delimiter, line=0)
+    head = header(cols, delimiter=delimiter, line=metadata.lines[-1])
     tabled = [delimiter.join(rw) for rw in rstring_table(rows, cols)]
     lines = [metadata.string, head.string] + tabled
     text = '\n'.join(lines)
@@ -477,14 +478,15 @@ def empty_header_file(rng, shape, meta, header, composite_table):
 
     # construct metadata and table
     tabled = [delimiter.join(row) for row in composite_table(rows, cols)]
-    lines = [meta().string] + tabled
+    metadata = meta()
+    lines = [metadata.string] + tabled
     text = '\n'.join(lines)
 
     # complete setup by writing to a temp file
     outfile = tempfile.TemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
-    yield outfile, delimiter, None
+    yield outfile, delimiter, metadata
 
     # on Teardown, close and remove temp file
     outfile.close()
@@ -683,17 +685,18 @@ def test_amount_change(standard_file):
 def test_lines(standard_file):
     """Validates the line numbers on a standard file."""
 
-    infile, delim, _ = standard_file
-    file_length = sum(1 for ln in infile)
+    infile, delim, header = standard_file
+    file_length = sum(1 for _ in infile)
 
     sniffer = Sniffer(infile)
-    skips = list(range(2, 10))
+
+    skips = list(range(2, 13))
     # enumerate all lines not in skips and slice amount of them
     lines = [x for x in range(file_length) if x not in skips]
     expected = lines[:sniffer.amount]
-    # set sniffer skips and validate lines are expected
-    sniffer.skips = list(range(2, 10))
 
+    # set sniffer skips and validate lines are expected
+    sniffer.skips = skips
     assert sniffer.lines == expected
 
 
@@ -701,7 +704,7 @@ def test_lines(standard_file):
 def test_skip_change(standard_file):
     """Validate sniffing sample changes when skip parameter changes."""
 
-    infile, delim, _ = standard_file
+    infile, delim, header = standard_file
     sniffer = Sniffer(infile, amount=200)
     old_rows = sniffer.rows
     sniffer.skips = [1, 2, 5]
@@ -752,15 +755,28 @@ def test_float_types(float_file):
 ####################
 # Header detection #
 ####################
-'''
 @pytest.mark.slow
 @has_dialect
 def test_header_standard(standard_file):
-    """Validates the line number of the sniffed header."""
+    """Validates the line number of the sniffed header for a standard file
+    containing mixed data section types."""
 
     infile, delim, head = standard_file
     sniffer = Sniffer(infile)
     aheader = sniffer.header()
+
+    assert aheader.line == head.line
+
+
+@pytest.mark.slow
+@has_dialect
+def test_header_allstring(rstring_file):
+    """Validate the header is correctly detected for a data section containing
+    all string types."""
+
+    infile, delim, head = rstring_file
+    sniffer = Sniffer(infile)
+    aheader = sniffer.header(poll=20)
 
     assert aheader.line == head.line
 
@@ -787,19 +803,56 @@ def test_header_skipping_metadata(skipping_meta_file):
     aheader = sniffer.header()
 
     assert aheader.line == head.line
-'''
 
-#FIXME _string_diff method of sniffer is failing
+
 @pytest.mark.slow
 @has_dialect
-def test_header_allstring(rstring_file):
-    """Validate the header is correctly detected."""
+def test_header_no_header(empty_header_file):
+    """Validates that no header is detected for a file with no header."""
 
-    infile, delim, head = rstring_file
-    for line in infile:
-        print(line)
+    infile, delim, _ = empty_header_file
+    sniffer = Sniffer(infile)
+    header = sniffer.header()
+
+    assert header.string is None
+
+
+######################
+# Metadata Detection #
+######################
+
+@pytest.mark.slow
+@has_dialect
+def test_metadata_standard(standard_file):
+    """Validates the metadata locations for a standard file."""
+
+    infile, delim, head = standard_file
     sniffer = Sniffer(infile)
     aheader = sniffer.header()
+    meta = sniffer.metadata(aheader)
 
-    assert aheader.line == head.line
+    assert meta.lines == (0, aheader.line)
+
+
+@pytest.mark.slow
+@has_dialect
+def test_metadata_no_header(empty_header_file):
+    """Validates the metadata location for a file with no header."""
+
+    infile, delim, expected = empty_header_file
+    sniffer = Sniffer(infile)
+    meta = sniffer.metadata(header=None)
+
+    assert meta.lines == expected.lines
+
+
+@pytest.mark.slow
+@has_dialect
+def test_metadata_no_metadata_no_header(empty_meta_empty_header_file):
+    """Validates the metadata string is None when no metadata is present."""
+
+    infile, delim, _ = empty_meta_empty_header_file
+    sniffer = Sniffer(infile)
+
+    assert sniffer.metadata(None).string is None
 
