@@ -355,27 +355,21 @@ class Sniffer(ReprMixin):
         """
 
         self._move(self.start)
-        result = SimpleNamespace(loc=self.start, n=0, lines=[], line_nums=[])
-        while result.n < self.amount:
+        result = SimpleNamespace(indices=[], linestrs=[])
+        amount = self.amount + len(self.skips)
+        for current in range(self.start, amount + self.start):
 
             line = self.infile.readline()
-
-            # EOF test -- metadata may contain blank-lines so look 50 back
-            if not line and not any(result.lines[-50:]):
-                break
-
-            # skip lines in skips
-            if result.loc not in self.skips:
-                result.lines.append(line)
-                result.line_nums.append(result.loc)
-                result.n += 1
-            result.loc += 1
+            # only store non-blank lines
+            if current not in self.skips and line:
+                result.linestrs.append(line)
+                result.indices.append(current)
 
         # move line pointer back to start of the file
         self._move(0)
-        sampled = ''.join(result.lines)
+        sampled = ''.join(result.linestrs)
         self._sample: str = sampled
-        self._lines: List[int] = result.line_nums
+        self._lines: List[int] = result.indices
 
     def sniff(self, delimiters: Optional[List[str]] = None) -> None:
         """Returns a clevercsv SimpleDialect from this instances sample.
@@ -431,12 +425,13 @@ class Sniffer(ReprMixin):
         self,
         poll: int,
         exclude: List[str],
+        len_requirement = True,
     ) -> Tuple[int | None, List[str] | None]:
         """Locates first row from last whose types don't match last sample row.
 
-        This heuristic locates the header row by looking for type changes as the
-        sample is read from the last row backwards. It assumes consistent
-        column types in the sample.
+        This heuristic locates the header or metadata row by looking for type
+        changes as the sample is read from the last row backwards. It assumes
+        consistent column types in the sample.
 
         Args:
             poll:
@@ -444,6 +439,10 @@ class Sniffer(ReprMixin):
             exclude:
                 A sequence of characters that indicate missing values. Rows
                 containing these strings will be ignored.
+            len_requirement:
+                A boolean indicating if the first row from last with a type
+                mismatch must have the same length as the last row of the
+                sample. This will be True for headers and False for metadata.
 
         Returns:
             An integer line number and header row or a 2-tuple of Nones
@@ -464,7 +463,11 @@ class Sniffer(ReprMixin):
             # check types and completeness
             type_mismatch = row_types != types
             len_match = len(row) == len(self.rows[-1])
-            if type_mismatch and len_match:
+
+            if len_requirement and type_mismatch and len_match:
+                return idx, row
+
+            if not len_requirement and type_mismatch:
                 return idx, row
 
         return None, None
@@ -550,12 +553,35 @@ class Sniffer(ReprMixin):
     ) -> Header:
         """Detects the header row (if any) from this Sniffers sample rows.
 
-        If no header is detected this method constructs a header. The names in
-        this header are of the form; 'Column_1', ... 'Column_n' where n is the
-        expected number of columns from the last row of the sample rows.
+        Headers are located using one of two possible methods.
+            1. If the last row contains mixed types and the last poll rows have
+               consistent types, then the first row from the last whose types
+               differ from the last row types and whose length matches the last
+               row is taken as the header.
+            2. If the last poll rows are all string type. The first row from the
+               last with string values that have never been seen in the previous
+               rows and whose length matches the last row is taken to be the
+               header. Caution, the poll amount should be sufficiently large
+               enough to sample the possible string values expected in the data
+               section. If the header is not correct, consider increasing the
+               poll rows parameter.
+
+        Args:
+            poll:
+                The number of last sample rows to poll for locating the header
+                using string value differences. Poll should be large enough to
+                capture many of the string values that appear in the data
+                section.
+
+            exclude:
+                A sequence of characters that indicate missing values. Rows
+                containing these strings will be ignored.
 
         Notes:
-            Just like all other file sniffers, this heuristic will make
+            If no header is detected this method constructs a header. The names
+            in this header are of the form; 'Column_1', ... 'Column_n' where
+            n is the expected number of columns from the last row of the sample
+            rows.  Just like all other file sniffers, this heuristic will make
             mistakes.  A judicious sample choice that ignores problematic rows
             via the skip parameter may aide detection.
 
@@ -564,7 +590,7 @@ class Sniffer(ReprMixin):
         """
 
         types, _ = self.types(poll)
-        if all(isinstance(typ, str) for typ in types):
+        if all(typ == str for typ in types):
             line, row = self._string_diff(poll, exclude)
 
         else:
@@ -608,18 +634,19 @@ class Sniffer(ReprMixin):
             return MetaData((0, header.line), s)
 
         types, _ = self.types(poll)
-        if all(isinstance(typ, str) for typ in types):
+        if all(typ == str for typ in types):
             # detect metadata based on length difference
             last_line, _ = self._length_diff(exclude)
 
         else:
-            last_line, _ = self._type_diff(poll, exclude)
+            # metadata line does not have to equal len of last sample row
+            last_line, _ = self._type_diff(poll, exclude, len_requirement=False)
 
-        if last_line:
-            idx = self.lines.index[last_line]  # type: ignore[index]
+        if last_line is not None:
+            idx = self.lines.index(last_line)  # type: ignore[index]
             metarows = self.sample.splitlines()[0 : idx + 1]
             string = '\n'.join(metarows)
-            return MetaData((0, last_line), string)
+            return MetaData((0, idx + 1), string)
 
         return MetaData((0, None), None)
 
@@ -628,4 +655,45 @@ if __name__ == '__main__':
 
     import doctest
 
-    doctest.testmod()
+    #doctest.testmod()
+
+    from itertools import batched
+    import random
+    import tempfile
+
+    """
+    rows, cols = 60, 6
+    delimiter = ','
+    metadata = 'this is a string\nIt is pretty short.\nBut it is enough'
+    #header = 'a,b,c,d,e,f'
+    kinds = 'kiwis, pears apples peaches oranges melons magos plums'.split()
+    cells = random.choices(kinds, k=rows*cols)
+    table = [delimiter.join(row) for row in batched(cells, cols)]
+    #rows = [metadata, header]
+    rows = [metadata]
+    rows.extend(table)
+    outfile = tempfile.TemporaryFile(mode='w+')
+    outfile.write('\n'.join(rows))
+    sniffer = Sniffer(outfile)
+    sniffer.skips = [33, 34]
+
+    print(sniffer.metadata(header=None))
+    """
+
+    delimiter=';'
+    metadata = {'exp': '3', 'name': 'Paul Dirac', 'date': '11/09/1942'}
+    text = [delimiter.join([key, val]) for key, val in metadata.items()]
+    to_skip = delimiter.join('please ignore this line'.split())
+    text.extend([to_skip])
+    # make some data rows and add to text
+    group = 'a c b b c a c b c a a c'.split()
+    count = '22 2 13 15 4 19 4 21 5 24 18 1'.split()
+    color = 'r g b b r r r g g  b b g'.split()
+    data = [delimiter.join(row) for row in zip(group, count, color)]
+    text.extend(data)
+    # create a temp file and dump our text
+    outfile = tempfile.TemporaryFile(mode='w+')
+    _ = outfile.write('\n'.join(text))
+    # create a sniffer
+    sniffer = Sniffer(outfile)
+
