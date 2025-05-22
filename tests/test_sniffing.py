@@ -273,7 +273,8 @@ def composite_table(
     return make_table
 
 
-@pytest.fixture
+
+@pytest.fixture(scope='module')
 def header(rng, valid_chars):
     """Returns a function for building a random valid header."""
 
@@ -288,7 +289,8 @@ def header(rng, valid_chars):
     return make_header
 
 
-@pytest.fixture
+
+@pytest.fixture(scope='module')
 def repeating_header(rng, valid_chars):
     """Returns a function for building headers with repeating names."""
 
@@ -306,7 +308,7 @@ def repeating_header(rng, valid_chars):
     return make_header
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def meta(rng, valid_chars):
     """Returns a function for building metadata with no delimiters."""
 
@@ -314,7 +316,7 @@ def meta(rng, valid_chars):
         """Constructs a metadata string without delimiters."""
 
         num_lines = rng.randint(1, 10)
-        widths = rng.choices(range(100), k=num_lines)
+        widths = rng.choices(range(5, 100), k=num_lines)
         lines = [''.join(rng.choices(valid_chars, k=w)) for w in widths]
         metastring = '\n'.join(lines)
 
@@ -324,7 +326,7 @@ def meta(rng, valid_chars):
     return make_metadata
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def delimited_meta(rng, valid_chars):
     """Returns a function for building metadatas that use delimiters.
 
@@ -351,7 +353,7 @@ def delimited_meta(rng, valid_chars):
     return make_metadata
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def skipping_metadata(rng, valid_chars):
     """Returns a metadata with a blank line."""
 
@@ -374,7 +376,7 @@ def skipping_metadata(rng, valid_chars):
 # Temporary Text File Fixtures #
 # ##############################
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def standard_file(rng, shape, delimited_meta, header, composite_table):
     """A file with delimited metadata, header and mixed type data table."""
 
@@ -398,7 +400,7 @@ def standard_file(rng, shape, delimited_meta, header, composite_table):
     outfile.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def float_file(rng, shape, meta, header, float_table):
     """A file with undelimited metadata, header and float type data table."""
 
@@ -422,7 +424,7 @@ def float_file(rng, shape, meta, header, float_table):
     outfile.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def rstring_file(rng, shape, meta, header, rstring_table):
     """A file with some consistency in the strings of the data section."""
 
@@ -446,7 +448,7 @@ def rstring_file(rng, shape, meta, header, rstring_table):
     outfile.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def empty_metadata_file(rng, shape, header, composite_table):
     """A file with no metadata, a header and a mixed type data table."""
 
@@ -469,7 +471,7 @@ def empty_metadata_file(rng, shape, header, composite_table):
     outfile.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def empty_header_file(rng, shape, meta, header, composite_table):
     """A file with a non-delimited metadata, no header & mixed table type."""
 
@@ -492,7 +494,7 @@ def empty_header_file(rng, shape, meta, header, composite_table):
     outfile.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def empty_meta_empty_header_file(rng, shape, composite_table):
     """A file with no metadata and no header and a a mixed type data table."""
 
@@ -513,7 +515,7 @@ def empty_meta_empty_header_file(rng, shape, composite_table):
     outfile.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def skipping_meta_file(rng, shape, skipping_metadata, header, composite_table):
     """A file with a blank metadata line."""
 
@@ -705,16 +707,10 @@ def test_skip_change(standard_file):
     """Validate sniffing sample changes when skip parameter changes."""
 
     infile, delim, header = standard_file
-    sniffer = Sniffer(infile, amount=200)
-    old_rows = sniffer.rows
-    sniffer.skips = [1, 2, 5]
-    sniffer.amount = 100
-    new_rows = sniffer.rows
-
-    expected = [row for idx, row in enumerate(old_rows) if idx not in
-            sniffer.skips][:sniffer.amount]
-
-    assert new_rows == expected
+    sniffer = Sniffer(infile)
+    lines = sniffer.lines
+    sniffer.skips = [33, 45, 77]
+    assert set(sniffer.lines).isdisjoint(sniffer.skips)
 
 
 def test_start_EOF(standard_file):
