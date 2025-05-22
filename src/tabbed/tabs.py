@@ -6,13 +6,14 @@ import abc
 from datetime import datetime
 import operator as op
 import re
+import warnings
 from typing import Callable, Dict, List, Literal, Optional, Sequence
 
 from typing_extensions import Self
 
 from tabbed.sniffing import Header
-from tabbed.utils import celltyping
-from tabbed.utils.celltyping import CellType
+from tabbed.utils import parsing
+from tabbed.utils.parsing import CellType
 from tabbed.utils.mixins import ReprMixin
 
 # Tabs are designed to be function-like and so have few public methods
@@ -321,7 +322,7 @@ class Comparison(Tab):
         # split string on alphanum boundary
         name, value_str = re.split(r'\b', compare_str, maxsplit=1)
         comparator = self.comparators[name.strip()]
-        value = celltyping.convert(value_str)
+        value = parsing.convert(value_str)
         return comparator, value
 
     def __call__(self, row: Dict[str, CellType]) -> bool:
@@ -463,7 +464,7 @@ class Tabulator(ReprMixin):
     Attributes:
         header:
             A Header instance storing all possible column names in the infile.
-        rows:
+        tabs:
             A list of tab instances to apply to each row.
         columns:
             The columns to extract from each row. These may be provided as
@@ -485,7 +486,7 @@ class Tabulator(ReprMixin):
         >>> header = Header(line=None, names=header, string=None)
         >>> tabulator = Tabulator(
         ... header,
-        ... rows=[members, comparator],
+        ... tabs=[members, comparator],
         ... columns=[0, 1])
         >>> # call the tabulator on our data
         >>> rows = [tabulator(row) for row in data if tabulator(row)]
@@ -505,7 +506,7 @@ class Tabulator(ReprMixin):
         ... group=['a', 'c'],
         ... count='<=20')
         >>> # show the tab types tabulator2 will use
-        >>> print([type(tab).__name__ for tab in tabulator2.rows])
+        >>> print([type(tab).__name__ for tab in tabulator2.tabs])
         ['Membership', 'Comparison']
         >>> # apply the tabulator to get the same rows
         >>> rows2 = [tabulator2(row) for row in data if tabulator2(row)]
@@ -523,7 +524,7 @@ class Tabulator(ReprMixin):
     def __init__(
         self,
         header: Header,
-        rows: Optional[List[Tab]] = None,
+        tabs: Optional[List[Tab]] = None,
         columns: Optional[List[str | int] | re.Pattern] = None,
     ) -> None:
         """Initialize with row tabs, columns to extract & Header instance.
@@ -531,7 +532,7 @@ class Tabulator(ReprMixin):
         Args:
             header:
                 A Header type containing the names of all the columns in infile.
-            rows:
+            tabs:
                 A list of tab instances to apply to a row. If None, an Accepting
                 tab instance is applied to a row.
             columns:
@@ -539,15 +540,13 @@ class Tabulator(ReprMixin):
                 a single re pattern to match against column names.
 
         Raises:
-            A TypeError is issued if columns is a Sequence of inconsistent
-            types.
         """
 
         self.header = header
-        self.rows = rows if rows else [Accepting()]
+        self.tabs = tabs if tabs else [Accepting()]
         self.columns = self._assign(columns) if columns else self.header.names
 
-    def _assign(self, value):
+    def _assign(self, value: List[str | int] | re.Pattern):
         """Assigns the passed column value(s) to valid column names.
 
         Args:
@@ -556,32 +555,28 @@ class Tabulator(ReprMixin):
                 a single re pattern to match against names in header
         """
 
-        vals = value
-        if not isinstance(value, (Sequence, re.Pattern)):
-            msg = 'Columns must be a Sequence[str|int] or re.Pattern type'
-            raise TypeError(msg)
-
-        if isinstance(value, Sequence):
-            if len(set(type(el) for el in value)) > 1:
-                msg = 'All sequence elements must have the same type'
-                raise TypeError(msg)
 
         if isinstance(value, re.Pattern):
-            pattern = value
-            vals = [x for x in self.header.names if re.search(pattern, x)]
+            return [x for x in self.header.names if re.search(value,x)]
 
-        assert isinstance(value, Sequence)  # mypy type narrow
-        if isinstance(value[0], int):
-            indices = value
-            vals = [self.header.names[idx] for idx in indices]
+        if all(isinstance(val, int) for val in value):
+            result = [self.header.names[val] for val in value]
 
-        # validate others is a subset of header names
-        assert isinstance(vals, Sequence)  # mypy type narrow
-        invalid = set(vals).difference(self.header.names)
-        if invalid:
-            raise IndexError(f'[{invalid}] are not a valid column name(s)')
+        elif all(isinstance(val, str) for val in value):
+            result = value
 
-        return vals
+        else:
+            msg = ('Columns must be a sequence of ints, a sequence of strings, '
+                   'or a compiled re pattern.')
+            raise ValueError(msg)
+
+        invalid = set(result).difference(self.header.names)
+        if any(invalid):
+            msg = f'Invalid name(s): {invalid} are being ignored.'
+            warnings.warn(msg)
+            result = [el for el in result if el not in invalid]
+
+        return result
 
     # we are defining a static method for a classmethod without instant access
     # pylint: disable-next=no-self-argument
@@ -668,13 +663,13 @@ class Tabulator(ReprMixin):
 
         """
 
-        rows = [cls._from_keyword(*item) for item in kwargs.items()]
-        return cls(header, rows, columns)
+        tabs = [cls._from_keyword(*item) for item in kwargs.items()]
+        return cls(header, tabs, columns)
 
     def __contains__(self, tab: Tab) -> bool:
         """Returns True if tab type is a type in this tabulator else False."""
 
-        return type(tab) in [type(tab) for tab in self.rows]
+        return type(tab) in [type(tab) for tab in self.tabs]
 
     def __call__(self, row: Dict[str, CellType]) -> Dict[str, CellType] | None:
         """Apply the tabs and columns to this row.
@@ -689,7 +684,7 @@ class Tabulator(ReprMixin):
             None otherwise.
         """
 
-        if all(tab(row) for tab in self.rows):
+        if all(tab(row) for tab in self.tabs):
             return {key: val for key, val in row.items() if key in self.columns}
 
         return None
@@ -699,4 +694,12 @@ if __name__ == '__main__':
 
     import doctest
 
-    doctest.testmod()
+    #doctest.testmod()
+
+    # contains only works for tab instances so is it useful
+    namestr = 'oranges,pears,peaches,plums'
+    header = Header(names=namestr.split(','), line=2, string=namestr)
+    tabulator = Tabulator.from_keywords(header, oranges=3)
+    eq = Equality('oranges', 3)
+    print(eq in tabulator)
+
