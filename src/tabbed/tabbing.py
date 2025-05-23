@@ -1,20 +1,20 @@
-"""A module for creating tab instances, callables that return a boolean for
-a single dictionary row indicating if the row should be accepted or rejected.
+"""A module for creating Tab instances, callables that return a boolean for
+a single row dictionary indicating if the row should be accepted or rejected.
 """
 
 import abc
 from datetime import datetime
 import operator as op
 import re
+from typing import Callable, cast, Dict, List, Literal, Optional, Sequence
 import warnings
-from typing import Callable, Dict, List, Literal, Optional, Sequence
 
 from typing_extensions import Self
 
 from tabbed.sniffing import Header
 from tabbed.utils import parsing
-from tabbed.utils.parsing import CellType
 from tabbed.utils.mixins import ReprMixin
+from tabbed.utils.parsing import CellType
 
 # Tabs are designed to be function-like and so have few public methods
 # pylint: disable=too-few-public-methods
@@ -23,7 +23,14 @@ Comparable = int | float | datetime | str
 
 
 class Tab(abc.ABC, ReprMixin):
-    """Abstract base class declaring required methods of all Tabs."""
+    """Abstract base class declaring required methods of all Tabs.
+
+    A Tab is a callable that accepts a single row dictionary from an open file
+    and returns a boolean indicating if the row should be accepted or rejected.
+    Tabbed supports row evaluation using Equality, Membership, Re matching,
+    numerical or date Comparison, and user specified Callables on the row's
+    values. These types are the concrete implementations this abstract Tab.
+    """
 
     @abc.abstractmethod
     def __call__(self, row: Dict[str, CellType]) -> bool:
@@ -31,7 +38,7 @@ class Tab(abc.ABC, ReprMixin):
 
 
 class Equality(Tab):
-    """A Callable to test if a value in a dictionary row equals another value.
+    """A Tab to test if a value in a row dictionary equals another value.
 
     Attributes:
         name:
@@ -56,46 +63,33 @@ class Equality(Tab):
     """
 
     def __init__(self, name: str, matching: CellType) -> None:
-        """Initialize this tab.
-
-        Args:
-            name:
-                The name of the item in the row dictionary to compare.
-            matching:
-                The value to compared named item in row dictionary against.
-
-        Returns:
-            None
-        """
+        """Initialize this tab."""
 
         self.name = name
         self.matching = matching
 
     def __call__(self, row: Dict[str, CellType]) -> bool:
-        """Apply this tab to a dictionary row.
+        """Apply this tab to a row dictionary.
 
         Args:
             row:
-                A mapping representing a dictionary row of an infile that has
-                undergone type conversion.
+                A row dictionary of a file whose values have been type casted.
 
         Returns:
-            True if the named value in row equals this instances matching value
-            and False otherwise.
+            True if row's named value equals matching value and False otherwise.
         """
 
         return bool(row[self.name] == self.matching)
 
 
 class Membership(Tab):
-    """A Callable that test if a named item id a dictionary row belongs to
-    a collection.
+    """A Tab to test if a value in a row dictionary is a member of a collection.
 
     Attributes:
         name:
-            The named item in row dictionary whose value will be member tested.
+            The named value in row dict. to be member tested against collection.
         collection:
-            A set to test named items membership against.
+            A sequence of items for testing membership.
 
     Example:
         >>> # make tabular data
@@ -114,43 +108,31 @@ class Membership(Tab):
     """
 
     def __init__(self, name: str, collection: Sequence[CellType]) -> None:
-        """Initialize this tab.
-
-        Args:
-            name:
-                The named item in row dictionary whose value will be member tested.
-            collection:
-                A sequence to test named items membership against.
-
-        Returns:
-            None
-        """
+        """Initialize this tab."""
 
         self.name = name
         self.collection = set(collection)
 
     def __call__(self, row: Dict[str, CellType]) -> bool:
-        """Apply this tab to a dictionary row.
+        """Apply this tab to a row dictionary.
 
         Args:
             row:
-                A mapping representing a dictionary row of an infile that has
-                undergone type conversion.
+                A row dictionary of a file whose values have been type casted.
 
         Returns:
-            True if the named value in row is in this instances collection.
+            True if named value in row is in collection.
         """
 
         return row[self.name] in self.collection
 
 
 class Regex(Tab):
-    """A Callable that test if a compiled re pattern is in the named item of
-    a row dictionary.
+    """A Tab to test a compiled re pattern against a string value in a row dict.
 
     Attributes:
         name:
-            The named item in row dictionary whose value will be pattern tested.
+            The named value in row dictionary to be pattern tested.
         pattern:
             A compiled regular expression pattern (see re.compile).
 
@@ -171,43 +153,35 @@ class Regex(Tab):
     """
 
     def __init__(self, name: str, pattern: re.Pattern) -> None:
-        """Initialize this tab.
-
-        Args:
-            name:
-               The named item in row dictionary whose value will be pattern tested.
-            pattern:
-                A compiled regular expression pattern (see re.compile).
-
-        Returns:
-            None
-        """
+        """Initialize this tab."""
 
         self.name = name
         self.pattern = pattern
 
     def __call__(self, row: Dict[str, CellType]) -> bool:
-        """Apply this tab to a dictionary row.
+        """Apply this tab to a row dictionary.
 
         Args:
             row:
-               A mapping representing a dictionary row of an infile that has
-                undergone type conversion.
+               A row dictionary of a file whose values have been type casted.
 
         Returns:
-            True if pattern is in named value of row and False otherwise.
+            True if pattern is found in named value of row & False otherwise.
         """
 
-        return bool(re.search(self.pattern, row[self.name]))
+        # row[self.name] may not be str type but let re throw error to avoid
+        # type checking every row of a file
+        return bool(
+            re.search(self.pattern, row[self.name])  # type: ignore [arg-type]
+        )
 
 
 class Comparison(Tab):
-    """A Callable that test if a named value in a row dictionary satisfies
-    a comparison.
+    """A Tab to test if named value in a row dictionary satisfies a comparison.
 
     Attributes:
         name:
-            The named value in row dictionary to test with comparison.
+            The named value in row dictionary to compare.
         comparison:
             A string containing one or two rich comparison operators followed by
             a Comparable type (e.g. '>= 8.3', '< 9 and > 2'). The logical 'and'
@@ -251,39 +225,49 @@ class Comparison(Tab):
         comparison: str,
         permissive: bool = True,
     ) -> None:
-        """Initialize this tab instance.
-
-        Args:
-            name:
-                The named value in row dictionary to test with comparison.
-            comparison:
-                A string containing one or two rich comparison operators
-                followed by a Comparable type (e.g. '>= 8.3', '< 9 and > 2').
-                The logical 'and' or 'or' may be used for double comparisons.
-            permissive:
-                A boolean indicating whether comparisons between mismatched
-                types should result in the row being accepted (True) or rejected
-                (False).
-
-        Returns:
-            None
-        """
+        """Initialize this tab instance."""
 
         self.name = name
         self.comparison = comparison
         self.permissive = permissive
-        self._funcs, self._values, self._logical = self._components()
+        self._funcs, self._values, self._logical = self._parse()
 
-    def _components(self):
-        """Splits a comparison string into an operator module func, a casted
-        value and a logical operator.
+    def _singleparse(self, compare_str: str):
+        """Parses a string containing a single comparison operator.
+
+        This protected method should not be called externally.
+
+        Args:
+            A string with one comparison operator followed by a Comparable type.
+
+        Returns:
+            An operator module function & the casted comparing value.
+        """
+
+        # split string on alphanum boundary
+        name, value_str = re.split(r'\b', compare_str, maxsplit=1)
+        comparator = self.comparators[name.strip()]
+        value = parsing.convert(value_str)
+
+        return comparator, value
+
+    def _parse(self):
+        """Parses a comparison string with one or two rich comparisons.
+
+        The steps to parsing a comparison string are; (1). splitting a comparison
+        string on any logicals, (2). extracting the comparator functions, and (3).
+        type casting the comparing value.
 
         This protected method should not be called externally.
 
         Returns:
-            2 tuples containing of operator module functions and casted values
-            one per comparison and a logical operator that will be None if only
-            a single comparison is found.
+            A tuple of comparators, a tuple of comparing values, and a logical.
+            Logical will be None if comparison string contains a single
+            comparison.
+
+        Raises:
+            A ValueError is issued if comparison contains more than two rich
+            comparisons.
         """
 
         logical = None
@@ -298,55 +282,37 @@ class Comparison(Tab):
             if len(cstrings) > 2:
                 raise ValueError('A maximum of two comparisons may be made')
 
-            items = [self._parse(compare_str) for compare_str in cstrings]
+            items = [self._singleparse(compare_str) for compare_str in cstrings]
             funcs, values = zip(*items)
         else:
-            funcs, values = zip(*[self._parse(self.comparison)])
+            funcs, values = zip(*[self._singleparse(self.comparison)])
 
         return funcs, values, logical
 
-    def _parse(self, compare_str: str):
-        """Parses a string containing a single comparison operator into
-        a operator module function and a value.
-
-        This protected method should not be called externally.
-
-        Args:
-            A string containing one rich comparison operator followed by
-            a Comparable type.
-
-        Returns:
-            A function from the operator module and the casted value.
-        """
-
-        # split string on alphanum boundary
-        name, value_str = re.split(r'\b', compare_str, maxsplit=1)
-        comparator = self.comparators[name.strip()]
-        value = parsing.convert(value_str)
-        return comparator, value
-
     def __call__(self, row: Dict[str, CellType]) -> bool:
-        """Apply this tab to a dictionary row.
+        """Apply this tab to a row dictionary.
 
         Args:
             row:
-               A mapping representing a dictionary row of an infile that has
-                undergone type conversion.
+               A row dictionary of a file whose values have been type casted.
 
         Returns:
-            True if named value satisfies the condition.
+            True if named value satisfies the comparison(s).
 
         Raises:
             A ValueError is issued if more than two logicals are in comparison.
         """
 
         try:
-            booleans = [
-                func(row[self.name], val)
-                for func, val in zip(self._funcs, self._values)
-            ]
+
+            booleans = []
+            for func, val in zip(self._funcs, self._values):
+                booleans.append(func(row[self.name], val))
+
             if self._logical:
+                # combine multicomparison with logical
                 return bool(self._logical(*booleans))
+
             return bool(booleans[0])
 
         except TypeError:
@@ -355,15 +321,14 @@ class Comparison(Tab):
 
 
 class Calling(Tab):
-    """A Callable that test if a named value in a row satisfies a boolean
-    returning Callable.
+    """A Tab to test if named value in a row satisfies a boolean function.
 
     Attributes:
         name:
             The name of the row dictionary item to supply to func.
         func:
             A boolean returning callable that accepts a row, a name and any
-            required kwargs in order.
+            required kwargs in that order.
 
     Example:
         >>> # make tabular data
@@ -389,18 +354,7 @@ class Calling(Tab):
         func: Callable[[Dict[str, CellType], str], bool],
         **kwargs,
     ) -> None:
-        """Initialize this tab instance.
-
-        Args:
-            name:
-                The name of the row dictionary value to supply to func.
-            func:
-                A boolean returning callable that accepts (in order) a row
-                dictionary, a name and any kwargs.
-
-        Returns:
-            None
-        """
+        """Initialize this tab instance."""
 
         self.name = name
         self.func = func
@@ -411,8 +365,7 @@ class Calling(Tab):
 
         Args:
             row:
-               A mapping representing a dictionary row of an infile that has
-                undergone type conversion.
+               A row dictionary of a file whose values have been type casted.
 
         Returns:
             True if func returns True for this row and False otherwise.
@@ -422,13 +375,12 @@ class Calling(Tab):
 
 
 class Accepting(Tab):
-    """A Callable that accepts a row always.
+    """A Tab that returns True for any row dictionary.
 
-    This Tab type is used as a place holder and defines what to do with a row
-    when no tabs are present.
+    This Tab defines what to do with a row when no tabs are present.
 
-    Args:
-        May take any kwarg to store to this instance.
+    Attributes:
+        All keyword arguments are stored to this Tab.
 
     Example:
         >>> # make tabular data
@@ -447,23 +399,28 @@ class Accepting(Tab):
     """
 
     def __init__(self, **kwargs):
-        """ """
+        """Initialize this Tab."""
 
         self.__dict__.update(kwargs)
 
     def __call__(self, row: Dict[str, CellType]) -> Literal[True]:
-        """Returns True for a dictionary row always."""
+        """Returns True for a row dictionary always."""
 
         return True
 
 
 class Tabulator(ReprMixin):
-    """A callable container for storing & applying tab instances to rows
-    and filtering by columns.
+    """A Callable for creating, storing & applying Tabs to a row dictionary.
+
+    Tablulators are the interface that should be used to create Tab instances.
+    They allow Tabs to be constructed from keyword arguments and apply multiple
+    Tabs sequentially to a row dictionary of file data. If columns from the file
+    are provided, the Tabulator will restrict which columns of the row
+    dictionary will be returned.
 
     Attributes:
         header:
-            A Header instance storing all possible column names in the infile.
+            A Header instance storing all column names of a file.
         tabs:
             A list of tab instances to apply to each row.
         columns:
@@ -473,44 +430,26 @@ class Tabulator(ReprMixin):
 
     Example:
         >>> # make tabular data
-        >>> header = ['group', 'count', 'color']
+        >>> names = ['group', 'count', 'color']
         >>> group = ['a', 'c', 'b', 'b', 'c', 'a', 'c', 'b', 'c', 'a', 'a', 'c']
         >>> count = [22,   2,   13,  15,  4,   19,  4,   21,  5,   24,  18,  1]
         >>> color = 'r g b b r r r g g  b b g'.split()
         >>> items = zip(group, count, color)
-        >>> data = [dict(zip(header, values)) for values in items]
-        >>> #create tab instances
-        >>> members = Membership('group', ['a', 'c'])
-        >>> comparator = Comparison('count', '<=20')
-        >>> # Create a Header and a Tabulator
-        >>> header = Header(line=None, names=header, string=None)
-        >>> tabulator = Tabulator(
+        >>> data = [dict(zip(names, values)) for values in items]
+        >>> #create a Header instance
+        >>> header = Header(line=0, names=names, string=''.join(names))
+        >>> # create a tabulator from keyword args defining tabs
+        >>> tabulator = Tabulator.from_keywords(
         ... header,
-        ... tabs=[members, comparator],
-        ... columns=[0, 1])
-        >>> # call the tabulator on our data
-        >>> rows = [tabulator(row) for row in data if tabulator(row)]
-        >>> print(rows)
-        ... # doctest: +NORMALIZE_WHITESPACE
-        [{'group': 'c', 'count': 2},
-        {'group': 'c', 'count': 4},
-        {'group': 'a', 'count': 19},
-        {'group': 'c', 'count': 4},
-        {'group': 'c', 'count': 5},
-        {'group': 'a', 'count': 18},
-        {'group': 'c', 'count': 1}]
-        >>> # alternatively build tabulator from keyword args defining tabs
-        >>> tabulator2 = Tabulator.from_keywords(
-        ... header,
-        ... columns=[0,1],
+        ... columns=[0, 1],
         ... group=['a', 'c'],
         ... count='<=20')
-        >>> # show the tab types tabulator2 will use
-        >>> print([type(tab).__name__ for tab in tabulator2.tabs])
+        >>> # show the tab types tabulator will use
+        >>> print([type(tab).__name__ for tab in tabulator.tabs])
         ['Membership', 'Comparison']
         >>> # apply the tabulator to get the same rows
-        >>> rows2 = [tabulator2(row) for row in data if tabulator2(row)]
-        >>> print(rows2)
+        >>> rows = [tabulator(row) for row in data if tabulator(row)]
+        >>> print(rows)
         ... # doctest: +NORMALIZE_WHITESPACE
         [{'group': 'c', 'count': 2},
         {'group': 'c', 'count': 4},
@@ -525,49 +464,48 @@ class Tabulator(ReprMixin):
         self,
         header: Header,
         tabs: Optional[List[Tab]] = None,
-        columns: Optional[List[str | int] | re.Pattern] = None,
+        columns: Optional[List[str] | List[int] | re.Pattern] = None,
     ) -> None:
-        """Initialize with row tabs, columns to extract & Header instance.
-
-        Args:
-            header:
-                A Header type containing the names of all the columns in infile.
-            tabs:
-                A list of tab instances to apply to a row. If None, an Accepting
-                tab instance is applied to a row.
-            columns:
-                A list of columns passed as string names or column indices or
-                a single re pattern to match against column names.
-
-        Raises:
-        """
+        """Initialize with tabs, columns to extract & Header instance."""
 
         self.header = header
         self.tabs = tabs if tabs else [Accepting()]
         self.columns = self._assign(columns) if columns else self.header.names
 
-    def _assign(self, value: List[str | int] | re.Pattern):
+    def _assign(self, value: List[str] | List[int] | re.Pattern):
         """Assigns the passed column value(s) to valid column names.
 
         Args:
             value:
                 A list of column string names, a list of column indices, or
                 a single re pattern to match against names in header
+
+        Returns:
+            A list of column names.
+
+        Raises:
+            A ValueError is issued if value is not a list of strings, a list of
+            ints or an re Pattern.
         """
 
-
         if isinstance(value, re.Pattern):
-            return [x for x in self.header.names if re.search(value,x)]
+            return [x for x in self.header.names if re.search(value, x)]
 
         if all(isinstance(val, int) for val in value):
+            # cast for mypy to know value is list of ints
+            value = cast(List[int], value)
             result = [self.header.names[val] for val in value]
 
         elif all(isinstance(val, str) for val in value):
+            # cast for mypy to know value is list of strs
+            value = cast(List[str], value)
             result = value
 
         else:
-            msg = ('Columns must be a sequence of ints, a sequence of strings, '
-                   'or a compiled re pattern.')
+            msg = (
+                'Columns must be a sequence of ints, a sequence of strings, '
+                'or a compiled re pattern.'
+            )
             raise ValueError(msg)
 
         invalid = set(result).difference(self.header.names)
@@ -578,28 +516,28 @@ class Tabulator(ReprMixin):
 
         return result
 
-    # we are defining a static method for a classmethod without instant access
+    # define a static method for a classmethod without instant access
     # pylint: disable-next=no-self-argument
-    def _from_keyword(
+    def _from_keyword(  # type: ignore [misc]
         name: str,
-        value: dict[
-            str,
-            CellType
+        value: (
+            str
+            | CellType
             | Sequence[CellType]
             | re.Pattern
-            | Callable[[Dict[str, CellType], str], bool],
-        ],
+            | Callable[[Dict[str, CellType], str], bool]
+        ),
     ) -> Tab:
-        """Returns a Tab instance by inferring the Tab type from value.
+        """Returns a Tab instance from the name, value kwarg pair.
 
         This is a protected static method that aides the alternative
         from_keywords constructor. It should not be externally called.
 
         Args:
             name:
-                The column name to provide to a Tab initializer.
+                The column name to provide to a Tab constructor.
             value:
-                A value to provide to a Tab initializer.
+                A value to provide to a Tab constructor.
 
         Returns:
             A Tab instance.
@@ -626,62 +564,50 @@ class Tabulator(ReprMixin):
         if callable(value):
             return Calling(name, value)
 
-        msg = 'Value of type {type(value)} for tab named {name} is not a'
+        msg = f'Invalid value type {type(value)} in keyword argument'
         raise TypeError(msg)
 
     @classmethod
     def from_keywords(
         cls,
         header: Header,
-        columns: Optional[List[str | int] | re.Pattern] = None,
-        **kwargs: Dict[
-            str,
+        columns: Optional[List[str] | List[int] | re.Pattern] = None,
+        **kwargs: (
             CellType
             | Sequence[CellType]
             | re.Pattern
-            | Callable[[Dict[str, CellType], str], bool],
-        ],
+            | Callable[[Dict[str, CellType], str], bool]
+        ),
     ) -> Self:
-        """Alternative instance constructor from tabs given as keyword args.
+        """Alternative instance constructor using keyword args to define Tabs.
 
         Args:
             header:
                 A Header type containing the names of all the columns in infile.
             columns:
-                A list of columns passed as string names or column indices or
-                a single re pattern to match against column names.
+                A list of columns passed as string names or column indices to
+                restrict which items of row dictionaries are returned when this
+                instance is called.
             kwargs:
                 A mapping of column names and values to convert to Tab
                 instances (e.g. 'group' = ['a', 'b'], 'count' = '<=20', ...)
 
         Returns:
             A Tabulator instance
-
-        Raises:
-            A TypeError is issued if columns is a Sequence of inconsistent
-            types.
-
         """
 
         tabs = [cls._from_keyword(*item) for item in kwargs.items()]
         return cls(header, tabs, columns)
 
-    def __contains__(self, tab: Tab) -> bool:
-        """Returns True if tab type is a type in this tabulator else False."""
-
-        return type(tab) in [type(tab) for tab in self.tabs]
-
     def __call__(self, row: Dict[str, CellType]) -> Dict[str, CellType] | None:
-        """Apply the tabs and columns to this row.
+        """Apply Tab instances and column filter to this row.
 
         Args:
             row:
-               A mapping representing a dictionary row of an infile that has
-                undergone type conversion.
+               A row dictionary of a file whose values have been type casted.
 
         Returns:
-            A new row containing only columns if the row satisfies the tabs and
-            None otherwise.
+            A row dictionary or None if row does not satisfy all tabs.
         """
 
         if all(tab(row) for tab in self.tabs):
@@ -694,12 +620,4 @@ if __name__ == '__main__':
 
     import doctest
 
-    #doctest.testmod()
-
-    # contains only works for tab instances so is it useful
-    namestr = 'oranges,pears,peaches,plums'
-    header = Header(names=namestr.split(','), line=2, string=namestr)
-    tabulator = Tabulator.from_keywords(header, oranges=3)
-    eq = Equality('oranges', 3)
-    print(eq in tabulator)
-
+    doctest.testmod()
