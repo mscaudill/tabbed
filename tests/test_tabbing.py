@@ -8,7 +8,8 @@ import string
 
 import pytest
 from tabbed.sniffing import Header
-from tabbed.tabs import Tabulator, Accepting
+from tabbed.tabbing import Tabulator, Accepting
+from tabbed.utils import parsing
 
 
 @pytest.fixture
@@ -57,50 +58,15 @@ def rcomplexes(rng):
 
 
 @pytest.fixture
-def rtimes(rng):
-    """Returns a function for constructing a list of random times."""
-
-    def make_list(length):
-        """Returns a list of random datetime time instances."""
-
-        hours = [rng.randint(1, 23) for _ in range(length)]
-        mins = [rng.randint(0, 59) for _ in range(length)]
-        secs = [rng.randint(0, 59) for _ in range(length)]
-        micros = [rng.randint(0, 999999) for _ in range(length)]
-        times = [datetime.time(hour=h, minute=m, second=s, microsecond=mu)
-                for h, m, s, mu in zip(hours, mins, secs, micros)
-                ]
-
-        return times
-    return make_list
-
-
-@pytest.fixture
-def rdates(rng):
-    """Returns a function for constructing a list of random dates."""
-
-    def make_list(length):
-        """Returns a list of random datetime date instances."""
-
-        years = [rng.randint(1800, 2500) for _ in range(length)]
-        months = [rng.randint(1, 12) for _ in range(length)]
-        days = [rng.randint(1, 28) for _ in range(length)]
-        dates = [datetime.date(y, m, d) for y, m, d in zip(years, months, days)]
-
-        return dates
-    return make_list
-
-
-@pytest.fixture
 def rdatetimes(rng):
     """Returns a function for constructing a list of random datetimes."""
 
     def make_list(length):
         """Returns a list of random datetime instances."""
 
-        start = datetime.datetime.now()
+        start = parsing.convert('1/1/2024 12:30:09 pm')
         delta = datetime.timedelta
-        deltas = [delta(seconds=rng.randint(1, 1000)) for _ in range(length)]
+        deltas = [delta(days=rng.randint(1, 100)) for _ in range(length)]
 
         return [start + delta for delta in deltas]
     return make_list
@@ -120,7 +86,7 @@ def rstrings(rng):
 
 
 @pytest.fixture
-def data(rints, rfloats, rcomplexes, rtimes, rdates, rdatetimes, rstrings):
+def data(rints, rfloats, rcomplexes, rdatetimes, rstrings):
     """Returns a single sample data, a list of dictionaries, the output from
     python's DictReader that have undergone Tabbed's type conversion.
 
@@ -128,13 +94,11 @@ def data(rints, rfloats, rcomplexes, rtimes, rdates, rdatetimes, rstrings):
     """
 
     args = locals()
-    shape = 100, 7
+    shape = 1000, 7
     header = [
         'integers',
         'floats',
         'complexes',
-        'times',
-        'dates',
         'datetimes',
         'strings',
     ]
@@ -226,6 +190,7 @@ def test_tab_construction():
     kinds = 'Equality Membership Regex Comparison'.split()
     assert all([type(tab).__name__ in kinds for tab in tabulator.tabs])
 
+
 def test_tabbing_equality(data):
     """Validates equality tabbing returns correct rows of data."""
 
@@ -250,7 +215,33 @@ def test_tabbing_membership(data):
     assert all([row['integers'] in [0, 1, 2, 3, 4] for row in rows])
 
 
-def test_tabbing_comparison(data):
+def test_tabbing_comparison_lessthan(data):
+    """Validates the less than comparison returns correct rows of data."""
+
+    names = data[0].keys()
+    header = Header(names = names, line=None, string=None)
+    # min date in data is 1/1/2024
+    tabulator = Tabulator.from_keywords(header, datetimes= '<2/1/2024')
+    rows = [tabulator(row) for row in data]
+    rows = [row for row in rows if row]
+
+    assert all([row['datetimes'] < datetime.datetime(2024, 2, 1) for row in rows])
+
+
+def test_tabbing_comparison_greatereq(data):
+    """Validates that a single greater than equal comparison returns the correct
+    rows of data."""
+
+    names = data[0].keys()
+    header = Header(names = names, line=None, string=None)
+    tabulator = Tabulator.from_keywords(header, integers='>=0')
+    rows = [tabulator(row) for row in data]
+    rows = [row for row in rows if row]
+
+    assert all([row['integers'] >= 0 for row in rows])
+
+
+def test_tabbing_comparison_mixed(data):
     """Validates rich comparison tabbing returns the correct rows of data."""
 
     names = data[0].keys()
@@ -263,6 +254,18 @@ def test_tabbing_comparison(data):
     b = all([row['floats'] < 50 for row in rows])
 
     assert a and b
+
+
+def test_tabbing_comparison_neq(data):
+    """Validates the non-equal comparison."""
+
+    names = data[0].keys()
+    header = Header(names = names, line=None, string=None)
+    tabulator = Tabulator.from_keywords(header, integers='!=0')
+    rows = [tabulator(row) for row in data]
+    rows = [row for row in rows if row]
+
+    assert all([row['integers'] != 0 for row in rows])
 
 
 def test_tabbing_regex(data):
@@ -301,12 +304,9 @@ def test_accepting_tab(data):
     names = data[0].keys()
     header = Header(names = names, line=None, string=None)
     tabulator = Tabulator(header, tabs=[Accepting()])
+
     assert data == [tabulator(row) for row in data]
 
 
 
-
-
-
-
-
+# FIXME test with mixing tabs on data
