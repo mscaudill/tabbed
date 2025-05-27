@@ -1,3 +1,4 @@
+# FIXME Expand module docs with explanation from class docs
 """A reader of text delimited files that supports the following features.
     - Automatic identification of metadata & header file sections.
     - Automatic type conversion to ints, floats, complex numbers,
@@ -20,11 +21,14 @@ from tabbed import tabs
 from tabbed.sniffing import Header
 from tabbed.sniffing import MetaData
 from tabbed.sniffing import Sniffer
-from tabbed.utils.celltyping import CellType
+from tabbed.utils.parsing import CellType
 from tabbed.utils.mixins import ReprMixin
 
 
-class Reader(ReprMixin):
+# FIXME make docs terse
+# FIXME dialect header and metadata are props not attrs remove
+# FIXME typecasts are not attributes but a method and name is awful
+class _Reader(ReprMixin):
     r"""A reader of delimited text files supporting iterative reading of
     specific rows and columns from files that possibly contain metadata and
     header components.
@@ -160,6 +164,7 @@ class Reader(ReprMixin):
         self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
         self.errors = SimpleNamespace(casting=[], ragged=[])
 
+    # FIXME DO I NEED THIS OR CAN I JIT GET HEADER FROM SNIFFER VIA PROPERTY
     def _set_sniff(self) -> None:
         """On update of a Sniffer attribute, update this readers header.
 
@@ -178,6 +183,7 @@ class Reader(ReprMixin):
 
         Sniffer.__setattr__ = on_change
 
+    # FIXME SET AND RETRIEVE DIALECT FROM SNIFFER
     @property
     def dialect(self):
         """Returns the Sniffer's current Simplecsv dialect."""
@@ -255,6 +261,8 @@ class Reader(ReprMixin):
             # set index and string to none
             self._header = Header(line=None, names=value, string=None)
 
+
+        # FIXME I DONT THINK WE NEED THIS -> JUST CALL SNIFFER TO INIT
         elif isinstance(value, type(None)):
 
             # if None given as for sniffer's header
@@ -267,6 +275,8 @@ class Reader(ReprMixin):
             )
             raise TypeError(msg)
 
+
+        # FIXME IF WE BUILD TABULATOR JIT WE DONT NEED THIS
         # on header change reset tabulator
         self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
 
@@ -298,6 +308,8 @@ class Reader(ReprMixin):
 
         return dict(zip(self.header.names, types))
 
+    # FIXME WE COULD BUILD TABULATOR JIT DURING READ TO AVOID HAVING TO CHANGE
+    # ITS HEADER WHEN THE SNIFFER CHANGES DYNAMICALLY
     def tab(
         self,
         columns: Optional[List[str | int] | re.Pattern] = None,
