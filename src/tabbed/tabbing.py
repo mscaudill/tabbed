@@ -244,8 +244,12 @@ class Comparison(Tab):
             An operator module function & the casted comparing value.
         """
 
-        # split string on alphanum boundary
-        name, value_str = re.split(r'\b', compare_str, maxsplit=1)
+        # -? => 0 or 1 occurence of negative sign
+        # \d* => 0 or more integer occurences
+        # .? => 0 or 1 occurence of a decimal
+        # \d+ => greedily get remaining integers
+        idx = re.search(r'-?\d*\.?\d+', compare_str).span()[0]
+        name, value_str = compare_str[:idx], compare_str[idx:]
         comparator = self.comparators[name.strip()]
         value = parsing.convert(value_str)
 
