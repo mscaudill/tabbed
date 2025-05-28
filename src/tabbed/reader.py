@@ -407,6 +407,8 @@ class _Reader(ReprMixin):
 
         return row
 
+    # FIXME WE should use parsing.convert this method is redundant
+    # but it DOES LOG CASTING MISHAPS
     def _recast(
         self,
         line: int,
