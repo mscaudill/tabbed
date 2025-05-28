@@ -409,7 +409,7 @@ class Sniffer(ReprMixin):
                 The number of last sample rows to poll for type.
 
         Returns:
-            A list of type names and a boolean indicating if types are
+            A list of types and a boolean indicating if types are
             consistent across polled rows.
         """
 
