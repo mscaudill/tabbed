@@ -17,7 +17,7 @@ from typing import Callable, Deque, Dict, Iterator, List, Optional, Sequence
 
 from tabulate import tabulate
 
-from tabbed import tabs
+from tabbed import tabbing
 from tabbed.sniffing import Header
 from tabbed.sniffing import MetaData
 from tabbed.sniffing import Sniffer
@@ -28,7 +28,7 @@ from tabbed.utils.mixins import ReprMixin
 # FIXME make docs terse
 # FIXME dialect header and metadata are props not attrs remove
 # FIXME typecasts are not attributes but a method and name is awful
-class _Reader(ReprMixin):
+class Reader(ReprMixin):
     r"""A reader of delimited text files supporting iterative reading of
     specific rows and columns from files that possibly contain metadata and
     header components.
@@ -161,7 +161,7 @@ class _Reader(ReprMixin):
         self.sniffer = Sniffer(self.infile, **kwargs)
         self._header = self.sniffer.header
         self._set_sniff()  # on sniffer attr change update header
-        self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
+        self.tabulator = tabbing.Tabulator(self.header, tabs=None, columns=None)
         self.errors = SimpleNamespace(casting=[], ragged=[])
 
     # FIXME DO I NEED THIS OR CAN I JIT GET HEADER FROM SNIFFER VIA PROPERTY
@@ -278,7 +278,7 @@ class _Reader(ReprMixin):
 
         # FIXME IF WE BUILD TABULATOR JIT WE DONT NEED THIS
         # on header change reset tabulator
-        self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
+        self.tabulator = tabbing.Tabulator(self.header, rows=None, columns=None)
 
     # FIXME this is a little confusing this returns a function requiring
     # a header. It should instead get the header to pass to sniffer or not be
@@ -304,7 +304,7 @@ class _Reader(ReprMixin):
             A mapping of header names and the inferred types.
         """
 
-        types = self.sniffer.types(count)
+        types, _ = self.sniffer.types(count)
 
         return dict(zip(self.header.names, types))
 
@@ -346,7 +346,7 @@ class _Reader(ReprMixin):
             None
         """
 
-        self.tabulator = tabs.Tabulator.from_keywords(
+        self.tabulator = tabbing.Tabulator.from_keywords(
             self.header, columns, **rows
         )
 
@@ -528,7 +528,9 @@ class _Reader(ReprMixin):
         # init None args and reset errors to fresh empty for this read
         start = self._autostart() if not start else start
         skips = [] if not skips else skips
-        indices = range(start, len(self)) if not indices else indices
+        length = sum(1 for _ in self.infile)
+        self.infile.seek(0)
+        indices = range(start, length) if not indices else indices
         self.errors = SimpleNamespace(casting=[], ragged=[])
         # update typecasts with castings
         typecasts = self.typecasts()
@@ -613,6 +615,7 @@ if __name__ == '__main__':
 
     import time
 
+    """
     fp = '/home/matt/python/nri/tabbed/__data__/fly_sample.txt'
 
     infile = open(fp, 'r')
@@ -634,3 +637,9 @@ if __name__ == '__main__':
         print(f'Chunk: {idx}, Rows read = {cnt}')
     print(f'elapsed time: {time.perf_counter() - t0}')
     #reader.close()
+    """
+
+    fp = '/home/matt/python/nri/tabbed/__data__/mouse_annotations.txt'
+    infile = open(fp, 'r')
+    reader = Reader(infile)
+    x = reader.read()

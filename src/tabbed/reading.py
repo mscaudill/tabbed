@@ -2,9 +2,14 @@
 
 """
 from __future__ import annotations
+import csv
 from types import SimpleNamespace
-from typing import Dict, IO, List, Optional
+from typing import Dict, Deque, IO, List, Optional, Sequence
 import warnings
+import itertools
+from collections import deque
+import copy
+
 
 from tabbed.sniffing import Header, Sniffer
 from tabbed.tabbing import Tabulator
@@ -126,7 +131,7 @@ class Reader(ReprMixin):
             str, CellType | Sequence[CellType] | re.Pattern | Callable
         ],
     ) -> None:
-        """Set the Tabulator instance that will filter infiles rows & columns.
+        """Set the Tabulator instance that will filter infile's rows & columns.
 
         A tabulator is a container of tab instances that when called on a row,
         sequentially applies each tab to that row. Additionally after applying
@@ -241,16 +246,18 @@ class Reader(ReprMixin):
                 The line number of the row being tested.
             row:
                 A row dictionary of header names and casted values.
+            expected:
+                A dictionary of header names and expected column types.
 
         Returns:
             The row.
         """
 
         types = {name: type(val) for name, val in row.items()}
-        miscast = {name for name in types if types[name] != row[name]}
+        miscast = {name for name in types if types[name] != expected[name]}
         if miscast:
-            msg = f"Casting error on line = {line}, column = '{miscast}'"
-            self.errors.casting.extend(msg)
+            msg = f"line = {line}, column = '{miscast}'"
+            self.errors.casting.append(msg)
 
         return row
 
@@ -263,22 +270,86 @@ class Reader(ReprMixin):
         indices: Optional[Sequence] = None,
         chunksize: int = int(2e5),
         skip_blanks: bool = True,
-        castings: Optional[Dict[str, Callable[[str], CellType]]] = None,
+        typecasts: Optional[Dict[str, Callable[[str], CellType]]] = None,
+        typepoll: int = 5,
         raise_ragged: bool = False,
     ) -> Iterator[List[Dict[str, CellType]]]:
         """ """
 
         start = self._datastart() if not start else start
         skips = [] if not skips else skips
-        indices
+        castings = self.types(typepoll)
+        expected = copy.copy(castings)
+        castings.update(typecasts if typecasts else {})
+        self.errors.casting = []
+        self.errors.ragged = []
+
+        row_iter = csv.DictReader(
+                self.infile,
+                self.header.names,
+                dialect=self._sniffer.dialect,
+                )
+        #row_iter = itertools.islice(row_iter, start, None)
+
+        """
+        if indices:
+
+            # TODO NOTE if indices are provided, start value will be overridden
+            if isinstance(indices, range):
+                start, stop, step = indices.start, indices.stop, indices.step
+                row_iter = itertools.islice(row_iter, start, stop, step)
+
+            elif isinstance(indices, Sequence):
+                # TODO Note that indices should be monotonically increasing
+                start = indices[0]
+                stop = indices[-1]
+                row_iter = itertools.islice(row_iter, start, stop)
+
+            else:
+                msg = f'indices must be a Sequence type not {type(indices)}.'
+                raise TypeError(msg)
+
+        else:
+            row_iter = itertools.islice(row_iter, start, None, None)
+        """
+
+        fifo: Deque[Dict[str, CellType]] = deque()
+        for line, dic in enumerate(row_iter, start):
+
+            print(line, dic)
+            if line in skips:
+                continue
+
+            if indices and line not in indices:
+                continue
+
+            if not any(dic.values()) and skip_blanks:
+                continue
 
 
+            # perform conversion, check for error log updates, and filter
+            #row = {k: parsing.convert(v, castings[k]) for k, v in dic.items()}
+            row = {k: parsing.convert(v, None) for k, v in dic.items()}
+            row = self._log_ragged(line, row, raise_ragged)
+            row = self._log_miscast(line, row, expected)
+            row = self.tabulator(row)
+
+            if row:
+                fifo.append(row)
+
+            if len(fifo) >= chunksize:
+                yield [fifo.popleft() for _ in range(chunksize)]
+
+        yield list(fifo)
+        self.infile.seek(0)
 
 
 
 if __name__ == '__main__':
 
-    fp = '/home/matt/python/nri/tabbed/__data__/fly_sample.txt'
+    fp = '/home/matt/python/nri/tabbed/__data__/mouse_annotations.txt'
 
     infile = open(fp, 'r')
-    reader = Reader(infile) 
+    reader = Reader(infile)
+    datagen = reader.read()
+    result = [x for x in datagen]
