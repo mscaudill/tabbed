@@ -3,6 +3,9 @@ of a csv file that may contain metadata, header and data sections."""
 
 from collections import Counter
 from dataclasses import dataclass
+from datetime import date
+from datetime import datetime
+from datetime import time
 from itertools import chain
 from types import SimpleNamespace
 from typing import IO, List, Optional, Tuple
@@ -11,9 +14,9 @@ import warnings
 import clevercsv
 from clevercsv.dialect import SimpleDialect
 
+from tabbed.utils import parsing
 from tabbed.utils.mixins import ReprMixin
 from tabbed.utils.parsing import CellTypes
-from tabbed.utils.parsing import convert
 
 
 @dataclass(frozen=True)
@@ -281,7 +284,7 @@ class Sniffer(ReprMixin):
         return self._dialect
 
     @dialect.setter
-    def dialect(self, value: SimpleDialect) -> None:
+    def dialect(self, value: SimpleDialect | None) -> None:
         """Sets this Sniffer's dialect.
 
         Args:
@@ -293,11 +296,12 @@ class Sniffer(ReprMixin):
             None
         """
 
-        # python 3.11 deprecated '' for escape & quotechars
-        escapechar = None if value.escapechar == '' else value.escapechar
-        quotechar = '"' if not value.quotechar else value.quotechar
-        value.escapechar = escapechar
-        value.quotechar = quotechar
+        if value:
+            # python 3.11 deprecated '' for escape & quotechars
+            escapechar = None if value.escapechar == '' else value.escapechar
+            quotechar = '"' if not value.quotechar else value.quotechar
+            value.escapechar = escapechar
+            value.quotechar = quotechar
 
         self._dialect = value
 
@@ -393,7 +397,7 @@ class Sniffer(ReprMixin):
 
         # result is None if clevercsv's sniff is indeterminant
         result = clevercsv.Sniffer().sniff(self.sample, delimiters=delimiters)
-        if not result:
+        if result is None:
             msg1 = "Dialect could not be determined from Sniffer's sample.  "
             msg2 = "Please set this Sniffer's dialect attribute."
             warnings.warn(msg1 + msg2)
@@ -415,17 +419,56 @@ class Sniffer(ReprMixin):
 
         rows = self.rows[-poll:]
         cols = list(zip(*rows))
-        type_cnts = [Counter([type(convert(el)) for el in col]) for col in cols]
+        type_cnts = [
+            Counter([type(parsing.convert(el)) for el in col]) for col in cols
+        ]
         consistent = all(len(cnt) == 1 for cnt in type_cnts)
         common_types = [cnt.most_common(1)[0][0] for cnt in type_cnts]
 
         return common_types, consistent
 
+    def datetime_formats(self, poll: int) -> Tuple[List[str | None], bool]:
+        """Infer time, date or datetime formats from last poll count rows.
+
+        Args:
+            poll:
+                The number of last sample rows to poll for type and format
+                consistency.
+
+        Returns:
+            A tuple containing a list of formats the same length as last polled
+            row and a boolean indicating if the formats are consistent across
+            the polled rows. Columns that are not time, date or datetime type
+            have a format of None.
+        """
+
+        fmts = {
+            time: parsing.time_formats(),
+            date: parsing.date_formats(),
+            datetime: parsing.datetime_formats(),
+        }
+        polled = []
+        for row in self.rows[-poll:]:
+            row_fmts = []
+            for astring, tp in zip(row, self.types(poll)[0]):
+                fmt = (
+                    parsing.find_format(astring, fmts[tp])
+                    if tp in fmts
+                    else None
+                )
+                row_fmts.append(fmt)
+            polled.append(row_fmts)
+
+        # consistency within each column of polled
+        consistent = all(len(set(col)) == 1 for col in list(zip(*polled)))
+
+        return polled[-1], consistent
+
     def _type_diff(
         self,
         poll: int,
         exclude: List[str],
-        len_requirement = True,
+        len_requirement=True,
     ) -> Tuple[int | None, List[str] | None]:
         """Locates first row from last whose types don't match last sample row.
 
@@ -459,7 +502,7 @@ class Sniffer(ReprMixin):
             if bool(set(exclude).intersection(row)):
                 continue
 
-            row_types = [type(convert(el)) for el in row]
+            row_types = [type(parsing.convert(el)) for el in row]
             # check types and completeness
             type_mismatch = row_types != types
             len_match = len(row) == len(self.rows[-1])
@@ -655,8 +698,7 @@ if __name__ == '__main__':
 
     import doctest
 
-    #doctest.testmod()
-
+    # doctest.testmod()
     from itertools import batched
     import random
     import tempfile
@@ -680,6 +722,7 @@ if __name__ == '__main__':
     print(sniffer.metadata(header=None))
     """
 
+    """
     delimiter=';'
     metadata = {'exp': '3', 'name': 'Paul Dirac', 'date': '11/09/1942'}
     text = [delimiter.join([key, val]) for key, val in metadata.items()]
@@ -696,4 +739,8 @@ if __name__ == '__main__':
     _ = outfile.write('\n'.join(text))
     # create a sniffer
     sniffer = Sniffer(outfile)
+    """
 
+    fp = '/home/matt/python/nri/tabbed/__data__/mouse_annotations.txt'
+    infile = open(fp, 'r')
+    sniffer = Sniffer(infile)

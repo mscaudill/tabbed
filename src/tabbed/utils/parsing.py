@@ -1,40 +1,26 @@
-"""A module for detecting & converting strs to python intrinsic types.
-
-Dates and Datetime instances currently support ...
+"""A module for detecting & converting strings to python types supported by
+Tabbed. The supported types are:
+    - integers
+    - floats
+    - complex
+    - datetime times
+    - datetime dates
+    - datetime datetimes
+    - strings
 """
 
 from collections import Counter
+from datetime import date
 from datetime import datetime
+from datetime import time
 import itertools
 import re
 import string
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Type
 
 # define the supported intrinsic types for each list element read by Tabbed
-CellType = int | float | complex | datetime | str
-CellTypes = List[
-    type[int] | type[float] | type[complex] | type[datetime] | type[str]
-]
-
-
-def date_formats() -> List[str]:
-    """Creates commonly used date format specifiers.
-
-    This function returns many common date formats but not all. As new formats
-    are encountered this function should be modified to detect more.
-
-    Returns:
-        A list of date formats specifiers for datetime's strptime method.
-    """
-
-    months, separators, years = 'mbB', ' /-.', 'Yy'
-    fmts = []
-    for mth, sep, yr in itertools.product(months, separators, years):
-        # build month and day first fmts
-        x = [f'%{mth}{sep}%d{sep}%{yr}', f'%d{sep}%{mth}{sep}%{yr}']
-        fmts.extend(x)
-
-    return fmts
+CellType = int | float | complex | time | date | datetime | str
+CellTypes = List[Type[CellType]]
 
 
 def time_formats() -> List[str]:
@@ -61,6 +47,26 @@ def time_formats() -> List[str]:
     return fmts
 
 
+def date_formats() -> List[str]:
+    """Creates commonly used date format specifiers.
+
+    This function returns many common date formats but not all. As new formats
+    are encountered this function should be modified to detect more.
+
+    Returns:
+        A list of date formats specifiers for datetime's strptime method.
+    """
+
+    months, separators, years = 'mbB', ' /-.', 'Yy'
+    fmts = []
+    for mth, sep, yr in itertools.product(months, separators, years):
+        # build month and day first fmts
+        x = [f'%{mth}{sep}%d{sep}%{yr}', f'%d{sep}%{mth}{sep}%{yr}']
+        fmts.extend(x)
+
+    return fmts
+
+
 def datetime_formats() -> List[str]:
     """Creates commonly used datetime format specifiers.
 
@@ -72,10 +78,10 @@ def datetime_formats() -> List[str]:
         A list of datetime formats specifiers for datetime's strptime method.
     """
 
-    dates, times = date_formats(), time_formats()
+    datefmts, timefmts = date_formats(), time_formats()
     fmts = []
-    for date, time in itertools.product(dates, times):
-        fmts.append(' '.join([date, time]))
+    for datefmt, timefmt in itertools.product(datefmts, timefmts):
+        fmts.append(' '.join([datefmt, timefmt]))
 
     return fmts
 
@@ -122,22 +128,6 @@ def is_numeric(astring: str) -> bool:
         return False
 
 
-def is_date(astring: str) -> bool:
-    """Test if astring represents a date.
-
-    Args:
-        astring:
-            A string instance that possibly represents a datetime instance.
-
-    Returns:
-        True if astring can be converted to a datetime and False otherwise.
-    """
-
-    # another method to date detect without fmt testing could give speedup
-    fmt = find_format(astring, date_formats())
-    return bool(fmt)
-
-
 def is_time(astring: str) -> bool:
     """Test if astring represents a time.
 
@@ -155,6 +145,22 @@ def is_time(astring: str) -> bool:
 
     # another method to time detect without fmt testing could give speedup
     fmt = find_format(astring, time_formats())
+    return bool(fmt)
+
+
+def is_date(astring: str) -> bool:
+    """Test if astring represents a date.
+
+    Args:
+        astring:
+            A string instance that possibly represents a datetime instance.
+
+    Returns:
+        True if astring can be converted to a datetime and False otherwise.
+    """
+
+    # another method to date detect without fmt testing could give speedup
+    fmt = find_format(astring, date_formats())
     return bool(fmt)
 
 
@@ -199,16 +205,46 @@ def as_numeric(astring: str) -> int | float | complex | str:
         return astring
 
 
-def as_datetime(astring: str, fmt: str) -> datetime | str:
-    """Converts astring representing a date, a time or a datetime into
-    a datetime instance.
+def as_time(astring: str, fmt: str) -> time | str:
+    """Converts astring representing a time into a datetime time instance.
 
     Args:
         astring:
-            A string representing a date, time or datetime. If a date is given
-            without a time the return datetime time portions will have hours
-            mins secs and microsecs of 0.  If a time is given without a date the
-            return datetime date portion will be January 1st 1900.
+            A string representing a time.
+
+    Returns:
+        A datetime.time instance or astring on conversion failure
+    """
+
+    try:
+        return datetime.strptime(astring, fmt).time()
+    except ValueError:
+        return astring
+
+
+def as_date(astring: str, fmt: str) -> date | str:
+    """Converts astring representing a date into a datetime date instance.
+
+    Args:
+        astring:
+            A string representing a date.
+
+    Returns:
+        A datetime.date instance or astring on conversion failure
+    """
+
+    try:
+        return datetime.strptime(astring, fmt).date()
+    except ValueError:
+        return astring
+
+
+def as_datetime(astring: str, fmt: str) -> datetime | str:
+    """Converts astring representing datetime into a datetime instance.
+
+    Args:
+        astring:
+            A string representing a datetime.
 
     Returns:
         A datetime instance or astring on conversion failure
@@ -224,8 +260,8 @@ def as_datetime(astring: str, fmt: str) -> datetime | str:
 # pylint: disable-next=too-many-return-statements
 def convert(
     astring: str,
-    func: Optional[Callable[..., CellType]] = None,
-    **kwargs,
+    func: Optional[Callable[[str], CellType]] = None,
+    verbose: bool = True,
 ) -> CellType:
     """Attempts to convert a string to a valid Cell type.
 
@@ -237,12 +273,15 @@ def convert(
             A string that possibly represents a CellType, one of int, float,
             complex, datetime or string.
         func:
-            A callable for performing conversion that must accept at least
+            A callable for performing conversion that must accept a single
             astring and return a CellType. If provided, this callable
-            supersedes any autoconversion.
-        kwargs:
-            All keyword arguments are passed to func if provided and ignored
-            otherwise.
+            supersedes any autoconversion. It is expected that any additional
+            arguments needed for func are frozen using partials.
+        verbose:
+            Boolean indicating if func conversion fails and auto-conversion is
+            being attempted. Default is True to make clients aware their func
+            has failed to convert astring and convert is attempting slower
+            auto-conversion.
 
     Returns:
         A CellType
@@ -254,13 +293,19 @@ def convert(
     # give the converter a try if provided
     if func:
         try:
-            return func(astring, **kwargs)
+            result: CellType = func(astring)
+            return result
 
         # catch any exception raised by generic func and keep trying
         # pylint: disable-next=broad-exception-caught
         except Exception as e:
-            msg = str(e) + ' ... attempting autoconversion'
-            print(msg)
+            emsg = (
+                f'Conversion error using {func.__name__}'
+                ' attempting slower auto-conversion'
+            )
+            msg = str(e) + emsg
+            if verbose:
+                print(msg)
 
     # numeric
     if is_numeric(astring):
@@ -270,19 +315,19 @@ def convert(
     if set(astring.lower()).issubset(string.ascii_letters):
         return astring
 
-    # datetimes - use asserts for mypy type narrowing
+    # times,dates, datetimes - use asserts for mypy type narrowing
     if is_time(astring):
         fmt = find_format(astring, time_formats())
         assert isinstance(fmt, str)
-        return as_datetime(astring, fmt)
+        return as_time(astring, fmt)
 
     if is_date(astring):
         fmt = find_format(astring, date_formats())
         assert isinstance(fmt, str)
-        return as_datetime(astring, fmt)
+        return as_date(astring, fmt)
 
     if is_datetime(astring):
-        # perform this datetime last since it has many fmts to test
+        # perform datetime last since it has many fmts to test
         fmt = find_format(astring, datetime_formats())
         assert isinstance(fmt, str)
         return as_datetime(astring, fmt)
