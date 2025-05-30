@@ -63,14 +63,14 @@ def rcomplexes(rng):
 
 
 @pytest.fixture
-def rdatetimes(rng):
+def rdates(rng):
     """Returns a function for constructing a list of random datetimes."""
 
     def make_list(length):
         """Returns a list of datetime instances that cover upto 1 year"""
 
-        start = parsing.convert('1/1/2025 12:00:00 am')
-        deltas = ([datetime.timedelta(x) for x in range(364)]*length)[:length]
+        start = parsing.convert('1/1/2025')
+        deltas = ([datetime.timedelta(days=x) for x in range(364)]*length)[:length]
         return [start + delta for delta in deltas]
 
     return make_list
@@ -92,7 +92,7 @@ def rstrings(rng):
 
 
 @pytest.fixture
-def data(rints, rfloats, rcomplexes, rdatetimes, rstrings):
+def data(rints, rfloats, rcomplexes, rdates, rstrings):
     """Returns a single sample data, a list of dictionaries, the output from
     python's DictReader that have undergone Tabbed's type conversion.
 
@@ -105,7 +105,7 @@ def data(rints, rfloats, rcomplexes, rdatetimes, rstrings):
         'integers',
         'floats',
         'complexes',
-        'datetimes',
+        'dates',
         'strings',
     ]
     rows = list(zip(*[func(shape[0]) for func in args.values()]))
@@ -238,12 +238,11 @@ def test_greaterthanequal(data):
 
     names = data[0].keys()
     header = Header(names = names, line=None, string=None)
-    date = datetime.datetime(2025, 6, 1)
-    tabulator = Tabulator.from_keywords(header, datetimes= '>6/1/2025')
+    tabulator = Tabulator.from_keywords(header, dates= '>6/1/2025')
     rows = [tabulator(row) for row in data]
     rows = [row for row in rows if row]
 
-    assert all([row['datetimes'] >= date for row in rows])
+    assert all([row['dates'] >= datetime.date(2025, 6, 1) for row in rows])
 
 
 def test_mixed_comparison(data):

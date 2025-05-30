@@ -235,7 +235,7 @@ def test_convert_of_date(valid_date):
     """
 
     _, date = valid_date
-    assert isinstance(parsing.convert(date), datetime.datetime)
+    assert isinstance(parsing.convert(date), datetime.date)
 
 
 def test_convert_of_time(valid_time):
@@ -249,7 +249,7 @@ def test_convert_of_time(valid_time):
     """
 
     _, time = valid_time
-    assert isinstance(parsing.convert(time), datetime.datetime)
+    assert isinstance(parsing.convert(time), datetime.time)
 
 
 def test_convert_of_datetime(valid_datetime):
