@@ -165,23 +165,40 @@ class Reader(ReprMixin):
         )
 
     def types(self, poll: int) -> Dict[str, parsing.CellType]:
-        """Polls the last poll rows of the sniffer's sample for types.
+        """Polls last rows of sniffer's sample for types & datetime formats.
+
+        For quick cell conversion, we determine types from the last poll sample
+        rows and use these type callables under the assumption that columns in
+        the data section have consistent type. Time, date and datetime callables
+        also require a format argument and are also polled by this reader's
+        sniffer instance. Warnings are issued if types or formats are
+        inconsistent across rows (though conversion will continue).
 
         Args:
             poll:
                 The number of last sample rows to poll for column types.
 
         Returns:
-            A mapping of header names and inferred column types.
+            A mapping of header names and inferred column types and a mapping of
+            header names and inferred datetime formats.
         """
 
-        typings, consistent = self._sniffer.types(poll)
-        if not consistent:
-            msg = ('Reader detected inconsistent column types.'
+        typings, type_consistent = self._sniffer.types(poll)
+        if not type_consistent:
+            msg = ('Sniffer detected inconsistent column types. '
                    'Using most common type for each column.')
             warnings.warn(msg)
 
-        return dict(zip(self.header.names, typings))
+        fmts, fmt_consistent = self._sniffer.datetime_formats(poll)
+        if not fmt_consistent:
+            msg = ('Sniffer detected inconsistent datetime formats. '
+                   'Using formats from last row of sniffed sample.')
+            warnings.warn(msg)
+
+        typings = dict(zip(self.header.names, typings))
+        fmts = dict(zip(self.header.names, fmts))
+
+        return typings, fmts
 
     def _datastart(self) -> int:
         """Returns the first line number of the data section.
@@ -196,6 +213,7 @@ class Reader(ReprMixin):
             # locate by header line
             start = line + 1
         else:
+            # FIXME if no metadata what happens???
             # locate by last line of metadata
             start = self._sniffer.metadata(line).lines[1] + 1
 
@@ -269,14 +287,13 @@ class Reader(ReprMixin):
         skips: Optional[Sequence[int]] = None,
         indices: Optional[Sequence] = None,
         chunksize: int = int(2e5),
-        skip_blanks: bool = True,
+        skip_empty: bool = True,
         typecasts: Optional[Dict[str, Callable[[str], CellType]]] = None,
         typepoll: int = 5,
         raise_ragged: bool = False,
     ) -> Iterator[List[Dict[str, CellType]]]:
         """ """
 
-        start = self._datastart() if not start else start
         skips = [] if not skips else skips
         castings = self.types(typepoll)
         expected = copy.copy(castings)
@@ -284,34 +301,39 @@ class Reader(ReprMixin):
         self.errors.casting = []
         self.errors.ragged = []
 
-        row_iter = csv.DictReader(
-                self.infile,
-                self.header.names,
-                dialect=self._sniffer.dialect,
-                )
-        #row_iter = itertools.islice(row_iter, start, None)
-
-        """
+        # advance infile to data section to handle blank metadata lines
+        start = self._datastart() if not start else start
+        stop = None
+        step = None
         if indices:
 
-            # TODO NOTE if indices are provided, start value will be overridden
+            # If indices are provided the start argument is ignored
             if isinstance(indices, range):
                 start, stop, step = indices.start, indices.stop, indices.step
-                row_iter = itertools.islice(row_iter, start, stop, step)
 
             elif isinstance(indices, Sequence):
-                # TODO Note that indices should be monotonically increasing
                 start = indices[0]
                 stop = indices[-1]
-                row_iter = itertools.islice(row_iter, start, stop)
 
             else:
                 msg = f'indices must be a Sequence type not {type(indices)}.'
                 raise TypeError(msg)
 
-        else:
-            row_iter = itertools.islice(row_iter, start, None, None)
-        """
+        if start < self._datastart():
+            v = self._datastart()
+            msg = f'Start must be > data section start row = {v}'
+            raise ValueError(msg)
+
+        # advance to data start to account for possible blank meta lines
+        [next(self.infile) for _ in range(self._datastart())]
+        row_iter = csv.DictReader(
+                    self.infile,
+                    self.header.names,
+                    dialect=self._sniffer.dialect,
+                    )
+        # file is advanced to datastart so compute relative start
+        relative_start = start - self._datastart()
+        row_iter = itertools.islice(relative_start, stop, step)
 
         fifo: Deque[Dict[str, CellType]] = deque()
         for line, dic in enumerate(row_iter, start):
@@ -323,9 +345,11 @@ class Reader(ReprMixin):
             if indices and line not in indices:
                 continue
 
-            if not any(dic.values()) and skip_blanks:
+            if not any(dic.values()) and skip_empty:
                 continue
 
+        # TODO use sniffer types and formats to build castings as partials
+            """
 
             # perform conversion, check for error log updates, and filter
             #row = {k: parsing.convert(v, castings[k]) for k, v in dic.items()}
@@ -342,7 +366,7 @@ class Reader(ReprMixin):
 
         yield list(fifo)
         self.infile.seek(0)
-
+        """
 
 
 if __name__ == '__main__':
@@ -352,4 +376,4 @@ if __name__ == '__main__':
     infile = open(fp, 'r')
     reader = Reader(infile)
     datagen = reader.read()
-    result = [x for x in datagen]
+    #result = [x for x in datagen]
