@@ -3,6 +3,8 @@
 """
 from __future__ import annotations
 import csv
+import datetime
+from functools import partial
 from types import SimpleNamespace
 from typing import Dict, Deque, IO, List, Optional, Sequence
 import warnings
@@ -122,6 +124,7 @@ class Reader(ReprMixin):
             msg = ("Previously set tabs have been reset. Please call 'tab' "
                    "method again before reading.")
             print(msg)
+
         self.tabulator = tblr
 
     def tab(
@@ -164,41 +167,54 @@ class Reader(ReprMixin):
             self.header, columns, **tabs
         )
 
-    def types(self, poll: int) -> Dict[str, parsing.CellType]:
-        """Polls last rows of sniffer's sample for types & datetime formats.
+    def castings(
+        self,
+        poll: int,
+    ) -> Dict[str, Callable[[str], CellType]]:
+        """Returns a mapping of callables for converting infile's columns.
 
-        For quick cell conversion, we determine types from the last poll sample
-        rows and use these type callables under the assumption that columns in
-        the data section have consistent type. Time, date and datetime callables
-        also require a format argument and are also polled by this reader's
-        sniffer instance. Warnings are issued if types or formats are
-        inconsistent across rows (though conversion will continue).
+        To quickly convert strings into Tabbed's supported data types, the last
+        poll rows of the sniffer's sample are used to infer both types and
+        possible date/time formats. These types and formats are then used to
+        convert all of infile's rows from string values to CellTypes.
 
         Args:
             poll:
-                The number of last sample rows to poll for column types.
+                The number of rows to poll to infer the column types and
+                possibly the date/time formats.
 
         Returns:
-            A mapping of header names and inferred column types and a mapping of
-            header names and inferred datetime formats.
+            A dict of callables with all arguments frozen except for the string
+            value to convert.
+
+        Raises:
+            None but warnings are issued if the types or formats are not
+            consistent across the rows of the sample. Conversion errors will not
+            raise errors but leave the string values at a row, column location
+            unchanged.
         """
 
-        typings, type_consistent = self._sniffer.types(poll)
-        if not type_consistent:
+        # warn if there are type or format inconsistencies in sniff sample
+        types, type_consistency = self._sniffer.types(poll)
+        if not type_consistency:
             msg = ('Sniffer detected inconsistent column types. '
                    'Using most common type for each column.')
             warnings.warn(msg)
 
-        fmts, fmt_consistent = self._sniffer.datetime_formats(poll)
-        if not fmt_consistent:
+        fmts, fmt_consistency = self._sniffer.datetime_formats(poll)
+        if not fmt_consistency:
             msg = ('Sniffer detected inconsistent datetime formats. '
                    'Using formats from last row of sniffed sample.')
             warnings.warn(msg)
 
-        typings = dict(zip(self.header.names, typings))
-        fmts = dict(zip(self.header.names, fmts))
+        # construct mapping of header names and partial functions for casting
+        result = dict(zip(self.header.names, types))
+        for name, tp, fmt in zip(self.header.names, types, fmts):
 
-        return typings, fmts
+            if fmt:
+                result[name] = partial(parsing.as_datetime_type, tp=tp, fmt=fmt)
+
+        return result
 
     def _datastart(self) -> int:
         """Returns the first line number of the data section.
@@ -210,12 +226,10 @@ class Reader(ReprMixin):
         start = 0
         line = self.header.line
         if line is not None:
-            # locate by header line
             start = line + 1
         else:
-            # FIXME if no metadata what happens???
-            # locate by last line of metadata
-            start = self._sniffer.metadata(line).lines[1] + 1
+            metalines = self._sniffer.metadata(line).lines
+            start = metalines[1] + 1 if metalines[1] else metalines[0]
 
         return start
 
@@ -279,8 +293,6 @@ class Reader(ReprMixin):
 
         return row
 
-    # TODO should read return either iterator or list or should we build
-    # a function to turn iterator into single list
     def read(
         self,
         start: Optional[int] = None,
@@ -288,16 +300,14 @@ class Reader(ReprMixin):
         indices: Optional[Sequence] = None,
         chunksize: int = int(2e5),
         skip_empty: bool = True,
-        typecasts: Optional[Dict[str, Callable[[str], CellType]]] = None,
-        typepoll: int = 5,
+        poll: int = 5,
         raise_ragged: bool = False,
     ) -> Iterator[List[Dict[str, CellType]]]:
         """ """
 
         skips = [] if not skips else skips
-        castings = self.types(typepoll)
-        expected = copy.copy(castings)
-        castings.update(typecasts if typecasts else {})
+        castings = self.castings(poll)
+        expected = dict(zip(self.header.names, self._sniffer.types(poll)[0]))
         self.errors.casting = []
         self.errors.ragged = []
 
@@ -333,12 +343,11 @@ class Reader(ReprMixin):
                     )
         # file is advanced to datastart so compute relative start
         relative_start = start - self._datastart()
-        row_iter = itertools.islice(relative_start, stop, step)
+        row_iter = itertools.islice(row_iter, relative_start, stop, step)
 
         fifo: Deque[Dict[str, CellType]] = deque()
         for line, dic in enumerate(row_iter, start):
 
-            print(line, dic)
             if line in skips:
                 continue
 
@@ -348,12 +357,8 @@ class Reader(ReprMixin):
             if not any(dic.values()) and skip_empty:
                 continue
 
-        # TODO use sniffer types and formats to build castings as partials
-            """
-
-            # perform conversion, check for error log updates, and filter
-            #row = {k: parsing.convert(v, castings[k]) for k, v in dic.items()}
-            row = {k: parsing.convert(v, None) for k, v in dic.items()}
+            # perform conversion, log errors & filter with tabulator
+            row = {name: castings[name](val) for name, val in dic.items()}
             row = self._log_ragged(line, row, raise_ragged)
             row = self._log_miscast(line, row, expected)
             row = self.tabulator(row)
@@ -366,8 +371,11 @@ class Reader(ReprMixin):
 
         yield list(fifo)
         self.infile.seek(0)
-        """
 
+    def as_list(self, datagen):
+        """ """
+
+        return list(*itertools.chain(datagen))
 
 if __name__ == '__main__':
 
@@ -376,4 +384,3 @@ if __name__ == '__main__':
     infile = open(fp, 'r')
     reader = Reader(infile)
     datagen = reader.read()
-    #result = [x for x in datagen]
