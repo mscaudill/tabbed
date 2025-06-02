@@ -256,6 +256,36 @@ def as_datetime(astring: str, fmt: str) -> datetime | str:
         return astring
 
 
+def as_datetime_type(
+    astring,
+    tp: date | time | datetime,
+    fmt: str,
+) ->  date | time | datetime | str:
+    """Converts astring representing one of the datetime module types into a
+    time, date or datetime instance.
+
+    Args:
+        astring:
+            A string representing a time, date or datetime instance.
+        tp:
+            The type from the datetime module that astring represents.
+        fmt:
+            The format of astring (see python dateime module formats).
+
+    Returns:
+        A time, date, datetime or string instance on conversion failure.
+    """
+
+    try:
+        result = datetime.strptime(astring, fmt)
+        if isinstance(tp, (time, date)):
+            result = getattr(result, typ.__name__)()
+    except ValueError:
+        return astring
+
+    return result
+
+
 # conversion stops on first success so allow multi-returns
 # pylint: disable-next=too-many-return-statements
 def convert(
