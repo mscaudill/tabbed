@@ -21,8 +21,23 @@ from tabbed import tabbing
 
 
 class Reader(ReprMixin):
-    """
+    r"""An iterative reader of structurally variable text files supporting
+    conditional reading of selective rows and columns.
 
+    A lack of formal specifications for a CSV format has led to many
+    structurally variant implementations. Many variants of the RFC-4180 standard
+    include metadata prior to a possible header and data section. This reader
+    sniffs files for these sections advancing to the most-likely start
+    position of the data section. This reader uses type inference to
+    automatically convert cells in the data section to strings, integers,
+    floats, complex, time, date or datetime instances. Finally, this reader
+    supports selective reading of rows based equality, membership, comparison, and
+    regular expression value based conditions via Tab callables that may be
+    supplied as keyword arguments to the 'tab' method.
+
+    Attributes:
+        infile:
+            An I/O stream instance returned by open.
     """
 
     def __init__(self, infile:IO[str], **sniffing_kwargs) -> None:
@@ -167,72 +182,6 @@ class Reader(ReprMixin):
             self.header, columns, **tabs
         )
 
-    def castings(
-        self,
-        poll: int,
-    ) -> Dict[str, Callable[[str], CellType]]:
-        """Returns a mapping of callables for converting infile's columns.
-
-        To quickly convert strings into Tabbed's supported data types, the last
-        poll rows of the sniffer's sample are used to infer both types and
-        possible date/time formats. These types and formats are then used to
-        convert all of infile's rows from string values to CellTypes.
-
-        Args:
-            poll:
-                The number of rows to poll to infer the column types and
-                possibly the date/time formats.
-
-        Returns:
-            A dict of callables with all arguments frozen except for the string
-            value to convert.
-
-        Raises:
-            None but warnings are issued if the types or formats are not
-            consistent across the rows of the sample. Conversion errors will not
-            raise errors but leave the string values at a row, column location
-            unchanged.
-        """
-
-        # warn if there are type or format inconsistencies in sniff sample
-        types, type_consistency = self._sniffer.types(poll)
-        if not type_consistency:
-            msg = ('Sniffer detected inconsistent column types. '
-                   'Using most common type for each column.')
-            warnings.warn(msg)
-
-        fmts, fmt_consistency = self._sniffer.datetime_formats(poll)
-        if not fmt_consistency:
-            msg = ('Sniffer detected inconsistent datetime formats. '
-                   'Using formats from last row of sniffed sample.')
-            warnings.warn(msg)
-
-        # construct mapping of header names and partial functions for casting
-        result = dict(zip(self.header.names, types))
-        for name, tp, fmt in zip(self.header.names, types, fmts):
-
-            if fmt:
-                result[name] = partial(parsing.as_datetime_type, tp=tp, fmt=fmt)
-
-        return result
-
-    def _datastart(self) -> int:
-        """Returns the first line number of the data section.
-
-        Returns:
-            An integer line number.
-        """
-
-        start = 0
-        line = self.header.line
-        if line is not None:
-            start = line + 1
-        else:
-            metalines = self._sniffer.metadata(line).lines
-            start = metalines[1] + 1 if metalines[1] else metalines[0]
-
-        return start
-
     def _log_ragged(self, line, row, raise_error):
         """Error logs rows whose length is unexpected.
 
@@ -267,31 +216,75 @@ class Reader(ReprMixin):
 
         return row
 
-    def _log_miscast(self, line, row, expected):
-        """Error logs rows that have at least one type mismatch with expected.
-
-        Casting errors do not raise exceptions but are logged since they can be
-        handled after reading.
+    def _prime(
+        self,
+        start: Optional[int] = None,
+        indices: Optional[Sequence] = None,
+        ) -> csv.DictReader:
+        """Prime this Reader for reading by constructing a row iterator.
 
         Args:
-            line:
-                The line number of the row being tested.
-            row:
-                A row dictionary of header names and casted values.
-            expected:
-                A dictionary of header names and expected column types.
+            start:
+                An integer line number from the start of the file to begin
+                reading data. If None and this reader's header has a line
+                number, the line following the header line is the start. If None
+                and the header line is None, the line following the metadata
+                section is the start. If None and the file has no header or
+                metadata, start is 0. If indices are provided, this argument is
+                ignored.
+            indices:
+                An optional Sequence of line numbers to read rows from. If None,
+                all rows from start not in skips will be read. If reading
+                a slice of the file, a range instance will have improved
+                performance over list or tuple sequence types.
 
         Returns:
-            The row.
+            A DictReader row iterator & row index the iterator starts from.
+
+        Raises:
+            A ValueError is issued if start or start index is less than the data
+            section start row.
         """
 
-        types = {name: type(val) for name, val in row.items()}
-        miscast = {name for name in types if types[name] != expected[name]}
-        if miscast:
-            msg = f"line = {line}, column = '{miscast}'"
-            self.errors.casting.append(msg)
+        # locate the start of the datasection
+        autostart = 0
+        if self.header.line is not None:
+            autostart = self.header.line + 1
+        else:
+            metalines = self._sniffer.metadata(line).lines
+            auotstart = metalines[1] + 1 if metalines[1] else metalines[0]
 
-        return row
+        start = start if start else autostart
+        stop = None
+        step = None
+
+        # indices if provided override start, stop and step
+        if indices:
+
+            if isinstance(indices, range):
+                start, stop, step = indices.start, indices.stop, indices.step
+
+            elif isinstance(indices, Sequence):
+                start, stop = indices[0], indices[-1]
+
+            else:
+                msg = f'indices must be a Sequence type not {type(indices)}.'
+                raise TypeError(msg)
+
+        # validate our start is in the data section
+        if start < autostart:
+            msg = f'Start must be > data section start row = {autostart}'
+            raise ValueError(msg)
+
+        # advance reader's infile to account for blank metalines
+        [next(self.infile) for _ in range(start)]
+        row_iter = csv.DictReader(
+                    self.infile,
+                    self.header.names,
+                    dialect=self._sniffer.dialect,
+                    )
+
+        return itertools.islice(row_iter, 0, stop, step), start
 
     def read(
         self,
@@ -306,47 +299,21 @@ class Reader(ReprMixin):
         """ """
 
         skips = [] if not skips else skips
-        castings = self.castings(poll)
-        expected = dict(zip(self.header.names, self._sniffer.types(poll)[0]))
+
+        # poll types & formats, inconsistencies will trigger casting error log
+        types, _ = self._sniffer.types(poll)
+        formats, _ = self._sniffer.datetime_formats(poll)
+        castings = dict(zip(self.header.names, zip(types, formats)))
+
+        # initialize casting and ragged row errors
         self.errors.casting = []
         self.errors.ragged = []
 
-        # advance infile to data section to handle blank metadata lines
-        start = self._datastart() if not start else start
-        stop = None
-        step = None
-        if indices:
-
-            # If indices are provided the start argument is ignored
-            if isinstance(indices, range):
-                start, stop, step = indices.start, indices.stop, indices.step
-
-            elif isinstance(indices, Sequence):
-                start = indices[0]
-                stop = indices[-1]
-
-            else:
-                msg = f'indices must be a Sequence type not {type(indices)}.'
-                raise TypeError(msg)
-
-        if start < self._datastart():
-            v = self._datastart()
-            msg = f'Start must be > data section start row = {v}'
-            raise ValueError(msg)
-
-        # advance to data start to account for possible blank meta lines
-        [next(self.infile) for _ in range(self._datastart())]
-        row_iter = csv.DictReader(
-                    self.infile,
-                    self.header.names,
-                    dialect=self._sniffer.dialect,
-                    )
-        # file is advanced to datastart so compute relative start
-        relative_start = start - self._datastart()
-        row_iter = itertools.islice(row_iter, relative_start, stop, step)
+        # construct a row iterator
+        row_iter, row_start = self._prime(start, indices)
 
         fifo: Deque[Dict[str, CellType]] = deque()
-        for line, dic in enumerate(row_iter, start):
+        for line, dic in enumerate(row_iter, row_start):
 
             if line in skips:
                 continue
@@ -357,10 +324,23 @@ class Reader(ReprMixin):
             if not any(dic.values()) and skip_empty:
                 continue
 
-            # perform conversion, log errors & filter with tabulator
-            row = {name: castings[name](val) for name, val in dic.items()}
-            row = self._log_ragged(line, row, raise_ragged)
-            row = self._log_miscast(line, row, expected)
+            # chk & log raggedness
+            dic = self._log_ragged(line, dic, raise_ragged)
+
+            # perform casts, log errors & filter with tabulator
+            row = {}
+            for name, astr in dic.items():
+
+                casting, fmt = castings[name]
+                try:
+                    row[name] = parsing.convert(astr, casting, fmt)
+                except Exception as e:
+                    # on exception leave astr unconverted & log casting error
+                    msg = f"line = {line}, column = '{name}'"
+                    self.errors.casting.append(msg)
+                    row[name] = astr
+
+            # apply tabs to filter row
             row = self.tabulator(row)
 
             if row:
@@ -372,15 +352,22 @@ class Reader(ReprMixin):
         yield list(fifo)
         self.infile.seek(0)
 
-    def as_list(self, datagen):
-        """ """
 
-        return list(*itertools.chain(datagen))
 
 if __name__ == '__main__':
 
-    fp = '/home/matt/python/nri/tabbed/__data__/mouse_annotations.txt'
+    import time
+    fp = '/home/matt/python/nri/tabbed/__data__/fly_sample.txt'
 
     infile = open(fp, 'r')
     reader = Reader(infile)
-    datagen = reader.read()
+    datagen = reader.read(chunksize=int(1e5), skips=[35],
+            indices=range(int(1e5), int(5e5)))
+
+    t0 = time.perf_counter()
+    amt = 0
+    for chunk in datagen:
+        amt += len(chunk)
+        print(f'{amt} rows read')
+
+    print(time.perf_counter() - t0)
