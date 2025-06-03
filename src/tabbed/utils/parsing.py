@@ -256,41 +256,12 @@ def as_datetime(astring: str, fmt: str) -> datetime | str:
         return astring
 
 
-def as_datetime_type(
-    astring,
-    tp: date | time | datetime,
-    fmt: str,
-) ->  date | time | datetime | str:
-    """Converts astring representing one of the datetime module types into a
-    time, date or datetime instance.
-
-    Args:
-        astring:
-            A string representing a time, date or datetime instance.
-        tp:
-            The type from the datetime module that astring represents.
-        fmt:
-            The format of astring (see python dateime module formats).
-
-    Returns:
-        A time, date, datetime or string instance on conversion failure.
-    """
-
-    try:
-        result = datetime.strptime(astring, fmt)
-        if isinstance(tp, (time, date)):
-            result = getattr(result, typ.__name__)()
-    except ValueError:
-        return astring
-
-    return result
-
-
 # conversion stops on first success so allow multi-returns
 # pylint: disable-next=too-many-return-statements
 def convert(
     astring: str,
-    func: Optional[Callable[[str], CellType]] = None,
+    celltype: CellType = None,
+    fmt: str = None,
     verbose: bool = True,
 ) -> CellType:
     """Attempts to convert a string to a valid Cell type.
@@ -302,11 +273,13 @@ def convert(
         astring:
             A string that possibly represents a CellType, one of int, float,
             complex, datetime or string.
-        func:
-            A callable for performing conversion that must accept a single
-            astring and return a CellType. If provided, this callable
-            supersedes any autoconversion. It is expected that any additional
-            arguments needed for func are frozen using partials.
+        celltype:
+            A CellType callable class, one of int, float, complex, str, time,
+            date or datetime. If None, automatic and slower conversion of
+            astring will be attempted.
+        fmt:
+            A datetime format required by time, date and datetime celltypes. If
+            None, automatic conversion of asting will be attempted.
         verbose:
             Boolean indicating if func conversion fails and auto-conversion is
             being attempted. Default is True to make clients aware their func
@@ -317,25 +290,28 @@ def convert(
         A CellType
 
     Raises:
-        Convert raises no Errors but silently leaves astring as a string type.
+        If celltype is provided and conversion fails, a ValueError or an
+        OverflowError is issued. If fmt is provided for a datetime conversion
+        and format is wrong, a ValueError is issued.
     """
 
-    # give the converter a try if provided
-    if func:
-        try:
-            result: CellType = func(astring)
-            return result
+    # try the celltype if given
+    if celltype:
+        if celltype in (int, float, complex, str):
+            try:
+                return celltype(astring)
+            except (ValueError, OverflowError) as e:
+                raise e
 
-        # catch any exception raised by generic func and keep trying
-        # pylint: disable-next=broad-exception-caught
-        except Exception as e:
-            emsg = (
-                f'Conversion error using {func.__name__}'
-                ' attempting slower auto-conversion'
-            )
-            msg = str(e) + emsg
-            if verbose:
-                print(msg)
+        if fmt:
+            try:
+                adatetime = datetime.strptime(astring, fmt)
+                if celltype == datetime:
+                    return adatetime
+                # call date or time method of datetime instance
+                return getattr(adatetime, celltype.__name__)()
+            except (ValueError, OverflowError, AttributeError) as e:
+                raise e
 
     # numeric
     if is_numeric(astring):
