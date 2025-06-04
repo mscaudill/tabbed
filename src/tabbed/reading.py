@@ -1,43 +1,121 @@
+"""A reader of text delimited files that supports the following features:
+
+    - Automatic identification of metadata & header file sections.
+    - Automatic type conversion to ints, floats, complex numbers,
+      times, dates and datetime instances.
+    - Selective reading of rows and columns satisfying equality,
+      membership, regular expression, and rich comparison conditions.
+    - Iterative reading of rows from the input file.
 """
 
-"""
-from __future__ import annotations
-import csv
-import datetime
-from functools import partial
-from types import SimpleNamespace
-from typing import Dict, Deque, IO, List, Optional, Sequence
-import warnings
-import itertools
 from collections import deque
-import copy
+import csv
+import itertools
+import re
+from types import SimpleNamespace
+from typing import Callable, Deque, Dict, IO, Iterator, List, Optional, Sequence
+from typing import Tuple
+import warnings
 
+from tabulate import tabulate
 
-from tabbed.sniffing import Header, Sniffer
-from tabbed.tabbing import Tabulator
-from tabbed.utils.mixins import ReprMixin
-from tabbed.utils import parsing
 from tabbed import tabbing
+from tabbed.sniffing import Header
+from tabbed.sniffing import Sniffer
+from tabbed.tabbing import Tabulator
+from tabbed.utils import parsing
+from tabbed.utils.mixins import ReprMixin
+from tabbed.utils.parsing import CellType
 
 
 class Reader(ReprMixin):
-    r"""An iterative reader of structurally variable text files supporting
-    conditional reading of selective rows and columns.
+    r"""An iterative reader of structurally heterogeneous text files supporting
+    condition-based reading of rows and columns.
 
-    A lack of formal specifications for a CSV format has led to many
-    structurally variant implementations. Many variants of the RFC-4180 standard
+    A lack of formal specifications for the CSV format has led to many
+    structurally variant implementations. Many RFC-4180 standard variants
     include metadata prior to a possible header and data section. This reader
-    sniffs files for these sections advancing to the most-likely start
-    position of the data section. This reader uses type inference to
-    automatically convert cells in the data section to strings, integers,
-    floats, complex, time, date or datetime instances. Finally, this reader
-    supports selective reading of rows based equality, membership, comparison, and
-    regular expression value based conditions via Tab callables that may be
-    supplied as keyword arguments to the 'tab' method.
+    sniffs files for these sections advancing to the most-likely start position
+    of the data. Additionally, it uses type inference to automatically convert
+    data cells into strings, integers, floats, complex, time, date or datetime
+    instances. Finally, this reader supports selective reading of rows using
+    equality, membership, comparison, & regular expression value-based
+    conditions supplied as keyword arguments to the 'tab' method.
 
     Attributes:
         infile:
             An I/O stream instance returned by open.
+        tabulator:
+            A callable container of Tab instances; callables that will filter
+            rows based on equality, membership, rich comparison and regular
+            expression conditions.
+        errors:
+            A container of casting and ragged length errors detected during
+            reading.
+
+    Example:
+        >>> # Create a temporary file for reading
+        >>> import os
+        >>> import tempfile
+        >>> import random
+        >>> import datetime
+        >>> # make metadata that spans several lines
+        >>> metadata_string = ('Experiment, 3\n'
+        ... 'Name, Ernst Rutherford\n'
+        ... 'location, Cavendish Labs\n'
+        ... 'Time, 11:03:29.092\n'
+        ... 'Date, 8/23/1917\n'
+        ... '\n')
+        >>> # make a header of 5 columns
+        >>> header = ['group', 'count', 'color', 'time', 'area']
+        >>> header_string = ','.join(header) + '\n'
+        >>> # make a reproducible data section with 20 rows
+        >>> random.seed(0)
+        >>> groups = random.choices(['a', 'b', 'c'], k=20)
+        >>> counts = [str(random.randint(0, 10)) for _ in range(20)]
+        >>> colors = random.choices(['red', 'green', 'blue'], k=20)
+        >>> start = datetime.datetime(1917, 8, 23, 11, 3, 29, 9209)
+        >>> times = [str(start + datetime.timedelta(seconds=10*i)) for i in range(20)]
+        >>> areas = [str(random.uniform(0, 10)) for _ in range(20)]
+        >>> x = [','.join(row) for row in zip(groups, counts, colors, times, areas)]
+        >>> data_string = '\r\n'.join(x)
+        >>> # write the metadata, header and data strings
+        >>> fp = tempfile.NamedTemporaryFile(mode='w', delete=False)
+        >>> _ = fp.write(metadata_string)
+        >>> _ = fp.write(header_string)
+        >>> _ = fp.write(data_string)
+        >>> fp.close()
+        >>> # open the file for reading
+        >>> infile = open(fp.name, mode='r')
+        >>> reader = Reader(infile)
+        >>> # ask the reader for the header
+        >>> reader.header
+        ... # doctest: +NORMALIZE_WHITESPACE
+        Header(line=6,
+        names=['group', 'count', 'color', 'time', 'area'],
+        string='group,count,color,time,area')
+        >>> # read group, count & area columns where group is a or c & 0 < area <=4
+        >>> # by passing keyword args to this reader's 'tab' method
+        >>> reader.tab(columns=['group', 'count', 'area'],
+        ... group=['a', 'c'],
+        ... area='> 0 and <= 4')
+        >>> # read the data with a chunksize of 3 rows
+        >>> rows = reader.read(chunksize=3)
+        >>> type(rows) # rows are of type generator yielding 3 rows at a time
+        <class 'generator'>
+        >>> for idx, chunk in enumerate(rows):
+        ...     print(f'Index = {idx}\n{chunk}')
+        ...     # doctest: +NORMALIZE_WHITESPACE
+        Index = 0
+        [{'group': 'c', 'count': 4, 'area': 3.2005460467254574},
+        {'group': 'a', 'count': 10, 'area': 1.0905784593110368},
+        {'group': 'c', 'count': 7, 'area': 2.90329502402758}]
+        Index = 1
+        [{'group': 'c', 'count': 8, 'area': 1.8939132855435614},
+        {'group': 'c', 'count': 4, 'area': 1.867295282555551}]
+        >>> # close reader since it was not opened with context manager
+        >>> reader.close()
+        >>> os.remove(fp.name) # explicitly remove the tempfile
     """
 
     def __init__(self, infile:IO[str], **sniffing_kwargs) -> None:
@@ -51,13 +129,10 @@ class Reader(ReprMixin):
 
     @property
     def sniffer(self) -> Sniffer:
-        """Returns this Reader's sniffer.
+        """Returns this reader's sniffer instance.
 
-        If this Reader's header has been determined by sniffing the infile, then
-        accessing the sniffer will remeasure the header and reset the Tabulator.
-        For example, if the start attribute of the sniffer is changed and the
-        header was previously determined by the sniffer, then the header will
-        be remeasured and the Tabulator reset.
+        Any time the sniffer is accessed we reset this reader's header and
+        tabulator if the header is built by the sniffer.
         """
 
         if self._header.line is not None:
@@ -74,7 +149,7 @@ class Reader(ReprMixin):
         return self._header
 
     @header.setter
-    def header(self, value: int | List[str] | Dict[str, int]) -> None:
+    def header(self, value: int | List[str] | Dict) -> None:
         """Sets this Reader's header and resets the Tabulator.
 
         Args:
@@ -97,28 +172,20 @@ class Reader(ReprMixin):
             sample row in the sniffer.
         """
 
-        if not isinstance(value, (int, list, dict)):
-            msg = (
-                    "A header may be set by integer line number, list of "
-                    "header names or a dict of kwargs for sniffer's header "
-                    f"method but not type {type(value)}."
-                    )
-            raise ValueError(msg)
-
         # get the expected length of the header from the last sample row.
         expected = len(self._sniffer.rows[-1])
 
         if isinstance(value, int):
             sniff = Sniffer(self.infile, start=value, amount=1)
             if len(sniff.rows[0]) != expected:
-                    msg = (
-                        f'Length of row at index = {value} does not match'
-                        f'length of last sample row = {expected}'
-                        )
-                    raise ValueError(msg)
+                msg = (
+                    f'Length of row at index = {value} does not match'
+                    f'length of last sample row = {expected}'
+                    )
+                raise ValueError(msg)
             result = Header(value, sniff.rows[0], sniff.sample)
 
-        if isinstance(value, list):
+        elif isinstance(value, list):
             if len(value) != expected:
                 msg = (
                     f'Length of provided header names = {len(value)} does '
@@ -127,8 +194,16 @@ class Reader(ReprMixin):
                 raise ValueError(msg)
             result = Header(None, value, None)
 
-        if isinstance(value, dict):
+        elif isinstance(value, dict):
             result = self._sniffer.header(**value)
+
+        else:
+            msg = (
+                    "A header may be set by integer line number, list of "
+                    "header names or a dict of kwargs for sniffer's header "
+                    f"method but not type {type(value)}."
+                    )
+            raise ValueError(msg)
 
         # set header
         self._header = result
@@ -144,10 +219,11 @@ class Reader(ReprMixin):
 
     def tab(
         self,
-        columns: Optional[List[str | int] | re.Pattern] = None,
-        **tabs: dict[
-            str, CellType | Sequence[CellType] | re.Pattern | Callable
-        ],
+        columns: Optional[List[str] | List[int] | re.Pattern] = None,
+        **tabs: CellType |
+                Sequence[CellType] |
+                re.Pattern |
+                Callable[[Dict[str, CellType], str], bool],
     ) -> None:
         """Set the Tabulator instance that will filter infile's rows & columns.
 
@@ -220,7 +296,7 @@ class Reader(ReprMixin):
         self,
         start: Optional[int] = None,
         indices: Optional[Sequence] = None,
-        ) -> csv.DictReader:
+        ) -> Tuple[Iterator, int]:
         """Prime this Reader for reading by constructing a row iterator.
 
         Args:
@@ -238,12 +314,12 @@ class Reader(ReprMixin):
                 a slice of the file, a range instance will have improved
                 performance over list or tuple sequence types.
 
-        Returns:
-            A DictReader row iterator & row index the iterator starts from.
+        Notes:
+            A warning is issued if the start or index start is less than the
+            detected start of the datasection.
 
-        Raises:
-            A ValueError is issued if start or start index is less than the data
-            section start row.
+        Returns:
+            A row iterator & row index the iterator starts from.
         """
 
         # locate the start of the datasection
@@ -251,10 +327,10 @@ class Reader(ReprMixin):
         if self.header.line is not None:
             autostart = self.header.line + 1
         else:
-            metalines = self._sniffer.metadata(line).lines
-            auotstart = metalines[1] + 1 if metalines[1] else metalines[0]
+            metalines = self._sniffer.metadata(None).lines
+            autostart = metalines[1] + 1 if metalines[1] else metalines[0]
 
-        start = start if start else autostart
+        astart = start if start is not None else autostart
         stop = None
         step = None
 
@@ -262,30 +338,35 @@ class Reader(ReprMixin):
         if indices:
 
             if isinstance(indices, range):
-                start, stop, step = indices.start, indices.stop, indices.step
+                astart, stop, step = indices.start, indices.stop, indices.step
 
             elif isinstance(indices, Sequence):
-                start, stop = indices[0], indices[-1]
+                astart, stop = indices[0], indices[-1]
 
             else:
                 msg = f'indices must be a Sequence type not {type(indices)}.'
                 raise TypeError(msg)
 
-        # validate our start is in the data section
-        if start < autostart:
-            msg = f'Start must be > data section start row = {autostart}'
-            raise ValueError(msg)
+        # warn if start is < computed autostart
+        if astart < autostart:
+            msg = f'start = {start} is < than detected data start = {autostart}'
+            warnings.warn(msg)
 
-        # advance reader's infile to account for blank metalines
-        [next(self.infile) for _ in range(start)]
+        # advance reader's infile to account for blank metalines & get dialect
+        self.infile.seek(0)
+        dialect: csv.Dialect = self._sniffer.dialect.to_csv_dialect()
+        # pylint: disable-next=expression-not-assigned
+        [next(self.infile) for _ in range(astart)]
         row_iter = csv.DictReader(
                     self.infile,
                     self.header.names,
-                    dialect=self._sniffer.dialect,
+                    dialect=dialect,
                     )
 
-        return itertools.islice(row_iter, 0, stop, step), start
+        return itertools.islice(row_iter, 0, stop, step), astart
 
+    # read method needs provide reasonable options for args
+    #pylint: disable-next=too-many-positional-arguments
     def read(
         self,
         start: Optional[int] = None,
@@ -296,7 +377,48 @@ class Reader(ReprMixin):
         poll: int = 5,
         raise_ragged: bool = False,
     ) -> Iterator[List[Dict[str, CellType]]]:
-        """ """
+        """Iteratively read dictionary rows that satisfy this Reader's tabs.
+
+        Args:
+            start:
+                A line number from the start of the file to begin reading data
+                from. If None and this reader's header has a line number, the
+                line following the header is the start. If None and the header
+                line number is None, the line following the last line in the
+                metadata is the start. If None and there is no header or
+                metadata, the start line is 0.
+            skips:
+                A sequence of line numbers to skip during reading.
+            indices:
+                A sequence of line numbers to read rows from. If None. all rows
+                from start not in skips will be read. If attempting to read
+                a slice of a file a range instance may be provided and will have
+                improved performance over other sequence types like lists.
+            chunksize:
+                The number of data lines to read for each yield. Lower values
+                consume less memory. The default is 200,000 rows.
+            skip_empty:
+                A boolean indicating if rows with no values between the
+                delimiters should be skipped. Default is True.
+            poll:
+                The number of lines at the end of the sniffer's sample that
+                should be used for determining data types and date formats. The
+                default is the last 5 rows of the sniffed sample.
+            raise_ragged:
+                Boolean indicating if a row with more or fewer columns than
+                expected should raise an error and stop reading. The default is
+                False. Rows with fewer columns than the header will have None
+                as  the fill value. Rows with more columns than the header will
+                have None keys.
+
+        Yields:
+            Chunksize number of dictionary rows with header names as keys.
+
+        Raises:
+            A csv.Error is issued if a ragged row is encountered and
+            raise_ragged is True. Casting problems do not raise errors but
+            gracefully return strings when encountered.
+        """
 
         skips = [] if not skips else skips
 
@@ -334,7 +456,7 @@ class Reader(ReprMixin):
                 casting, fmt = castings[name]
                 try:
                     row[name] = parsing.convert(astr, casting, fmt)
-                except Exception as e:
+                except (ValueError, OverflowError, TypeError):
                     # on exception leave astr unconverted & log casting error
                     msg = f"line = {line}, column = '{name}'"
                     self.errors.casting.append(msg)
@@ -352,22 +474,34 @@ class Reader(ReprMixin):
         yield list(fifo)
         self.infile.seek(0)
 
+    def preview(self, count: int = 10, **kwargs) -> None:
+        """Prints count number of lines from the first line of the data section.
+
+        Args:
+            start:
+                The first line to peek at relative to the data section start
+                line which follows the header line or metadata lines if present.
+            count:
+                The number of lines to peek at.
+            kwargs:
+                Any valid keyword argument for this Reader's read method except
+                for indices which is determined by start and count.
+        """
+
+        # set the start position relative to the datastart using autostart
+        _, datastart = self._prime()
+        rows = self.read(indices=range(datastart, datastart + count), **kwargs)
+        data = itertools.chain.from_iterable(rows)
+        table: str = tabulate(data, headers='keys', tablefmt='simple_grid')
+        print(table)
+
+    def close(self):
+        """Closes this Reader's infile resource."""
+
+        self.infile.close()
 
 
 if __name__ == '__main__':
 
-    import time
-    fp = '/home/matt/python/nri/tabbed/__data__/fly_sample.txt'
-
-    infile = open(fp, 'r')
-    reader = Reader(infile)
-    datagen = reader.read(chunksize=int(1e5), skips=[35],
-            indices=range(int(1e5), int(5e5)))
-
-    t0 = time.perf_counter()
-    amt = 0
-    for chunk in datagen:
-        amt += len(chunk)
-        print(f'{amt} rows read')
-
-    print(time.perf_counter() - t0)
+    import doctest
+    doctest.testmod()
