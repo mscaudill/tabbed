@@ -1,11 +1,11 @@
 """A reader of text delimited files that supports the following features:
 
-    - Automatic identification of metadata & header file sections.
-    - Automatic type conversion to ints, floats, complex numbers,
-      times, dates and datetime instances.
-    - Selective reading of rows and columns satisfying equality,
-      membership, regular expression, and rich comparison conditions.
-    - Iterative reading of rows from the input file.
+- Automatic identification of metadata & header file sections.
+- Automatic type conversion to ints, floats, complex numbers,
+  times, dates and datetime instances.
+- Selective reading of rows and columns satisfying equality,
+  membership, regular expression, and rich comparison conditions.
+- Iterative reading of rows from the input file.
 """
 
 from collections import deque
@@ -13,10 +13,20 @@ import csv
 import itertools
 import re
 from types import SimpleNamespace
-from typing import Callable, Deque, Dict, IO, Iterator, List, Optional, Sequence
-from typing import Tuple
+from typing import (
+    Callable,
+    Deque,
+    Dict,
+    IO,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+)
 import warnings
 
+from clevercsv.dialect import SimpleDialect
 from tabulate import tabulate
 
 from tabbed import tabbing
@@ -118,7 +128,7 @@ class Reader(ReprMixin):
         >>> os.remove(fp.name) # explicitly remove the tempfile
     """
 
-    def __init__(self, infile:IO[str], **sniffing_kwargs) -> None:
+    def __init__(self, infile: IO[str], **sniffing_kwargs) -> None:
         """Initialize this Reader."""
 
         self.infile = infile
@@ -181,7 +191,7 @@ class Reader(ReprMixin):
                 msg = (
                     f'Length of row at index = {value} does not match'
                     f'length of last sample row = {expected}'
-                    )
+                )
                 raise ValueError(msg)
             result = Header(value, sniff.rows[0], sniff.sample)
 
@@ -199,20 +209,22 @@ class Reader(ReprMixin):
 
         else:
             msg = (
-                    "A header may be set by integer line number, list of "
-                    "header names or a dict of kwargs for sniffer's header "
-                    f"method but not type {type(value)}."
-                    )
+                "A header may be set by integer line number, list of "
+                "header names or a dict of kwargs for sniffer's header "
+                f"method but not type {type(value)}."
+            )
             raise ValueError(msg)
 
         # set header
         self._header = result
         # determine if reader has previously set tabulator and warn
-        previous  = self.tabulator
+        previous = self.tabulator
         tblr = Tabulator(self.header, tabs=None, columns=None)
         if tblr.columns != previous.columns or tblr.tabs != previous.tabs:
-            msg = ("Previously set tabs have been reset. Please call 'tab' "
-                   "method again before reading.")
+            msg = (
+                "Previously set tabs have been reset. Please call 'tab' "
+                "method again before reading."
+            )
             print(msg)
 
         self.tabulator = tblr
@@ -220,10 +232,12 @@ class Reader(ReprMixin):
     def tab(
         self,
         columns: Optional[List[str] | List[int] | re.Pattern] = None,
-        **tabs: CellType |
-                Sequence[CellType] |
-                re.Pattern |
-                Callable[[Dict[str, CellType], str], bool],
+        **tabs: (
+            CellType
+            | Sequence[CellType]
+            | re.Pattern
+            | Callable[[Dict[str, CellType], str], bool]
+        ),
     ) -> None:
         """Set the Tabulator instance that will filter infile's rows & columns.
 
@@ -296,7 +310,7 @@ class Reader(ReprMixin):
         self,
         start: Optional[int] = None,
         indices: Optional[Sequence] = None,
-        ) -> Tuple[Iterator, int]:
+    ) -> Tuple[Iterator, int]:
         """Prime this Reader for reading by constructing a row iterator.
 
         Args:
@@ -354,19 +368,29 @@ class Reader(ReprMixin):
 
         # advance reader's infile to account for blank metalines & get dialect
         self.infile.seek(0)
-        dialect: csv.Dialect = self._sniffer.dialect.to_csv_dialect()
+
+        # check that we have a valid simple dialect & convert it
+        if not self._sniffer.dialect:
+            msg = (
+                "Sniffer failed to detect dialect. Please set sniffer's"
+                "dialect attribute before calling read"
+            )
+            raise csv.Error(msg)
+        assert isinstance(self._sniffer.dialect, SimpleDialect)
+        dialect = self._sniffer.dialect.to_csv_dialect()
+
         # pylint: disable-next=expression-not-assigned
         [next(self.infile) for _ in range(astart)]
         row_iter = csv.DictReader(
-                    self.infile,
-                    self.header.names,
-                    dialect=dialect,
-                    )
+            self.infile,
+            self.header.names,
+            dialect=dialect,
+        )
 
         return itertools.islice(row_iter, 0, stop, step), astart
 
     # read method needs provide reasonable options for args
-    #pylint: disable-next=too-many-positional-arguments
+    # pylint: disable-next=too-many-positional-arguments
     def read(
         self,
         start: Optional[int] = None,
@@ -450,20 +474,20 @@ class Reader(ReprMixin):
             dic = self._log_ragged(line, dic, raise_ragged)
 
             # perform casts, log errors & filter with tabulator
-            row = {}
+            arow = {}
             for name, astr in dic.items():
 
                 casting, fmt = castings[name]
                 try:
-                    row[name] = parsing.convert(astr, casting, fmt)
+                    arow[name] = parsing.convert(astr, casting, fmt)
                 except (ValueError, OverflowError, TypeError):
                     # on exception leave astr unconverted & log casting error
                     msg = f"line = {line}, column = '{name}'"
                     self.errors.casting.append(msg)
-                    row[name] = astr
+                    arow[name] = astr
 
             # apply tabs to filter row
-            row = self.tabulator(row)
+            row = self.tabulator(arow)
 
             if row:
                 fifo.append(row)
@@ -503,5 +527,13 @@ class Reader(ReprMixin):
 
 if __name__ == '__main__':
 
+    """
     import doctest
     doctest.testmod()
+    """
+
+    fp = '/home/matt/python/nri/tabbed/__data__/mouse_annotations.txt'
+
+    infile = open(fp, 'r')
+    reader = Reader(infile)
+    x = list(reader.read())
