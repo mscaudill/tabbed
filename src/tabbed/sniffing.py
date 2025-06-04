@@ -612,10 +612,9 @@ class Sniffer(ReprMixin):
         Args:
             poll:
                 The number of last sample rows to poll for locating the header
-                using string value differences. Poll should be large enough to
+                using string or type differences. Poll should be large enough to
                 capture many of the string values that appear in the data
                 section.
-
             exclude:
                 A sequence of characters that indicate missing values. Rows
                 containing these strings will be ignored.
@@ -662,9 +661,17 @@ class Sniffer(ReprMixin):
         Args:
             header:
                 A Header dataclass instance.
+            poll:
+                The number of last sample rows to poll for locating the header
+                using string or type differences. Poll should be large enough to
+                capture many of the string values that appear in the data
+                section.
+            exclude:
+                A sequence of characters that indicate missing values. Rows
+                containing these strings will be ignored.
 
-            This heuristic will make mistakes, A judicious choice for the sample
-            and skips may improve detection.
+        This heuristic will make mistakes, A judicious choice for the sample
+        and skips may improve detection.
 
         Returns:
             A MetaData dataclass instance or None.
