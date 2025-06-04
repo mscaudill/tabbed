@@ -260,8 +260,8 @@ def as_datetime(astring: str, fmt: str) -> datetime | str:
 # pylint: disable-next=too-many-return-statements
 def convert(
     astring: str,
-    celltype: CellType = None,
-    fmt: str = None,
+    celltype: Type[CellType] = None,
+    fmt: Optional[str] = None,
     verbose: bool = True,
 ) -> CellType:
     """Attempts to convert a string to a valid Cell type.
