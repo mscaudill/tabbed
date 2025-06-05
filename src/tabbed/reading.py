@@ -68,7 +68,7 @@ class Reader(ReprMixin):
         >>> import os
         >>> import tempfile
         >>> import random
-        >>> import datetime
+        >>> from datetime import datetime, timedelta
         >>> # make metadata that spans several lines
         >>> metadata_string = ('Experiment, 3\n'
         ... 'Name, Ernst Rutherford\n'
@@ -84,10 +84,11 @@ class Reader(ReprMixin):
         >>> groups = random.choices(['a', 'b', 'c'], k=20)
         >>> counts = [str(random.randint(0, 10)) for _ in range(20)]
         >>> colors = random.choices(['red', 'green', 'blue'], k=20)
-        >>> start = datetime.datetime(1917, 8, 23, 11, 3, 29, 9209)
-        >>> times = [str(start + datetime.timedelta(seconds=10*i)) for i in range(20)]
+        >>> start = datetime(1917, 8, 23, 11, 3, 29, 9209)
+        >>> times = [str(start + timedelta(seconds=10*i)) for i in range(20)]
         >>> areas = [str(random.uniform(0, 10)) for _ in range(20)]
-        >>> x = [','.join(row) for row in zip(groups, counts, colors, times, areas)]
+        >>> x = [','.join(row) for row in zip(
+        ...    groups, counts, colors, times, areas)]
         >>> data_string = '\r\n'.join(x)
         >>> # write the metadata, header and data strings
         >>> fp = tempfile.NamedTemporaryFile(mode='w', delete=False)
@@ -527,7 +528,7 @@ class Reader(ReprMixin):
 
 if __name__ == '__main__':
 
-    """
+
     import doctest
     doctest.testmod()
     """
@@ -537,3 +538,4 @@ if __name__ == '__main__':
     infile = open(fp, 'r')
     reader = Reader(infile)
     x = list(reader.read())
+    """
