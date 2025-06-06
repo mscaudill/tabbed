@@ -135,6 +135,7 @@ class Reader(ReprMixin):
         self.infile = infile
         self._sniffer = Sniffer(infile, **sniffing_kwargs)
         self._header = self._sniffer.header()
+        self._metadata = self._sniffer.metadata(self._header)
         self.tabulator = Tabulator(self.header, columns=None, tabs=None)
         self.errors = SimpleNamespace(casting=[], ragged=[])
 
@@ -229,6 +230,31 @@ class Reader(ReprMixin):
             print(msg)
 
         self.tabulator = tblr
+
+    @property
+    def metadata(self):
+        """Fetches this Reader's current metadata."""
+
+        return self._metadata
+
+    @metadata.setter
+    def metadata(self, value: Dict):
+        """Sniffs and stores a metadata instance to this Reader.
+
+        Args:
+            value:
+                A dictionary of keyword arguments of sniffer's metadata method.
+                Valid keyword arguments are: 'poll', and 'exclude'. If this
+                reader has a Header with a line number, the Header will be used
+                to locate the metadata and the value keyword args will be
+                ignored. Please type help(reader.sniffer.metadata) for more
+                argument details.
+
+        Returns:
+            None
+        """
+
+        self._metadata = self._sniffer.metadata(self._header, **value)
 
     def tab(
         self,
@@ -529,6 +555,7 @@ class Reader(ReprMixin):
 if __name__ == '__main__':
 
 
+    """
     import doctest
     doctest.testmod()
     """
@@ -537,5 +564,3 @@ if __name__ == '__main__':
 
     infile = open(fp, 'r')
     reader = Reader(infile)
-    x = list(reader.read())
-    """
