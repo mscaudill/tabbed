@@ -28,8 +28,8 @@ def metastring():
     lines = ("There were two cats of Killkeney who thought there was 1 cat too "
     "many. So they fought and they fit. And they scratched and the bit. Until "
     "instead of two cats there weren't any. \nA diner in Crue found a mouse in"
-    " his stew. Said the waiter don't shout and wave it about.Or others will"
-    "be wanting one too").split('. ')
+    " his stew. Said the waiter don't shout and wave it about. Or others will"
+    " be wanting one too").split('. ')
 
     # return the metadata with an empty last line
     return '\n'.join(lines) + '\n'
@@ -116,6 +116,25 @@ def data_file(datastring):
     """Returns a temporary file with only a data section."""
 
     text = datastring
+    outfile = TemporaryFile(mode='w+')
+    outfile.write(text)
+    outfile.seek(0)
+
+    yield outfile
+    outfile.close()
+
+
+@pytest.fixture
+def header_data_file_with_empty(headerstring, datastring):
+    """Constructs a file with an empty row at position 20 in the datastring."""
+
+    data = datastring
+    rows = data.splitlines()
+    rows = [row.split(',') for row in rows]
+    rows[20] = [''] * len(rows[-1])
+    dstring = '\n'.join([','.join(row) for row in rows])
+
+    text = '\n'.join([headerstring, dstring])
     outfile = TemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
@@ -256,6 +275,25 @@ def test_header_unexpected_type(metadata_header_data_file):
         reader.header = 3.4
 
 
+############
+# Metadata #
+############
+
+def test_metadata_header(metadata_header_data_file, metastring):
+    """Test that the returned metadata is correct when a header is present."""
+
+    reader = Reader(metadata_header_data_file)
+    assert reader.metadata().string == metastring
+
+
+def test_metadata_no_header(metadata_data_file, metastring):
+    """Test that the returned metadata is correct when no header is present."""
+
+    reader = Reader(metadata_data_file)
+    # the last metastring line contains an extra '\n' that metadata() strips
+    assert reader.metadata().string == metastring.rstrip()
+
+
 ##################
 # ragged logging #
 ##################
@@ -364,16 +402,86 @@ def test_priming_indices_start_0(metadata_header_data_file):
 
     assert start == 10
 
-# TEST FAILING
+
 def test_priming_indices_start_1(metadata_header_data_file, datastring):
     """Test that data from indices is correct if a header is present."""
 
     reader = Reader(metadata_header_data_file)
-    row_iter, _ = reader._prime(indices=range(10, 20))
+    datastart = reader.header.line + 1
+    row_iter, start = reader._prime(indices=range(datastart + 10, datastart + 15))
 
     rowstrings = [','.join(row.values()) for row in row_iter]
-    print(rowstrings)
-    print(datastring.splitlines()[10:20])
-    assert rowstrings == datastring.splitlines()[10:20]
+    assert rowstrings == datastring.splitlines()[10:15]
+
+
+def test_priming_indices_start_2(metadata_data_file, datastring):
+    """Test that data from indices is correct if a header is not present."""
+
+    reader = Reader(metadata_data_file)
+    datastart = reader.metadata().lines[-1] + 1
+    row_iter, start = reader._prime(indices=range(datastart + 10, datastart + 15))
+
+    rowstrings = [','.join(row.values()) for row in row_iter]
+    assert rowstrings == datastring.splitlines()[10:15]
+
+
+def test_priming_indices_start_3(data_file, datastring):
+    """Test that data from indices is correct if no header or metadata is
+    present."""
+
+    reader = Reader(data_file)
+    datastart = 0
+    row_iter, start = reader._prime(indices=range(datastart + 10, datastart + 15))
+
+    rowstrings = [','.join(row.values()) for row in row_iter]
+    assert rowstrings == datastring.splitlines()[10:15]
+
+
+########
+# read #
+########
+
+def test_read_skips(metadata_header_data_file, datastring):
+    """Test that skips are correctly passed over during read."""
+
+    reader = Reader(metadata_header_data_file)
+    _, datastart = reader._prime()
+    x = list(reader.read())[0]
+    # skip relative to data start
+    y = list(reader.read(skips=[12+datastart, 16+datastart]))[0]
+
+    x.pop(12)
+    x.pop(15) # we've already removed one
+    assert x == y
+
+
+def test_read_chunksize(metadata_header_data_file, datastring):
+    """Validate the sizes of each chunk."""
+
+    reader = Reader(metadata_header_data_file)
+    x = reader.read(chunksize=7)
+    nlines = len(datastring.splitlines())
+    expected = [7] * (nlines // 7)  + [nlines % 7]
+    sizes = [len(data) for data in x]
+
+    assert expected == sizes
+
+
+def test_skip_empty(header_data_file_with_empty):
+    """Test that skipping an empty row works."""
+
+    reader = Reader(header_data_file_with_empty)
+    x = list(reader.read())[0]
+    assert len(x) == 99
+
+
+def test_tab_call(metadata_header_data_file):
+    """Test that tabulator is called by reader. More in-depth testing of tabbing
+    in test_tabbing module."""
+
+    reader = Reader(metadata_header_data_file)
+    reader.tab(integers='<=10')
+    data = list(reader.read())[0]
+    assert all(row['integers'] <= 10 for row in data)
 
 
