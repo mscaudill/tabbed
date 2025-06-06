@@ -148,9 +148,11 @@ class Reader(ReprMixin):
         """
 
         if self._header.line is not None:
-            print('Resniffing Header and resetting Tabulator')
+            print('Resniffing Header and resetting metadata and Tabulator')
             self._header = self._sniffer.header()
             self.tabulator = Tabulator(self.header, columns=None, tabs=None)
+
+        self._metadata = self.metadata(self.header)
 
         return self._sniffer
 
@@ -162,7 +164,7 @@ class Reader(ReprMixin):
 
     @header.setter
     def header(self, value: int | List[str] | Dict) -> None:
-        """Sets this Reader's header and resets the Tabulator.
+        """Sets this Reader's header and resets the metadata and Tabulator.
 
         Args:
             value:
@@ -230,6 +232,7 @@ class Reader(ReprMixin):
             print(msg)
 
         self.tabulator = tblr
+        self.metadata(self.header)
 
     @property
     def metadata(self):
