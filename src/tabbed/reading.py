@@ -27,7 +27,6 @@ from typing import (
 import warnings
 
 from clevercsv.dialect import SimpleDialect
-from tabulate import tabulate
 
 from tabbed import tabbing
 from tabbed.sniffing import Header
@@ -336,10 +335,11 @@ class Reader(ReprMixin):
                 metadata, start is 0. If indices are provided, this argument is
                 ignored.
             indices:
-                An optional Sequence of line numbers to read rows from. If None,
-                all rows from start not in skips will be read. If reading
-                a slice of the file, a range instance will have improved
-                performance over list or tuple sequence types.
+                An optional Sequence of line numbers to read rows relative to
+                the start of the file. If None, all rows from start not in skips
+                will be read. If reading a slice of the file, a range instance
+                will have improved performance over list or tuple sequence
+                types.
 
         Notes:
             A warning is issued if the start or index start is less than the
@@ -400,6 +400,7 @@ class Reader(ReprMixin):
             dialect=dialect,
         )
 
+        stop = stop - astart if stop else None
         return itertools.islice(row_iter, 0, stop, step), astart
 
     # read method needs provide reasonable options for args
@@ -511,26 +512,28 @@ class Reader(ReprMixin):
         yield list(fifo)
         self.infile.seek(0)
 
-    def preview(self, count: int = 10, **kwargs) -> None:
-        """Prints count number of lines from the first line of the data section.
+    def peek(self, count: int = 10) -> None:
+        """Prints count number of lines from the first line of the file.
+
+        This method can be used to ensure this Reader identifies the correct
+        metadata, header and data start locations.
 
         Args:
-            start:
-                The first line to peek at relative to the data section start
-                line which follows the header line or metadata lines if present.
             count:
-                The number of lines to peek at.
-            kwargs:
-                Any valid keyword argument for this Reader's read method except
-                for indices which is determined by start and count.
+                The number of lines to print.
+
+        Returns:
+            None
         """
 
-        # set the start position relative to the datastart using autostart
-        _, datastart = self._prime()
-        rows = self.read(indices=range(datastart, datastart + count), **kwargs)
-        data = itertools.chain.from_iterable(rows)
-        table: str = tabulate(data, headers='keys', tablefmt='simple_grid')
-        print(table)
+        cnt = 0
+        while cnt < count:
+            CRED = '\033[91m'
+            CEND = '\033[0m'
+            print(CRED + f'{cnt}' + CEND, next(self.infile).rstrip())
+            cnt += 1
+
+        self.infile.seek(0)
 
     def close(self):
         """Closes this Reader's infile resource."""
@@ -550,3 +553,4 @@ if __name__ == '__main__':
 
     infile = open(fp, 'r')
     reader = Reader(infile)
+    reader.tab(columns=['Number', 'Start_Time', 'Channel'])
