@@ -1,25 +1,32 @@
-"""A pytest module to test Tabbed's Sniffer and associated utilities. This
-module builds temporary text files containing mixtures of Tabbed's supported
-numeric and datetime types.
 """
 
-import functools
-import tempfile
-import string
-import datetime
-import pytest
-import random
-from itertools import batched, chain
+"""
 
+from datetime import date
+from datetime import datetime
+from datetime import time
+from datetime import timedelta
+import functools
+import itertools
+import random
+import string
+import tempfile
+from types import SimpleNamespace
+import warnings
+
+import pytest
 from clevercsv.dialect import SimpleDialect
 
-from tabbed.sniffing import Header, MetaData, Sniffer
+from tabbed.sniffing import Sniffer, MetaData, Header
 from tabbed.utils import parsing
 
+# number of test to run per test is SEEDS * DELIMITERS * COLUMNS
+SEEDS = range(1)
+DELIMITERS = [',', ';', '|', '\t']
+COLUMNS = [1, 2, 4, 8, 16]
 
-NUM_TEST = 100
 
-@pytest.fixture(params=range(NUM_TEST), scope='module')
+@pytest.fixture(params=SEEDS)
 def rng(request):
     """Returns a random number generator."""
 
@@ -27,13 +34,28 @@ def rng(request):
     return random
 
 
-def delimiters():
-    """Returns all of tabbed's compatible delimiters."""
+@pytest.fixture(params=DELIMITERS)
+def delimiter(request):
+    """Returns a delimiter."""
 
-    return [',', ';', '|', '\t']
+    return request.param
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(params=COLUMNS)
+def columns(request):
+    """Returns a column count."""
+
+    return request.param
+
+
+@pytest.fixture
+def rows():
+    """Returns the number of rows of the data section of a sample."""
+
+    return 100
+
+
+@pytest.fixture
 def valid_chars():
     """Returns a string of all valid characters.
 
@@ -50,21 +72,92 @@ def valid_chars():
     # remove '\' to avoid escaped char choices
     chars.remove('\\')
 
-    return [char for char in chars if char not in delimiters()]
+    return [char for char in chars if char not in DELIMITERS]
 
 
-@pytest.fixture(scope='module')
-def shape(rng):
-    """Returns a rows, columns shape tuple for building tables."""
+#####################
+# Metadata fixtures #
+#####################
 
-    # set min/max rows and columns
-    rows = rng.randint(30, 300)
-    cols = rng.randint(3, 15)
+@pytest.fixture
+def unstructured_metadata():
+    """Returns a Metadata instance representing a non-delimited paragraph."""
 
-    return rows, cols
+    verses = [
+        'Hey diddle diddle!',
+        'The cat and the fiddle.',
+        'The cow jumped over the moon.',
+        'The little dog laughed to see such sport!',
+        'And the dish ran away with the spoon.'
+        ]
+
+    metastring = '\n'.join(verses)
+    return MetaData((0, len(verses)), metastring)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
+def structured_metadata(delimiter):
+    """Returns delimited lines of metadata."""
+
+    keys = 'metaline_0, metaline_1, metaline_2, metaline_3, metaline_4'
+    values = [str(v) for v in [0,  1, 2, 3, 4]]
+
+    metastring = '\n'.join([(k + delimiter + v) for k, v in zip(keys, values)])
+    return MetaData((0, len(keys)), metastring)
+
+
+@pytest.fixture
+def skipping_unstructured_metadata(unstructured_metadata):
+    """Returns lines of unstructured metadata with blank lines present."""
+
+    verses = unstructured_metadata.string.splitlines()
+    verses[1] = '\n'
+    verses[-1] = '\n'
+
+    metastring = '\n'.join(verses)
+    return MetaData((0, len(verses)), metastring)
+
+
+@pytest.fixture
+def skipping_structured_metadata(structured_metadata):
+    """Returns structured metadata with blank lines present."""
+
+    lines = structured_metadata.string.splitlines()
+    lines[2] = '\n'
+
+    metastring = '\n'.join(lines)
+    return MetaData((0, len(lines)), metastring)
+
+
+###################
+# Header Fixtures #
+###################
+
+@pytest.fixture
+def header_names(rng, delimiter, columns):
+    """Returns a list of header names.
+
+    Note: until metadata is formed we do not know the line number of a Header
+    instance so we delay its construction.
+    """
+
+    triplets = itertools.combinations(string.ascii_letters, 3)
+    return [''.join(next(triplets)) for _ in range(columns)]
+
+
+@pytest.fixture
+def repeat_header_names(delimiter, columns):
+    """Returns a delimited string of header names with repeats."""
+
+
+    return ['a' if i % 2 == 0 else 'b' for i in range(columns)]
+
+
+#################
+# Data Fixtures #
+#################
+
+@pytest.fixture()
 def string_table(rng, valid_chars):
     """Returns a function for building random tables of valid string chars."""
 
@@ -75,37 +168,12 @@ def string_table(rng, valid_chars):
         lengths = [rng.randint(3, 15) for _ in range(cnt)]
         cells = [''.join(rng.choices(valid_chars, k=l)) for l in lengths]
 
-        return [list(row) for row in batched(cells, cols)]
+        return [list(row) for row in itertools.batched(cells, cols)]
 
     return make_table
 
 
-@pytest.fixture(scope='module')
-def rstring_table(rng):
-    """Returns a function for building random tables of repeated strings."""
-
-    fruits = [
-            'apples',
-            'oranges',
-            'pears',
-            'peaches',
-            'kiwis',
-            'watermelon',
-            'jack_fruit',
-            'melons',
-            ]
-    def make_table(rows, cols):
-        """Returns a rows x cols table of items from fruits list."""
-
-        cnt = rows * cols
-        cells = rng.choices(fruits, k=cnt)
-
-        return [list(row) for row in batched(cells, cols)]
-
-    return make_table
-
-
-@pytest.fixture(scope='module')
+@pytest.fixture
 def integer_table(rng):
     """Returns a function for building random tables of stringed integers."""
 
@@ -115,12 +183,12 @@ def integer_table(rng):
         cnt = rows * cols
         cells = [str(rng.randint(-1000, 1000)) for _ in range(cnt)]
 
-        return [list(row) for row in batched(cells, cols)]
+        return [list(row) for row in itertools.batched(cells, cols)]
 
     return make_table
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def float_table(rng):
     """Returns a function for building random tables of stringed floats."""
 
@@ -130,12 +198,12 @@ def float_table(rng):
         cnt = rows * cols
         cells = [str(rng.uniform(-1000, 1000)) for _ in range(cnt)]
 
-        return [list(row) for row in batched(cells, cols)]
+        return [list(row) for row in itertools.batched(cells, cols)]
 
     return make_table
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def complex_table(rng):
     """Returns a func. for building random tables of stringed complex values."""
 
@@ -146,30 +214,14 @@ def complex_table(rng):
         # * 2 for real and complex parts
         cnt = rows * cols * 2
         parts = [rng.uniform(-1000, 1000) for _ in range(cnt)]
-        cells = [str(complex(tup)) for tup in batched(parts, 2)]
+        cells = [str(complex(*tup)) for tup in itertools.batched(parts, 2)]
 
-        return [list(row) for row in batched(cells, cols)]
-
-    return make_table
-
-
-@pytest.fixture(scope='module')
-def enotation_table(rng):
-    """Returns a function for building random tables of stringed scientific
-    notation values."""
-
-    def make_table(rows, cols):
-        """Returns a rows x cols table of E notation floats in [-1000, 1000]."""
-
-        cnt = rows * cols
-        cells = [f'{rng.uniform(-1000, 1000):.2E}' for _ in range(cnt)]
-
-        return [list(row) for row in batched(cells, cols)]
+        return [list(row) for row in itertools.batched(cells, cols)]
 
     return make_table
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def time_table(rng):
     """Returns a function for building random tables of stringed times.
 
@@ -186,18 +238,18 @@ def time_table(rng):
         secs = [rng.randint(0, 59) for _ in range(cnt)]
         micros = [rng.randint(0, 999999) for _ in range(cnt)]
         times = [
-                datetime.time(hour=h, minute=m, second=s, microsecond=mu)
+                time(hour=h, minute=m, second=s, microsecond=mu)
                 for h, m, s, mu in zip(hours, mins, secs, micros)
                 ]
         fmt = rng.choice(parsing.time_formats())
         cells = [time.strftime(fmt) for time  in times]
 
-        return [list(row) for row in batched(cells, cols)]
+        return [list(row) for row in itertools.batched(cells, cols)]
 
     return make_table
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def date_table(rng):
     """Returns a function for building random tables of stringed dates.
 
@@ -213,15 +265,15 @@ def date_table(rng):
         years = [rng.randint(1800, 2500) for _ in range(cnt)]
         months = [rng.randint(1, 12) for _ in range(cnt)]
         days = [rng.randint(1, 28) for _ in range(cnt)]
-        dates = [datetime.date(y, m, d) for y, m, d in zip(years, months, days)]
+        dates = [date(y, m, d) for y, m, d in zip(years, months, days)]
         cells = [date.strftime(fmt) for date in dates]
 
-        return [list(row) for row in batched(cells, cols)]
+        return [list(row) for row in itertools.batched(cells, cols)]
 
     return make_table
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def datetime_table(time_table, date_table):
     """Returns a function for building random tables of stringed datetimes."""
 
@@ -235,276 +287,164 @@ def datetime_table(time_table, date_table):
         for date_row, time_row in zip(dated_table, timed_table):
             cells.extend([' '.join((d, t)) for d, t in zip(date_row, time_row)])
 
-        return [list(row) for row in batched(cells, cols)]
+        return [list(row) for row in itertools.batched(cells, cols)]
 
     return make_table
 
 
-@pytest.fixture(scope='module')
-def composite_table(
+@pytest.fixture
+def table(
         rng,
+        rows,
+        columns,
         string_table,
         integer_table,
         float_table,
-        enotation_table,
+        complex_table,
         time_table,
         date_table,
         datetime_table,
 ):
-    """Returns a table of mixed stringed types supported by Tabbed."""
+    """Returns a rows x cols table of randomly selected data of each table type."""
 
     args = locals()
     rng = args.pop('rng')
+    p = args.pop('columns')
+    n = args.pop('rows')
 
-    def make_table(rows, cols):
-        """Returns a rows x cols table of mixed table types."""
+    types = [str, int, float, complex, time, date, datetime]
+    tables = dict(zip(types, [atable(n, p) for atable in args.values()]))
+    # choose the types for each column and then the data
+    chosen_types = rng.choices(list(tables), k=p)
+    chosen_data = [rng.choice(list(zip(*tables[typ]))) for typ in chosen_types]
+    # transpose data back to rows x columns shape
+    data = list(zip(*chosen_data))
 
-        # build each table type then conncatenate along columns
-        subtables = [atable(rows, cols) for atable in args.values()]
-        combined = [sum(row_tuple, start=[]) for row_tuple in zip(*subtables)]
-
-        # randomly choose cols from combined
-        transpose = list(zip(*combined))
-        chosen = rng.sample(transpose, k=cols)
-
-        # transpose back to cols by rows and return
-        return list(zip(*chosen))
-
-    return make_table
+    return chosen_types, data
 
 
+###################
+# File Fixtures #
+###################
 
-@pytest.fixture(scope='module')
-def header(rng, valid_chars):
-    """Returns a function for building a random valid header."""
+@pytest.fixture
+def umeta_header_file(unstructured_metadata, header_names, table, delimiter):
+    """Returns an infile with unstructured metadata, header & data sections."""
 
-    def make_header(cols, delimiter=',', line=None):
-        """Returns a list of valid header names."""
+    meta = unstructured_metadata
+    hstring = delimiter.join(header_names)
+    hline = meta.lines[-1]
+    types, tabled = table
+    datastring = '\n'.join([delimiter.join(row) for row in tabled])
 
-        names = [''.join(rng.choices(valid_chars, k=15)) for _ in range(cols)]
-        string = delimiter.join(names)
-
-        return Header(line, names, string)
-
-    return make_header
-
-
-
-@pytest.fixture(scope='module')
-def repeating_header(rng, valid_chars):
-    """Returns a function for building headers with repeating names."""
-
-    def make_header(cols, delimiter=',', line=None):
-        """Returns a list of valid header names with repeats of length cols."""
-
-        # set cols//2 to be unique names and choose cols from this set
-        cnt = max(cols//2, 1)
-        unames = [''.join(rng.choices(valid_chars, k=15)) for _ in range(cnt)]
-        names = rng.choices(unames, k=cols)
-        string = delimiter.join(names)
-
-        return Header(line, names, string)
-
-    return make_header
-
-
-@pytest.fixture(scope='module')
-def meta(rng, valid_chars):
-    """Returns a function for building metadata with no delimiters."""
-
-    def make_metadata():
-        """Constructs a metadata string without delimiters."""
-
-        num_lines = rng.randint(1, 10)
-        widths = rng.choices(range(5, 100), k=num_lines)
-        lines = [''.join(rng.choices(valid_chars, k=w)) for w in widths]
-        metastring = '\n'.join(lines)
-
-        return MetaData((0, num_lines), metastring)
-
-
-    return make_metadata
-
-
-@pytest.fixture(scope='module')
-def delimited_meta(rng, valid_chars):
-    """Returns a function for building metadatas that use delimiters.
-
-    Metadata may not include delimiters but to ensure headers are detected
-    correctly we test metadata that can look like a header (i.e. it has
-    delimiters).
-    """
-
-    def make_metadata(delimiter=','):
-        """Constructs a metadata string with delimiters."""
-
-        num_lines = rng.randint(1, 10)
-        cell_counts = [rng.randint(1, 8) for _ in range(num_lines)]
-
-        lines = []
-        for cell_count in cell_counts:
-            line = [''.join(rng.choices(valid_chars, k=16)) for _ in range(cell_count)]
-            lines.append(delimiter.join(line))
-
-        metastring = '\n'.join(lines)
-
-        return MetaData((0, num_lines), metastring)
-
-    return make_metadata
-
-
-@pytest.fixture(scope='module')
-def skipping_metadata(rng, valid_chars):
-    """Returns a metadata with a blank line."""
-
-    def make_metadata(delimiter=','):
-        """Constructs delimited metadata that skips a line."""
-
-        num_lines = 10
-        rows = list(batched(rng.choices(valid_chars, k=100), num_lines))
-        lines = [delimiter.join(row) for row in rows]
-        lines[3] = ''
-
-        metastring = '\n'.join(lines)
-
-        return MetaData((0, num_lines), metastring)
-
-    return make_metadata
-
-
-################################
-# Temporary Text File Fixtures #
-# ##############################
-
-@pytest.fixture(scope='module')
-def standard_file(rng, shape, delimited_meta, header, composite_table):
-    """A file with delimited metadata, header and mixed type data table."""
-
-    delimiter = rng.choice(delimiters())
-    rows, cols = shape
-
-    # construct metadata, header and table
-    metadata = delimited_meta(delimiter=delimiter)
-    head = header(cols, delimiter=delimiter, line=metadata.lines[-1])
-    tabled = [delimiter.join(row) for row in composite_table(rows, cols)]
-    lines = [metadata.string, head.string] + tabled
-    text = '\n'.join(lines)
+    text = '\n'.join([meta.string, hstring, datastring])
 
     # complete setup by writing to a temp file
     outfile = tempfile.TemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
-    yield outfile, delimiter, head
+    yield outfile, delimiter, Header(hline, header_names, hstring)
 
     # on Teardown, close and remove temp file
     outfile.close()
 
 
-@pytest.fixture(scope='module')
-def float_file(rng, shape, meta, header, float_table):
-    """A file with undelimited metadata, header and float type data table."""
+@pytest.fixture
+def smeta_header_file(structured_metadata, header_names, table, delimiter):
+    """Returns an infile with structured metadata, header and data sections."""
 
-    delimiter = rng.choice(delimiters())
-    rows, cols = shape
+    meta = structured_metadata
+    hstring = delimiter.join(header_names)
+    hline = meta.lines[-1]
+    types, tabled = table
+    datastring = '\n'.join([delimiter.join(row) for row in tabled])
 
-    # construct metadata, header and table
-    metadata = meta()
-    head = header(cols, delimiter=delimiter, line=metadata.lines[-1])
-    tabled = [delimiter.join(row) for row in float_table(rows, cols)]
-    lines = [metadata.string, head.string] + tabled
-    text = '\n'.join(lines)
+    text = '\n'.join([meta.string, hstring, datastring])
 
     # complete setup by writing to a temp file
     outfile = tempfile.TemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
-    yield outfile, delimiter, head
+    yield outfile, delimiter, Header(hline, header_names, hstring)
 
     # on Teardown, close and remove temp file
     outfile.close()
 
 
-@pytest.fixture(scope='module')
-def rstring_file(rng, shape, meta, header, rstring_table):
-    """A file with some consistency in the strings of the data section."""
+@pytest.fixture
+def uskipmeta_header_file(skipping_unstructured_metadata, header_names, table, delimiter):
+    """Returns an infile with skipping unstructured metadata, header and data sections."""
 
-    delimiter = rng.choice(delimiters())
-    rows, cols = shape
+    meta = skipping_unstructured_metadata
+    hstring = delimiter.join(header_names)
+    hline = meta.lines[-1]
+    types, tabled = table
+    datastring = '\n'.join([delimiter.join(row) for row in tabled])
 
-    # construct header and table
-    metadata = meta()
-    head = header(cols, delimiter=delimiter, line=metadata.lines[-1])
-    tabled = [delimiter.join(rw) for rw in rstring_table(rows, cols)]
-    lines = [metadata.string, head.string] + tabled
-    text = '\n'.join(lines)
+    text = '\n'.join([meta.string, hstring, datastring])
 
     # complete setup by writing to a temp file
     outfile = tempfile.TemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
-    yield outfile, delimiter, head
+    yield outfile, delimiter, Header(hline, header_names, hstring)
 
     # on Teardown, close and remove temp file
     outfile.close()
 
 
-@pytest.fixture(scope='module')
-def empty_metadata_file(rng, shape, header, composite_table):
-    """A file with no metadata, a header and a mixed type data table."""
+@pytest.fixture
+def sskipmeta_header_file(skipping_structured_metadata, header_names, table, delimiter):
+    """Returns an infile with skipping structured metadata, header and data sections."""
 
-    delimiter = rng.choice(delimiters())
-    rows, cols = shape
+    meta = skipping_structured_metadata
+    hstring = delimiter.join(header_names)
+    hline = meta.lines[-1]
+    types, tabled = table
+    datastring = '\n'.join([delimiter.join(row) for row in tabled])
 
-    # construct header and table
-    head = header(cols, delimiter=delimiter, line=0)
-    tabled = [delimiter.join(row) for row in composite_table(rows, cols)]
-    lines = [head.string] + tabled
-    text = '\n'.join(lines)
+    text = '\n'.join([meta.string, hstring, datastring])
 
     # complete setup by writing to a temp file
     outfile = tempfile.TemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
-    yield outfile, delimiter, head
+    yield outfile, delimiter, Header(hline, header_names, hstring)
 
     # on Teardown, close and remove temp file
     outfile.close()
 
 
-@pytest.fixture(scope='module')
-def empty_header_file(rng, shape, meta, header, composite_table):
-    """A file with a non-delimited metadata, no header & mixed table type."""
+@pytest.fixture
+def empty_metadata_file(header_names, table, delimiter):
+    """Returns an infile with header and data section only."""
 
-    delimiter = rng.choice(delimiters())
-    rows, cols = shape
+    hstring = delimiter.join(header_names)
+    hline = 0
+    types, tabled = table
+    datastring = '\n'.join([delimiter.join(row) for row in tabled])
 
-    # construct metadata and table
-    tabled = [delimiter.join(row) for row in composite_table(rows, cols)]
-    metadata = meta()
-    lines = [metadata.string] + tabled
-    text = '\n'.join(lines)
+    text = '\n'.join([hstring, datastring])
 
     # complete setup by writing to a temp file
     outfile = tempfile.TemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
-    yield outfile, delimiter, metadata
+    yield outfile, delimiter, Header(hline, header_names, hstring)
 
     # on Teardown, close and remove temp file
     outfile.close()
 
 
-@pytest.fixture(scope='module')
-def empty_meta_empty_header_file(rng, shape, composite_table):
-    """A file with no metadata and no header and a a mixed type data table."""
+@pytest.fixture
+def empty_header_file(unstructured_metadata, table, delimiter):
+    """Returns an infile with unstructured metadata and data section only."""
 
-    delimiter = rng.choice(delimiters())
-    rows, cols = shape
+    meta = unstructured_metadata
+    types, tabled = table
+    datastring = '\n'.join([delimiter.join(row) for row in tabled])
 
-    # construct metadata and table
-    lines = [delimiter.join(row) for row in composite_table(rows, cols)]
-    text = '\n'.join(lines)
-
+    text = '\n'.join([meta.string, datastring])
     # complete setup by writing to a temp file
     outfile = tempfile.TemporaryFile(mode='w+')
     outfile.write(text)
@@ -515,154 +455,108 @@ def empty_meta_empty_header_file(rng, shape, composite_table):
     outfile.close()
 
 
-@pytest.fixture(scope='module')
-def skipping_meta_file(rng, shape, skipping_metadata, header, composite_table):
-    """A file with a blank metadata line."""
+###########
+# Helpers #
+###########
 
-    delimiter = rng.choice(delimiters())
-    rows, cols = shape
+def safe_sniff(infile, delimiter):
+    """Clevercsv may fail to detect the dialect which disrupts testing. This
+    wrapper ensures a dialect (not necessarily the correct one) is found prio
+    to testing."""
 
-    # construct metadata, header and table
-    metadata = skipping_metadata(delimiter=delimiter)
-    head = header(cols, delimiter=delimiter, line=metadata.lines[-1])
-    tabled = [delimiter.join(row) for row in composite_table(rows, cols)]
-    lines = [metadata.string, head.string] + tabled
-    text = '\n'.join(lines)
+    sniffer = Sniffer(infile)
 
-    # complete setup by writing to a temp file
-    outfile = tempfile.TemporaryFile(mode='w+')
-    outfile.write(text)
-    outfile.seek(0)
-    yield outfile, delimiter, head
+    msg = 'Dialect was not correctly detected... using known dialect.'
+    if sniffer.dialect and sniffer.dialect.delimiter in DELIMITERS:
+        return sniffer
+    else:
+        warnings.warn(msg)
+        sniffer.dialect = SimpleDialect(delimiter, '"', None)
 
+    return sniffer
 
 # ##############
 # Header Tests #
 # ##############
 
-def test_header_names(header):
+def test_header_names(header_names, columns):
     """Validates header names contain no spaces and has correct length."""
 
-    # make a header of 20 columns with a '\t' delimiter
-    aheader = header(20)
+    aheader = Header(line=None, names=header_names, string=None)
     has_empty = any(' ' in s for s in aheader.names)
 
-    assert has_empty is False and len(aheader.names) == 20
+    assert has_empty is False and len(aheader.names) == columns
 
 
-def test_header_uniqueness(repeating_header):
+def test_header_uniqueness(repeat_header_names, columns):
     """Validates header names are unique when given repeating header names."""
 
-    # make a 30 column header with repeating names
-    aheader = repeating_header(30)
+    aheader = Header(line=None, names=repeat_header_names, string=None)
 
-    assert len(set(aheader.names)) == 30
-
-
-def test_header_immutability(header):
-    """Asserts the immmutability of a header instance."""
-
-    aheader = header(4)
-    with pytest.raises(AttributeError) as err:
-        aheader.names = 'a b c d'.split()
+    assert len(set(aheader.names)) == columns
 
 
-##################
-# Metadata Tests #
-# ################
-
-def test_metadata_immutability(delimited_meta):
-    """Asserts the immutability of a MetaData instance"""
-
-    meta = delimited_meta()
-    with pytest.raises(AttributeError) as err:
-        meta.string = 'the cat and the fiddle'
+#####################
+# Dialect Detection #
+#####################
 
 
-#################
-# Sniffer Tests #
-#################
+def test_dialect_unstruct_meta(umeta_header_file):
+    """Validate the Sniffers detected dialect for unstructured metadata"""
 
-def has_dialect(testfunc):
-    """"Wraps a test function to ensure a file from a file fixture has
-    a detected dialect.
-
-    Clevercsv may fail to detect the dialect which disrupts testing. This
-    decorator ensures a dialect (not necessarily the correct one) is found prior
-    to testing.
-    """
-
-    @functools.wraps(testfunc)
-    def decorator(**kwargs):
-        """Returns a test functions result if dialect is known and asserts True
-        otherwise.
-
-        Pytest stores fixtures to kwargs. This wrapper just assumes a single
-        fixture and no variables. Future versions could use inspect to iprove
-        this.
-        """
-
-        infile, delimiter, _ = list(kwargs.values())[0]
-        sniffer = Sniffer(infile)
-        if sniffer.dialect and sniffer.dialect.delimiter in delimiters():
-            return testfunc(**kwargs)
-        else:
-            assert True
-
-    return decorator
+    infile, delimiter, header = umeta_header_file
+    sniffer = safe_sniff(infile, delimiter)
+    assert sniffer.dialect.delimiter == delimiter
 
 
-@has_dialect
-def test_dialect(standard_file):
-    """Validate the Sniffers detected dialect for a file with header and
-    metadata.
+def test_dialect_struct_meta(smeta_header_file):
+    """validate the sniffers detected dialect for structured metadata."""
 
-    Notes:
-        Our metadata fixture is at most 30 lines and the default sniffing sample
-        amount is 100 lines. This will ensure data rows are seen in sniffing.
-    """
-
-    infile, delim, _ = standard_file
-    sniffer = Sniffer(infile)
-    assert sniffer.dialect.delimiter == delim
+    infile, delimiter, header = smeta_header_file
+    sniffer = safe_sniff(infile, delimiter)
+    assert sniffer.dialect.delimiter == delimiter
 
 
-def test_set_dialect(standard_file):
-    """Validate that dialects with non-valid escape and quote chars are amended
-    by dialect setter."""
+def test_dialect_skipping_ustruct_meta(uskipmeta_header_file):
+    """validate the sniffers detected dialect for skipping unstructured metadata."""
 
-    d = SimpleDialect(',', '', None)
-    infile, delim, _ = standard_file
-    sniffer = Sniffer(infile)
-    sniffer.dialect = d
-    assert sniffer.dialect.escapechar == None
-    assert sniffer.dialect.quotechar == '"'
+    infile, delimiter, header = uskipmeta_header_file
+    sniffer = safe_sniff(infile, delimiter)
+    assert sniffer.dialect.delimiter == delimiter
 
 
-@has_dialect
+def test_dialect_skipping_struct_meta(sskipmeta_header_file):
+    """validate the sniffers detected dialect for skipping structured metadata."""
+
+    infile, delimiter, header = sskipmeta_header_file
+    sniffer = safe_sniff(infile, delimiter)
+    assert sniffer.dialect.delimiter == delimiter
+
+
 def test_dialect_no_metadata(empty_metadata_file):
     """Validate the Sniffers detected dialect for a file without metadata."""
 
     infile, delim, _ = empty_metadata_file
-    sniffer = Sniffer(infile)
+    sniffer = safe_sniff(infile, delim)
     assert sniffer.dialect.delimiter == delim
 
 
-@has_dialect
 def test_dialect_no_header(empty_header_file):
-    """Validate the Sniffers detected dialect for a file without a header"""
+    """Validate the Sniffers detected dialect for a file without a header."""
 
     infile, delim, _ = empty_header_file
-    sniffer = Sniffer(infile)
+    sniffer = safe_sniff(infile, delim)
     assert sniffer.dialect.delimiter == delim
 
 
-@has_dialect
-def test_start_change(standard_file):
-    """Validate sniffing sample changes when sniff start changes."""
+####################
+# Property changes #
+####################
 
-    infile, delim, _ = standard_file
-    sniffer = Sniffer(infile)
+def test_start_change(umeta_header_file):
+
+    infile, delimiter, header = umeta_header_file
+    sniffer = safe_sniff(infile, delimiter)
     old_rows = sniffer.rows
     sniffer.start = 4
     new_rows = sniffer.rows
@@ -670,12 +564,11 @@ def test_start_change(standard_file):
     assert old_rows[4] == new_rows[0]
 
 
-@has_dialect
-def test_amount_change(standard_file):
+def test_amount_change(umeta_header_file):
     """Validate sniffing sample change when sniffing amount changes."""
 
-    infile, delim, _ = standard_file
-    sniffer = Sniffer(infile)
+    infile, delim, _ = umeta_header_file
+    sniffer = safe_sniff(infile, delim)
     old_rows = sniffer.rows
     sniffer.amount = 10
     new_rows = sniffer.rows
@@ -683,14 +576,13 @@ def test_amount_change(standard_file):
     assert new_rows == old_rows[:10]
 
 
-@has_dialect
-def test_lines(standard_file):
-    """Validates the line numbers on a standard file."""
+def test_lines(umeta_header_file):
+    """Validates the line numbers from an infile file on skip changes."""
 
-    infile, delim, header = standard_file
+    infile, delim, header = umeta_header_file
     file_length = sum(1 for _ in infile)
 
-    sniffer = Sniffer(infile)
+    sniffer = safe_sniff(infile, delim)
 
     skips = list(range(2, 13))
     # enumerate all lines not in skips and slice amount of them
@@ -702,153 +594,90 @@ def test_lines(standard_file):
     assert sniffer.lines == expected
 
 
-@has_dialect
-def test_skip_change(standard_file):
+def test_skip_change(umeta_header_file):
     """Validate sniffing sample changes when skip parameter changes."""
 
-    infile, delim, header = standard_file
-    sniffer = Sniffer(infile)
+    infile, delim, header = umeta_header_file
+    sniffer = safe_sniff(infile, delim)
     lines = sniffer.lines
     sniffer.skips = [33, 45, 77]
     assert set(sniffer.lines).isdisjoint(sniffer.skips)
 
 
-def test_start_EOF(standard_file):
+def test_set_dialect(smeta_header_file):
+    """Validate the dialect is changed when set to a new simple dialect."""
+
+    d = SimpleDialect(',', '', None)
+    infile, delimiter, header = smeta_header_file
+    sniffer = safe_sniff(infile, delimiter)
+    sniffer.dialect = d
+    assert sniffer.dialect.delimiter == ','
+
+
+def test_start_EOF(umeta_header_file):
     """Validate that setting start to > file length raises StopIteration."""
 
-    infile, delim, _ = standard_file
+    infile, delim, _ = umeta_header_file
     size = sum(1 for line in infile)
-    sniffer = Sniffer(infile)
+    sniffer = safe_sniff(infile, delim)
     with pytest.raises(StopIteration):
         sniffer.start = size + 10
 
 
-@has_dialect
-def test_amount_EOF(standard_file):
-    """Validate that an amount that reads off a file gives the whole file."""
+#########
+# Types #
+#########
 
-    infile, delim, _ = standard_file
-    size = sum(1 for line in infile)
-    sniffer = Sniffer(infile)
-    sniffer.amount = size + 10
+def test_detected_types(umeta_header_file, table):
+    """Validate that the detected types match the known table types."""
 
-    assert len(sniffer.rows) == size
+    infile, delim, _ = umeta_header_file
+    sniffer = safe_sniff(infile, delim)
+    types, _ = table
+    detected, _ = sniffer.types(poll=10)
+    assert detected == types
 
 
-# Type checking test are carried out in-full in test_parsing -- just check
-# 'types' method is error free
-@has_dialect
-def test_float_types(float_file):
-    """Validate that the sniffer correctly detects all float type."""
-
-    infile, delim, header = float_file
-    sniffer = Sniffer(infile)
-    types, consistent = sniffer.types(poll=5)
-
-    assert [float] * len(header.names) == types
+####################
+# Format Detection #
+####################
 
 
 ####################
 # Header detection #
 ####################
-@pytest.mark.slow
-@has_dialect
-def test_header_standard(standard_file):
+
+def test_header_unstruct_meta(umeta_header_file):
     """Validates the line number of the sniffed header for a standard file
     containing mixed data section types."""
 
-    infile, delim, head = standard_file
-    sniffer = Sniffer(infile)
+    infile, delim, head = umeta_header_file
+    sniffer = safe_sniff(infile, delim)
+    # speed up by starting from 20th row rather than 100 rows
+    sniffer.amount = 20
     aheader = sniffer.header()
 
     assert aheader.line == head.line
-
-
-@pytest.mark.slow
-@has_dialect
-def test_header_allstring(rstring_file):
-    """Validate the header is correctly detected for a data section containing
-    all string types."""
-
-    infile, delim, head = rstring_file
-    sniffer = Sniffer(infile)
-    aheader = sniffer.header(poll=20)
-
-    assert aheader.line == head.line
-
-
-@pytest.mark.slow
-@has_dialect
-def test_header_no_meta(empty_metadata_file):
-    """Validates header detection when no metadata is present."""
-
-    infile, delim, head = empty_metadata_file
-    sniffer = Sniffer(infile)
-    aheader = sniffer.header()
-
-    assert aheader.line == head.line
-
-
-@pytest.mark.slow
-@has_dialect
-def test_header_skipping_metadata(skipping_meta_file):
-    """Validates header is correctly detected if metadata has blank lines."""
-
-    infile, delim, head = skipping_meta_file
-    sniffer = Sniffer(infile)
-    aheader = sniffer.header()
-
-    assert aheader.line == head.line
-
-
-@pytest.mark.slow
-@has_dialect
-def test_header_no_header(empty_header_file):
-    """Validates that no header is detected for a file with no header."""
-
-    infile, delim, _ = empty_header_file
-    sniffer = Sniffer(infile)
-    header = sniffer.header()
-
-    assert header.string is None
 
 
 ######################
 # Metadata Detection #
 ######################
 
-@pytest.mark.slow
-@has_dialect
-def test_metadata_standard(standard_file):
-    """Validates the metadata locations for a standard file."""
-
-    infile, delim, head = standard_file
-    sniffer = Sniffer(infile)
-    aheader = sniffer.header()
-    meta = sniffer.metadata(aheader)
-
-    assert meta.lines == (0, aheader.line)
 
 
-@pytest.mark.slow
-@has_dialect
-def test_metadata_no_header(empty_header_file):
-    """Validates the metadata location for a file with no header."""
-
-    infile, delim, expected = empty_header_file
-    sniffer = Sniffer(infile)
-    meta = sniffer.metadata(header=None)
-
-    assert meta.lines == expected.lines
 
 
-@pytest.mark.slow
-@has_dialect
-def test_metadata_no_metadata_no_header(empty_meta_empty_header_file):
-    """Validates the metadata string is None when no metadata is present."""
 
-    infile, delim, _ = empty_meta_empty_header_file
-    sniffer = Sniffer(infile)
 
-    assert sniffer.metadata(None).string is None
 
+"""
+def test_table(table):
+    """ """
+
+    types, data = table
+    shape = types, data, (len(data), len(data[0]))
+    print(f'types: {types}')
+    print(f'data: {data}')
+    print(f'shape: {shape}')
+"""
