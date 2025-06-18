@@ -468,7 +468,7 @@ class Sniffer(ReprMixin):
         self,
         poll: int,
         exclude: List[str],
-        len_requirement=True,
+        len_requirement: bool = True,
     ) -> Tuple[int | None, List[str] | None]:
         """Locates first row from last whose types don't match last sample row.
 
@@ -519,6 +519,7 @@ class Sniffer(ReprMixin):
         self,
         poll: int,
         exclude: List[str],
+        len_requirement: bool = True,
     ) -> Tuple[int | None, List[str] | None]:
         """Locates first row from last whose strings have no overlap with
         strings in the last poll rows.
@@ -530,6 +531,10 @@ class Sniffer(ReprMixin):
             exclude:
                 A sequence of characters that indicate missing values. Rows
                 containing these strings will be ignored.
+            len_requirement:
+                A boolean indicating if the first row from last with a type
+                mismatch must have the same length as the last row of the
+                sample. This will be True for headers and False for metadata.
 
         Returns:
             An integer line number and header row or a 2-tuple of Nones
@@ -546,44 +551,16 @@ class Sniffer(ReprMixin):
             # check disjoint with observed and completeness
             disjoint = items.isdisjoint(observed)
             complete = len(row) == len(self.rows[-1])
+
+            if not len_requirement:
+                # complete is always True if no length requirement
+                complete = True
+
             if disjoint and complete:
                 return idx, row
 
             # add unseen items to observed
             observed.update(items)
-
-        return None, None
-
-    def _length_diff(
-        self,
-        exclude: List[str],
-    ) -> Tuple[int | None, List[str] | None]:
-        """Finds the largest indexed row whose length does not match the length
-        of the last sampled row.
-
-        Args:
-            exclude:
-                A sequence of characters that indicate missing values. Rows
-                containing these strings will be ignored.
-
-
-        Metadata rows are not required to be the same length as data rows. The
-        first row above a data section in the absence of a header whose length
-        does not match the last row is likely a metadata row.
-
-        Returns:
-            An integer line number and last metadata row or a 2-tuple of Nones
-        """
-
-        # search rows from bottom to top to get largest indexed row
-        for idx, row in reversed(list(zip(self.lines, self.rows))):
-
-            # ignore rows that have missing value
-            if bool(set(exclude).intersection(row)):
-                continue
-
-            if len(row) != len(self.rows[-1]):
-                return idx, row
 
         return None, None
 
@@ -685,11 +662,13 @@ class Sniffer(ReprMixin):
 
         types, _ = self.types(poll)
         if all(typ == str for typ in types):
-            # detect metadata based on length difference
-            last_line, _ = self._length_diff(exclude)
+            # detect metadata based on string value differences
+            last_line, _ = self._string_diff(
+                poll, exclude, len_requirement=False
+            )
 
         else:
-            # metadata line does not have to equal len of last sample row
+            # detect metadata with type differences
             last_line, _ = self._type_diff(poll, exclude, len_requirement=False)
 
         if last_line is not None:
@@ -705,49 +684,4 @@ if __name__ == '__main__':
 
     import doctest
 
-    # doctest.testmod()
-    from itertools import batched
-    import random
-    import tempfile
-
-    """
-    rows, cols = 60, 6
-    delimiter = ','
-    metadata = 'this is a string\nIt is pretty short.\nBut it is enough'
-    #header = 'a,b,c,d,e,f'
-    kinds = 'kiwis, pears apples peaches oranges melons magos plums'.split()
-    cells = random.choices(kinds, k=rows*cols)
-    table = [delimiter.join(row) for row in batched(cells, cols)]
-    #rows = [metadata, header]
-    rows = [metadata]
-    rows.extend(table)
-    outfile = tempfile.TemporaryFile(mode='w+')
-    outfile.write('\n'.join(rows))
-    sniffer = Sniffer(outfile)
-    sniffer.skips = [33, 34]
-
-    print(sniffer.metadata(header=None))
-    """
-
-    """
-    delimiter=';'
-    metadata = {'exp': '3', 'name': 'Paul Dirac', 'date': '11/09/1942'}
-    text = [delimiter.join([key, val]) for key, val in metadata.items()]
-    to_skip = delimiter.join('please ignore this line'.split())
-    text.extend([to_skip])
-    # make some data rows and add to text
-    group = 'a c b b c a c b c a a c'.split()
-    count = '22 2 13 15 4 19 4 21 5 24 18 1'.split()
-    color = 'r g b b r r r g g  b b g'.split()
-    data = [delimiter.join(row) for row in zip(group, count, color)]
-    text.extend(data)
-    # create a temp file and dump our text
-    outfile = tempfile.TemporaryFile(mode='w+')
-    _ = outfile.write('\n'.join(text))
-    # create a sniffer
-    sniffer = Sniffer(outfile)
-    """
-
-    fp = '/home/matt/python/nri/tabbed/__data__/mouse_annotations.txt'
-    infile = open(fp, 'r')
-    sniffer = Sniffer(infile)
+    doctest.testmod()
