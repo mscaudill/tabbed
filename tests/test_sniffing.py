@@ -21,7 +21,7 @@ from tabbed.sniffing import Sniffer, MetaData, Header
 from tabbed.utils import parsing
 
 # number of test to run per test is SEEDS * DELIMITERS * COLUMNS
-SEEDS = range(1)
+SEEDS = range(3)
 DELIMITERS = [',', ';', '|', '\t']
 COLUMNS = [1, 2, 4, 8, 16]
 
@@ -99,7 +99,7 @@ def unstructured_metadata():
 def structured_metadata(delimiter):
     """Returns delimited lines of metadata."""
 
-    keys = 'metaline_0, metaline_1, metaline_2, metaline_3, metaline_4'
+    keys = 'metaline_0 metaline_1 metaline_2 metaline_3 metaline_4'.split()
     values = [str(v) for v in [0,  1, 2, 3, 4]]
 
     metastring = '\n'.join([(k + delimiter + v) for k, v in zip(keys, values)])
@@ -171,6 +171,25 @@ def string_table(rng, valid_chars):
         return [list(row) for row in itertools.batched(cells, cols)]
 
     return make_table
+
+
+@pytest.fixture
+def rstring_table(rng, valid_chars):
+    """Returns a function for building a table with column values chosen from
+    a subset of valid chars."""
+
+    def make_table(rows, cols):
+        """Returns a rows x cols table of strings of random lengths."""
+
+        result = []
+        subsets = [rng.choices(valid_chars, k=4) for col in range(cols)]
+        for row in range(rows):
+            result.append([rng.choice(subset) for subset in subsets])
+
+        return result
+
+    return make_table
+
 
 
 @pytest.fixture
@@ -350,6 +369,35 @@ def umeta_header_file(unstructured_metadata, header_names, table, delimiter):
 
 
 @pytest.fixture
+def umeta_header_rstring_file(
+        unstructured_metadata,
+        header_names,
+        rstring_table,
+        delimiter,
+        rows):
+    """Returns an infile with unstructured metadata, header and a string only
+    data section."""
+
+    meta = unstructured_metadata
+    hstring = delimiter.join(header_names)
+    hline = meta.lines[-1]
+    # make a string
+    tabled = rstring_table(rows, len(header_names))
+    datastring = '\n'.join([delimiter.join(row) for row in tabled])
+
+    text = '\n'.join([meta.string, hstring, datastring])
+
+    # complete setup by writing to a temp file
+    outfile = tempfile.TemporaryFile(mode='w+')
+    outfile.write(text)
+    outfile.seek(0)
+    yield outfile, delimiter, Header(hline, header_names, hstring)
+
+    # on Teardown, close and remove temp file
+    outfile.close()
+
+
+@pytest.fixture
 def smeta_header_file(structured_metadata, header_names, table, delimiter):
     """Returns an infile with structured metadata, header and data sections."""
 
@@ -366,6 +414,46 @@ def smeta_header_file(structured_metadata, header_names, table, delimiter):
     outfile.write(text)
     outfile.seek(0)
     yield outfile, delimiter, Header(hline, header_names, hstring)
+
+    # on Teardown, close and remove temp file
+    outfile.close()
+
+
+@pytest.fixture
+def smeta_file(structured_metadata, table, delimiter):
+    """Returns a file with structured metadata and no header."""
+
+    meta = structured_metadata
+    types, tabled = table
+    datastring = '\n'.join([delimiter.join(row) for row in tabled])
+
+    text = '\n'.join([meta.string, datastring])
+
+    # complete setup by writing to a temp file
+    outfile = tempfile.TemporaryFile(mode='w+')
+    outfile.write(text)
+    outfile.seek(0)
+    yield outfile, delimiter, meta
+
+    # on Teardown, close and remove temp file
+    outfile.close()
+
+
+@pytest.fixture
+def smeta_string_file(structured_metadata, rstring_table, delimiter, rows, columns):
+    """Returns a file with structured metadata and no header."""
+
+    meta = structured_metadata
+    tabled = rstring_table(rows, columns)
+    datastring = '\n'.join([delimiter.join(row) for row in tabled])
+
+    text = '\n'.join([meta.string, datastring])
+
+    # complete setup by writing to a temp file
+    outfile = tempfile.TemporaryFile(mode='w+')
+    outfile.write(text)
+    outfile.seek(0)
+    yield outfile, delimiter, meta
 
     # on Teardown, close and remove temp file
     outfile.close()
@@ -461,7 +549,7 @@ def empty_header_file(unstructured_metadata, table, delimiter):
 
 def safe_sniff(infile, delimiter):
     """Clevercsv may fail to detect the dialect which disrupts testing. This
-    wrapper ensures a dialect (not necessarily the correct one) is found prio
+    wrapper ensures a dialect (not necessarily the correct one) is found prior
     to testing."""
 
     sniffer = Sniffer(infile)
@@ -475,9 +563,9 @@ def safe_sniff(infile, delimiter):
 
     return sniffer
 
-# ##############
-# Header Tests #
-# ##############
+# ########################
+# Header Dataclass Tests #
+# ########################
 
 def test_header_names(header_names, columns):
     """Validates header names contain no spaces and has correct length."""
@@ -624,9 +712,9 @@ def test_start_EOF(umeta_header_file):
         sniffer.start = size + 10
 
 
-#########
-# Types #
-#########
+###################
+# Types Detection #
+###################
 
 def test_detected_types(umeta_header_file, table):
     """Validate that the detected types match the known table types."""
@@ -642,20 +730,50 @@ def test_detected_types(umeta_header_file, table):
 # Format Detection #
 ####################
 
+def test_detected_fmts(smeta_header_file, table):
+    """Validate that detected formats match expected formats from table."""
+
+    infile, delim, _ = smeta_header_file
+    sniffer = safe_sniff(infile, delim)
+    types, _ = table
+    detected_fmts, consistent = sniffer.datetime_formats(poll=5)
+
+    fmts = {
+            time: parsing.time_formats(),
+            date: parsing.date_formats(),
+            datetime: parsing.datetime_formats(),
+        }
+
+    for typed, fmt in zip(types, detected_fmts):
+        assert fmt in fmts[typed] if fmt else True
+
 
 ####################
 # Header detection #
 ####################
 
-def test_header_unstruct_meta(umeta_header_file):
-    """Validates the line number of the sniffed header for a standard file
+def test_header_mixed_data(umeta_header_file):
+    """Validates the line number of the sniffed header for a file
     containing mixed data section types."""
 
     infile, delim, head = umeta_header_file
     sniffer = safe_sniff(infile, delim)
-    # speed up by starting from 20th row rather than 100 rows
-    sniffer.amount = 20
-    aheader = sniffer.header()
+    if not all(typ == str for typ in sniffer.types(poll=10)[0]):
+        # test files with mixed types only here, only string types require
+        # repeating strings see test below
+        sniffer.amount = 20
+        print(sniffer.sample)
+        aheader = sniffer.header()
+
+        assert aheader.line == head.line
+
+def test_header_stringed_data(umeta_header_rstring_file):
+    """Validates the line number of the sniffed header for a file containing
+    only string type in the data section."""
+
+    infile, delim, head = umeta_header_rstring_file
+    sniffer = safe_sniff(infile, delim)
+    aheader = sniffer.header(poll=20)
 
     assert aheader.line == head.line
 
@@ -664,20 +782,28 @@ def test_header_unstruct_meta(umeta_header_file):
 # Metadata Detection #
 ######################
 
+# FIXME FAILING
+def test_metadata_mixed_types(smeta_file):
+    """Validate the detected metadata lines for a file with no header and data
+    of mixed type."""
+
+    infile, delim, meta = smeta_file
+    sniffer = safe_sniff(infile, delim)
+    # speed up by starting from 20th row
+    sniffer.amount = 20
+    ameta = sniffer.metadata(header=None)
+
+    assert ameta.lines == meta.lines
 
 
+# FIXME FAILING
+def test_metadata_string_type(smeta_string_file):
+    """Test metadata detection when given a file of all strings and no header."""
+
+    infile, delim, meta = smeta_string_file
+    sniffer = safe_sniff(infile, delim)
+    ameta = sniffer.metadata(header=None)
+
+    assert ameta.lines == meta.lines
 
 
-
-
-
-"""
-def test_table(table):
-    """ """
-
-    types, data = table
-    shape = types, data, (len(data), len(data[0]))
-    print(f'types: {types}')
-    print(f'data: {data}')
-    print(f'shape: {shape}')
-"""
