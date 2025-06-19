@@ -13,7 +13,6 @@ dependencies:
     - pip
     - pip:
         - clevercsv
-        - tabulate
         # formatting
         - black
         # spell checking
