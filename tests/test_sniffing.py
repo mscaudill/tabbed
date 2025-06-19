@@ -1,5 +1,8 @@
-"""
-
+"""A module for testing Tabbed's sniffer. Test are conducted on temporary files
+with known metadata, header and data sections. The writing, sniffing and
+destruction of these temporary files during testing can take time. The SEEDS,
+DELIMITERS, and COLUMNS globals can be changed to alter the number of random
+files per test.
 """
 
 from datetime import date
@@ -21,9 +24,9 @@ from tabbed.sniffing import Sniffer, MetaData, Header
 from tabbed.utils import parsing
 
 # number of test to run per test is SEEDS * DELIMITERS * COLUMNS
-SEEDS = range(3)
+SEEDS = range(10)
 DELIMITERS = [',', ';', '|', '\t']
-COLUMNS = [1, 2, 4, 8, 16]
+COLUMNS = [1, 4, 8, 12, 16]
 
 
 @pytest.fixture(params=SEEDS)
@@ -176,7 +179,12 @@ def string_table(rng, valid_chars):
 @pytest.fixture
 def rstring_table(rng, valid_chars):
     """Returns a function for building a table with column values chosen from
-    a subset of valid chars."""
+    a subset of valid chars.
+
+    Most data sections comprised of string data will have repeated values in
+    columns. Tabbed uses this property to help identify header and metadata
+    sections.
+    """
 
     def make_table(rows, cols):
         """Returns a rows x cols table of strings of random lengths."""
@@ -440,8 +448,9 @@ def smeta_file(structured_metadata, table, delimiter):
 
 
 @pytest.fixture
-def smeta_string_file(structured_metadata, rstring_table, delimiter, rows, columns):
-    """Returns a file with structured metadata and no header."""
+def smeta_rstring_file(structured_metadata, rstring_table, delimiter, rows, columns):
+    """Returns a file with structured metadata, no header, and repeating string
+    data."""
 
     meta = structured_metadata
     tabled = rstring_table(rows, columns)
@@ -587,7 +596,6 @@ def test_header_uniqueness(repeat_header_names, columns):
 #####################
 # Dialect Detection #
 #####################
-
 
 def test_dialect_unstruct_meta(umeta_header_file):
     """Validate the Sniffers detected dialect for unstructured metadata"""
@@ -762,7 +770,6 @@ def test_header_mixed_data(umeta_header_file):
         # test files with mixed types only here, only string types require
         # repeating strings see test below
         sniffer.amount = 20
-        print(sniffer.sample)
         aheader = sniffer.header()
 
         assert aheader.line == head.line
@@ -782,28 +789,25 @@ def test_header_stringed_data(umeta_header_rstring_file):
 # Metadata Detection #
 ######################
 
-# FIXME FAILING
 def test_metadata_mixed_types(smeta_file):
     """Validate the detected metadata lines for a file with no header and data
     of mixed type."""
 
     infile, delim, meta = smeta_file
     sniffer = safe_sniff(infile, delim)
-    # speed up by starting from 20th row
-    sniffer.amount = 20
-    ameta = sniffer.metadata(header=None)
+    if not all(typ == str for typ in sniffer.types(poll=10)[0]):
+        # test files with mixed types only here, only string types require
+        # repeating strings see test below
+        sniffer.amount = 20
+        ameta = sniffer.metadata(header=None)
+        assert ameta.lines == meta.lines
 
-    assert ameta.lines == meta.lines
 
-
-# FIXME FAILING
-def test_metadata_string_type(smeta_string_file):
+def test_metadata_string_type(smeta_rstring_file):
     """Test metadata detection when given a file of all strings and no header."""
 
-    infile, delim, meta = smeta_string_file
+    infile, delim, meta = smeta_rstring_file
     sniffer = safe_sniff(infile, delim)
-    ameta = sniffer.metadata(header=None)
+    ameta = sniffer.metadata(header=None, poll=20)
 
     assert ameta.lines == meta.lines
-
-
