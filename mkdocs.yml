@@ -1,0 +1,14 @@
+site_name: Tabbed
+
+site_url: https://mydomain.org/mysite
+
+theme:
+  name: material
+
+markdown_extensions:
+  # exts for card grids
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
