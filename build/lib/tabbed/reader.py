@@ -1,4 +1,3 @@
-# FIXME Expand module docs with explanation from class docs
 """A reader of text delimited files that supports the following features.
     - Automatic identification of metadata & header file sections.
     - Automatic type conversion to ints, floats, complex numbers,
@@ -17,17 +16,14 @@ from typing import Callable, Deque, Dict, Iterator, List, Optional, Sequence
 
 from tabulate import tabulate
 
-from tabbed import tabbing
+from tabbed import tabs
 from tabbed.sniffing import Header
 from tabbed.sniffing import MetaData
 from tabbed.sniffing import Sniffer
-from tabbed.utils.parsing import CellType
+from tabbed.utils.celltyping import CellType
 from tabbed.utils.mixins import ReprMixin
 
 
-# FIXME make docs terse
-# FIXME dialect header and metadata are props not attrs remove
-# FIXME typecasts are not attributes but a method and name is awful
 class Reader(ReprMixin):
     r"""A reader of delimited text files supporting iterative reading of
     specific rows and columns from files that possibly contain metadata and
@@ -161,10 +157,9 @@ class Reader(ReprMixin):
         self.sniffer = Sniffer(self.infile, **kwargs)
         self._header = self.sniffer.header
         self._set_sniff()  # on sniffer attr change update header
-        self.tabulator = tabbing.Tabulator(self.header, tabs=None, columns=None)
+        self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
         self.errors = SimpleNamespace(casting=[], ragged=[])
 
-    # FIXME DO I NEED THIS OR CAN I JIT GET HEADER FROM SNIFFER VIA PROPERTY
     def _set_sniff(self) -> None:
         """On update of a Sniffer attribute, update this readers header.
 
@@ -183,7 +178,6 @@ class Reader(ReprMixin):
 
         Sniffer.__setattr__ = on_change
 
-    # FIXME SET AND RETRIEVE DIALECT FROM SNIFFER
     @property
     def dialect(self):
         """Returns the Sniffer's current Simplecsv dialect."""
@@ -261,8 +255,6 @@ class Reader(ReprMixin):
             # set index and string to none
             self._header = Header(line=None, names=value, string=None)
 
-
-        # FIXME I DONT THINK WE NEED THIS -> JUST CALL SNIFFER TO INIT
         elif isinstance(value, type(None)):
 
             # if None given as for sniffer's header
@@ -275,14 +267,9 @@ class Reader(ReprMixin):
             )
             raise TypeError(msg)
 
-
-        # FIXME IF WE BUILD TABULATOR JIT WE DONT NEED THIS
         # on header change reset tabulator
-        self.tabulator = tabbing.Tabulator(self.header, rows=None, columns=None)
+        self.tabulator = tabs.Tabulator(self.header, rows=None, columns=None)
 
-    # FIXME this is a little confusing this returns a function requiring
-    # a header. It should instead get the header to pass to sniffer or not be
-    # a property at all
     @property
     def metadata(self) -> MetaData:
         """Returns this Reader's metadata dataclass from sniffer."""
@@ -304,12 +291,10 @@ class Reader(ReprMixin):
             A mapping of header names and the inferred types.
         """
 
-        types, _ = self.sniffer.types(count)
+        types = self.sniffer.types(count)
 
         return dict(zip(self.header.names, types))
 
-    # FIXME WE COULD BUILD TABULATOR JIT DURING READ TO AVOID HAVING TO CHANGE
-    # ITS HEADER WHEN THE SNIFFER CHANGES DYNAMICALLY
     def tab(
         self,
         columns: Optional[List[str | int] | re.Pattern] = None,
@@ -346,7 +331,7 @@ class Reader(ReprMixin):
             None
         """
 
-        self.tabulator = tabbing.Tabulator.from_keywords(
+        self.tabulator = tabs.Tabulator.from_keywords(
             self.header, columns, **rows
         )
 
@@ -407,8 +392,6 @@ class Reader(ReprMixin):
 
         return row
 
-    # FIXME WE should use parsing.convert this method is redundant
-    # but it DOES LOG CASTING MISHAPS
     def _recast(
         self,
         line: int,
@@ -528,25 +511,23 @@ class Reader(ReprMixin):
         # init None args and reset errors to fresh empty for this read
         start = self._autostart() if not start else start
         skips = [] if not skips else skips
-        length = sum(1 for _ in self.infile)
-        self.infile.seek(0)
-        indices = range(start, length) if not indices else indices
+        indices = range(0, len(self)) if not indices else indices
         self.errors = SimpleNamespace(casting=[], ragged=[])
         # update typecasts with castings
         typecasts = self.typecasts()
         typecasts.update(castings if castings else {})
 
-        # build row iterator and slice from start
+        # advance to data section, build row iterator and fifo
+        _ = [self.infile.readline() for _ in range(start)]
         riter = csv.DictReader(
             self.infile, self.header.names, dialect=self.dialect
         )
 
-        # slice reader to stop for speed if indices are contiguous
-        stop, step = None, None
+        # slice reader for speed if reading contiguous indexed section
         if isinstance(indices, range):
-            stop, step = indices.stop, indices.step
-        # slice DictReader gives a DictReader
-        riter = itertools.islice(riter, start, stop, step) # type: ignore
+            start, stop, step = indices.start, indices.stop, indices.step
+            # slice DictReader gives a DictReader
+            riter = itertools.islice(riter, start, stop, step) # type: ignore
 
         fifo: Deque[Dict[str, CellType]] = deque()
         for line, dic in enumerate(riter, start):
@@ -603,23 +584,23 @@ class Reader(ReprMixin):
     def __len__(self):
         """Returns the number of lines in the infile."""
 
-        # TODO consider if this should return lines to read vs all lines
         return self.sniffer.line_count
 
 
 if __name__ == '__main__':
 
-    #import doctest
+    import doctest
 
-    #doctest.testmod()
+    doctest.testmod()
 
     import time
 
-    """
     fp = '/home/matt/python/nri/tabbed/__data__/fly_sample.txt'
 
     infile = open(fp, 'r')
     reader = Reader(infile)
+    # reader = Reader(infile)
+    print(reader.header)
 
     reader.tab(
         columns=['Trial_time', 'X_center', 'Y_center', 'Area'], Area='>0.01'
@@ -629,17 +610,10 @@ if __name__ == '__main__':
     )
 
     t0 = time.perf_counter()
-    data = []
-    cnt = 0
+    result = []
     for idx, chunk in enumerate(datagen):
-        cnt += len(chunk)
-        data.extend([list(row.values()) for row in chunk])
-        print(f'Chunk: {idx}, Rows read = {cnt}')
+        print(idx, len(chunk))
+        result.extend(chunk)
+
     print(f'elapsed time: {time.perf_counter() - t0}')
     #reader.close()
-    """
-
-    fp = '/home/matt/python/nri/tabbed/__data__/mouse_annotations.txt'
-    infile = open(fp, 'r')
-    reader = Reader(infile)
-    x = reader.read()
