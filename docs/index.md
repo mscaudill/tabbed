@@ -1,27 +1,37 @@
-# The Tabbed Guide
+[//]: Colors
+<style>
+sea { color: darkgreen }
+</style>
 
+
+<h1 "font-size: 100px;">
+<img src="imgs/logo.png" style="width:40px;height:auto;"/> 
+<font size="72px;">
+<b><b>The Tabbed Guide</b></b>
+</font>
+</h1>
+    
+
+
+## **__Introduction__**
 <div class="grid cards" markdown>
-- ## __Introduction__  
-**Tabbed is a fast, iterative and filtering reader of irregularly structured
-delimited text files.**
+- Tabbed is a fast iterative reader of irregularly structured text files.
 </div>
 
-# Color this list
-**Tabbed can:**
+<div class="grid cards" markdown>
+- ## :material-arrow-down-circle: [Installation](#)
+- ## :material-rocket-launch: [Getting Started](#)
+- ## :material-book-open: [Reference](reference/reference.md)
+- ## :material-information-variant-circle: [About](about.md)
+</div>
 
-- Automatically cast values to ints, floats, complex, times, dates, and datetime
-  instances.
-- Locate the start position of the first data row without oversight.
-- Select rows during reading with sophisticated equality, membership, rich
-  comparison, and regular expression filters.
-- Read exceedingly large text files at high-speed.
-- Perform partial file reading.
+## **__Key Features__**
 
 <div class="grid cards" markdown>
-
-- # :material-arrow-down-circle: [Installation](#)
-- # :material-rocket-launch: [Getting Started](#)
-- # :material-book-open: [API Reference](#)
-- # :material-information-variant-circle: [About](#)
-
+- automatic type inference
+- metadata, header and data section dection
+- sophisticated value based row filtering
+- high-speed iterative reading of large files
+- partial file reading
+- flexible handling of missing data
 </div>

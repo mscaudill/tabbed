@@ -1,14 +1,69 @@
-site_name: Tabbed
+# use named logo in place of site name (see theme)
+site_name: ''
 
-site_url: https://mydomain.org/mysite
 
+# link to github repository
+repo_url: https://github.com/mscaudill/tabbed
+repo_name: mscaudill/tabbed
+
+
+# create light and dark palette schemes
 theme:
   name: material
+  palette:
+
+  # Palette toggle for light mode
+    - scheme: default
+      primary: white
+      accent: grey
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: white
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+  # logos at site name & window tab
+  logo: 'imgs/namedlogo.png'
+  favicon: 'imgs/logo.png'
+
+
+# configure navigation pane
+nav:
+  - Home: index.md
+  - Reference: reference/reference.md
+  - About: about.md
+
+
+# declare plugin
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            members_order: source
 
 markdown_extensions:
-  # exts for card grids
+  # exts for card grids and emojis/icons
   - attr_list
   - md_in_html
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  # toc extension for renaming the toc
+  - toc:
+      title: On this page
+
+
+# Footer icon components
+extra:
+    social:
+        - icon: fontawesome/brands/github
+          link: https://github.com/mscaudill
+
