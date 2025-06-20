@@ -118,7 +118,7 @@ class Sniffer(ReprMixin):
         skips:
             Line numbers to ignore during sample collection.
 
-    Example:
+    Examples:
         >>> import tempfile
         >>> delimiter = ';'
         >>> # make a metadata and add to text that will be written to tempfile

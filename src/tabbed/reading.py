@@ -62,7 +62,7 @@ class Reader(ReprMixin):
             A container of casting and ragged length errors detected during
             reading.
 
-    Example:
+    Examples:
         >>> # Create a temporary file for reading
         >>> import os
         >>> import tempfile
