@@ -1,7 +1,7 @@
 """A reader of text delimited files that supports the following features:
 
-- Automatic identification of metadata & header file sections.
-- Automatic type conversion to ints, floats, complex numbers,
+- Identification of metadata & header file sections.
+- Automated type conversion to ints, floats, complex numbers,
   times, dates and datetime instances.
 - Selective reading of rows and columns satisfying equality,
   membership, regular expression, and rich comparison conditions.
@@ -38,18 +38,17 @@ from tabbed.utils.parsing import CellType
 
 
 class Reader(ReprMixin):
-    r"""An iterative reader of structurally heterogeneous text files supporting
-    condition-based reading of rows and columns.
+    r"""An iterative reader of irregular text files supporting selective
+    value-based reading of rows and columns.
 
-    A lack of formal specifications for the CSV format has led to many
-    structurally variant implementations. Many RFC-4180 standard variants
-    include metadata prior to a possible header and data section. This reader
-    sniffs files for these sections advancing to the most-likely start position
-    of the data. Additionally, it uses type inference to automatically convert
-    data cells into strings, integers, floats, complex, time, date or datetime
-    instances. Finally, this reader supports selective reading of rows using
-    equality, membership, comparison, & regular expression value-based
-    conditions supplied as keyword arguments to the 'tab' method.
+    A common variant to the RFC-4180 CSV standard includes metadata prior to
+    a possible header and data section. This reader sniffs files for these
+    sections advancing to the most-likely start position of the data.
+    Additionally, it uses type inference to automatically convert data cells
+    into strings, integers, floats, complex, time, date or datetime instances.
+    Finally, this reader supports selective reading of rows using equality,
+    membership, comparison, & regular expression value-based conditions supplied
+    as keyword arguments to the 'tab' method.
 
     Attributes:
         infile:
@@ -139,14 +138,14 @@ class Reader(ReprMixin):
 
     @property
     def sniffer(self) -> Sniffer:
-        """Returns this reader's sniffer instance.
+        """Returns this Reader's sniffer instance.
 
         Any time the sniffer is accessed we reset this reader's header and
         tabulator if the header is built by the sniffer.
         """
 
         if self._header.line is not None:
-            print('Resniffing Header and resetting metadata and Tabulator')
+            #print('Resniffing Header and resetting metadata and Tabulator')
             self._header = self._sniffer.header()
             self.tabulator = Tabulator(self.header, columns=None, tabs=None)
 
@@ -229,14 +228,18 @@ class Reader(ReprMixin):
 
         self.tabulator = tblr
 
-    def metadata(self, **kwargs):
+    def metadata(self, **kwargs: Dict):
         """Returns this Reader's current metadata.
 
         Args:
             kwargs:
-                Valid keyword args for this reader's sniffer metadata method.
-                These are 'poll' and 'exclude' If this Reader has a header
-                instance with a line number these keyword args are ignored.
+                - poll:
+                    number of sample lines to poll in sniffer. If header is
+                    known to ths Sniffer, this kwarg is ignored.
+                - exclude:
+                    list of string values indicating missing values. Rows with
+                    any exclude string will be skipped. If a header is known to
+                    this sniffer, this kwarg is ignored.
         """
 
         return self._sniffer.metadata(self.header, **kwargs)
@@ -260,21 +263,22 @@ class Reader(ReprMixin):
 
         Args:
             columns:
-                Names of the columns in each row to return during reading. These
-                may be provided as a list of string names, a list of column
-                indices or a compiled regular expression pattern to match
-                against header names. If None, all the columns in the header
-                will be read during a read call.
+                Columns in each row to return during reading as a list of string
+                names, a list of column indices or a compiled regular expression
+                pattern to match against header names. If None, all the columns
+                in the header will be read during a read call.
             tabs:
                 name = value keyword argument pairs where name is a valid header
                 column name and value may be of type string, int, float,
                 complex, time, date, datetime, regular expression or callable.
-                If a string type with rich comparison(s) is provided,
-                a comparison tab is constructed. If a string, int, float,
-                complex, time, date  or datetime is provided, an equality tab is
-                constructed. If a sequence is provided, a membership tab is
-                constructed. If a compiled re patterni, a Regex tab is
-                constructed. See class docs for example.
+
+                - If a string type with rich comparison(s) is provided,
+                  a comparison tab is constructed.
+                - If a string, int, float, complex, time, date  or datetime is
+                  provided, an equality tab is constructed.
+                - If a sequence is provided, a membership tab is constructed.
+                - If a compiled re pattern, a Regex tab is constructed. See
+                  class docs for example.
 
         Returns:
             None
@@ -453,9 +457,10 @@ class Reader(ReprMixin):
             Chunksize number of dictionary rows with header names as keys.
 
         Raises:
-            A csv.Error is issued if a ragged row is encountered and
-            raise_ragged is True. Casting problems do not raise errors but
-            gracefully return strings when encountered.
+            csv.Error:
+                A csv.Error is issued if a ragged row is encountered and
+                raise_ragged is True. Casting problems do not raise errors but
+                gracefully return strings when encountered.
         """
 
         skips = [] if not skips else skips
