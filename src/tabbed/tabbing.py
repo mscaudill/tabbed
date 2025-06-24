@@ -1,5 +1,8 @@
-"""A module for creating Tab instances, callables that return a boolean for
-a single row dictionary indicating if the row should be accepted or rejected.
+"""Tab instances are callables that return a boolean for a single row dictionary
+to indicate if the row should be accepted or rejected. This module has equality,
+membership, regular expression, rich comparison and custom callable Tabs. The
+Tabulator is the client facing interface for building Tab instances. It allows
+for Tab instances to be constructed from keyword arguments.
 """
 
 import abc
@@ -46,7 +49,7 @@ class Equality(Tab):
         matching:
             The value to compare against the named item in row dictionary.
 
-    Example:
+    Examples:
         >>> # make tabular data
         >>> header = ['group', 'count', 'color']
         >>> group = ['a', 'c', 'b', 'b', 'c', 'a', 'c', 'b', 'c', 'a', 'a', 'c']
@@ -91,7 +94,7 @@ class Membership(Tab):
         collection:
             A sequence of items for testing membership.
 
-    Example:
+    Examples:
         >>> # make tabular data
         >>> header = ['group', 'count', 'color']
         >>> group = ['a', 'c', 'b', 'b', 'c', 'a', 'c', 'b', 'c', 'a', 'a', 'c']
@@ -136,7 +139,7 @@ class Regex(Tab):
         pattern:
             A compiled regular expression pattern (see re.compile).
 
-    Example:
+    Examples:
         >>> # make tabular data
         >>> header = ['group', 'count', 'color']
         >>> group = ['a', 'c', 'b', 'b', 'c', 'a', 'c', 'b', 'c', 'a', 'a', 'c']
@@ -163,7 +166,7 @@ class Regex(Tab):
 
         Args:
             row:
-               A row dictionary of a file whose values have been type casted.
+                A row dictionary of a file whose values have been type casted.
 
         Returns:
             True if pattern is found in named value of row & False otherwise.
@@ -193,7 +196,7 @@ class Comparison(Tab):
             > 3, permissive can accept or reject the row. The default value is
             True.
 
-    Example:
+    Examples:
         >>> # make tabular data
         >>> header = ['group', 'count', 'color']
         >>> group = ['a', 'c', 'b', 'b', 'c', 'a', 'c', 'b', 'c', 'a', 'a', 'c']
@@ -298,13 +301,13 @@ class Comparison(Tab):
 
         Args:
             row:
-               A row dictionary of a file whose values have been type casted.
+                A row dictionary of a file whose values have been type casted.
 
         Returns:
             True if named value satisfies the comparison(s).
 
         Raises:
-            A ValueError is issued if more than two logicals are in comparison.
+            ValueError: is issued if more than two logicals are in comparison.
         """
 
         try:
@@ -334,7 +337,7 @@ class Calling(Tab):
             A boolean returning callable that accepts a row, a name and any
             required kwargs in that order.
 
-    Example:
+    Examples:
         >>> # make tabular data
         >>> header = ['group', 'count', 'color']
         >>> group = ['a', 'c', 'b', 'b', 'c', 'a', 'c', 'b', 'c', 'a', 'a', 'c']
@@ -369,7 +372,7 @@ class Calling(Tab):
 
         Args:
             row:
-               A row dictionary of a file whose values have been type casted.
+                A row dictionary of a file whose values have been type casted.
 
         Returns:
             True if func returns True for this row and False otherwise.
@@ -383,10 +386,7 @@ class Accepting(Tab):
 
     This Tab defines what to do with a row when no tabs are present.
 
-    Attributes:
-        All keyword arguments are stored to this Tab.
-
-    Example:
+    Examples:
         >>> # make tabular data
         >>> header = ['group', 'count', 'color']
         >>> group = ['a', 'c', 'b', 'b', 'c', 'a', 'c', 'b', 'c', 'a', 'a', 'c']
@@ -428,11 +428,11 @@ class Tabulator(ReprMixin):
         tabs:
             A list of tab instances to apply to each row.
         columns:
-            The columns to extract from each row. These may be provided as
-            a list of column names, a list of integer column indices or a single
-            re pattern to match column names against.
+            Columns to extract from each row as a list of column names, a list
+            of integer column indices or a single re pattern to match column
+            names against.
 
-    Example:
+    Examples:
         >>> # make tabular data
         >>> names = ['group', 'count', 'color']
         >>> group = ['a', 'c', 'b', 'b', 'c', 'a', 'c', 'b', 'c', 'a', 'a', 'c']
@@ -589,9 +589,9 @@ class Tabulator(ReprMixin):
             header:
                 A Header type containing the names of all the columns in infile.
             columns:
-                A list of columns passed as string names or column indices to
-                restrict which items of row dictionaries are returned when this
-                instance is called.
+                Columns to extract from each row as a list of column names, a list
+                of integer column indices or a single re pattern to match column
+                names against.
             kwargs:
                 A mapping of column names and values to convert to Tab
                 instances (e.g. 'group' = ['a', 'b'], 'count' = '<=20', ...)
@@ -608,7 +608,7 @@ class Tabulator(ReprMixin):
 
         Args:
             row:
-               A row dictionary of a file whose values have been type casted.
+                A row dictionary of a file whose values have been type casted.
 
         Returns:
             A row dictionary or None if row does not satisfy all tabs.
