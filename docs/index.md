@@ -1,9 +1,3 @@
-[//]: Colors
-<style>
-sea { color: darkgreen }
-</style>
-
-
 <h1 "font-size: 100px;">
 <img src="imgs/logo.png" style="width:40px;height:auto;"/> 
 <font size="72px;">
@@ -15,12 +9,12 @@ sea { color: darkgreen }
 
 ## **__Introduction__**
 <div class="grid cards" markdown>
-- Tabbed is a fast iterative reader of irregularly structured text files.
+- Tabbed is a fast, iterative & selective reader of irregularly structured text files.
 </div>
 
 <div class="grid cards" markdown>
 - ## :material-arrow-down-circle: [Installation](#)
-- ## :material-rocket-launch: [Getting Started](#)
+- ## :material-rocket-launch: [Getting Started](getting_started.md)
 - ## :material-book-open: [Reference](reference/reference.md)
 - ## :material-information-variant-circle: [About](about.md)
 </div>
