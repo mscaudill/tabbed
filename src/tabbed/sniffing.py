@@ -1,5 +1,6 @@
-"""A module housing the Sniffer tool for determining the dialect and structure
-of a csv file that may contain metadata, header and data sections."""
+"""Tools for determining the dialect and structure of a csv file that may
+contain metadata, a header, and a data section.
+"""
 
 from collections import Counter
 from dataclasses import dataclass
@@ -96,11 +97,11 @@ class Sniffer(ReprMixin):
     etc) but assumes the first line within the file is a header or a row of
     unheaded data. In practice, many CSV files contain metadata prior to the
     header or data section. While these files are not compliant with CSV
-    standards (https://datatracker.ietf.org/doc/html/rfc4180.html), their broad
-    use necessitates file sniffing that infers both dialect and structure. To
-    date, some csv readers such as Pandas read_csv allow metadata rows to be
-    skipped but no formal mechanism for sniffing dialect, metadata and header
-    information exist. This Sniffer supports these operations.
+    standards (RFC-4180), their broad use necessitates file sniffing that infers
+    both dialect and structure. To date, some csv readers such as Pandas
+    read_csv allow metadata rows to be skipped but no formal mechanism for
+    sniffing dialect, metadata and header information exist. This Sniffer
+    supports these operations.
 
     Attributes:
         infile:
@@ -199,7 +200,7 @@ class Sniffer(ReprMixin):
                 delimiter.
 
         Raises:
-            If start is greater than infile's size a StopIteration is raised.
+            SoptIteration: is raised if start is greater than infile's size.
 
         Notes:
             Sniffer deviates from Python's Sniffer in that infile is strictly an
@@ -405,7 +406,7 @@ class Sniffer(ReprMixin):
         else:
             self.dialect = result
 
-    def types(self, poll: int) -> Tuple[CellTypes, bool]:
+    def types(self, poll: int = 5) -> Tuple[CellTypes, bool]:
         """Infer the column types from the last poll count rows.
 
         Args:
