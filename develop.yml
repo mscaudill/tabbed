@@ -23,7 +23,7 @@ dependencies:
         - mkdocs
         - mkdocs-material
         - "mkdocstrings[python]"
-        - mkdocs-jupyter
+        - mkdocs-execute-plugin
         # packaging
         - pip-tools
         - build

@@ -27,6 +27,9 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
 
+  features:
+    - content.code.copy
+
   # logos at site name & window tab
   logo: 'imgs/namedlogo.png'
   favicon: 'imgs/logo.png'
@@ -35,6 +38,7 @@ theme:
 # configure navigation pane
 nav:
   - Home: index.md
+  - "Getting Started": getting_started.md
   - Reference: reference/reference.md
   - About: about.md
 
@@ -48,18 +52,34 @@ plugins:
           paths: [src]
           options:
             members_order: source
+  - execute
 
 markdown_extensions:
   # exts for card grids and emojis/icons
   - attr_list
   - md_in_html
+  # admonitions
+  - admonition
+  # code highlighting
+  - pymdownx.highlight:
+      linenums: true
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.details
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  # icon sets
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
   # toc extension for renaming the toc
   - toc:
       title: On this page
-
+  
 
 # Footer icon components
 extra:
