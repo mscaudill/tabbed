@@ -1,12 +1,6 @@
 """A module for detecting & converting strings to python types supported by
-Tabbed. The supported types are:
-    - integers
-    - floats
-    - complex
-    - datetime times
-    - datetime dates
-    - datetime datetimes
-    - strings
+Tabbed. These tools are wrapped by the `convert` function which dispatches
+a string to a type specific convert callable.
 """
 
 from collections import Counter
@@ -267,7 +261,14 @@ def convert(
     """Attempts to convert a string to a valid Cell type.
 
     Tabbed supports string conversion of each row's elements to the following types:
-    str, int, float, complex, datetime. These are the valid Cell types.
+
+        - str
+        - int
+        - float
+        - complex
+        - time
+        - date
+        - datetime
 
     Args:
         astring:
@@ -290,9 +291,7 @@ def convert(
         A CellType
 
     Raises:
-        If celltype is provided and conversion fails, a ValueError or an
-        OverflowError is issued. If fmt is provided for a datetime conversion
-        and format is wrong, a ValueError is issued.
+        ValueError: if celltype is provided and conversion fails.
     """
 
     # try the celltype if given
