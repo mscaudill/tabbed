@@ -1,8 +1,6 @@
-<h1 "font-size: 100px;">
-<img src="imgs/logo.png" style="width:40px;height:auto;"/> 
-<font size="72px;">
-<b><b>The Tabbed Guide</b></b>
-</font>
+<h1 style="font-size:350%;">
+<img src="imgs/logo.png" style="width:60px;height:auto;"/> 
+<b><b><font size>The Tabbed Guide</b></b>
 </h1>
     
 
