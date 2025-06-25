@@ -6,7 +6,6 @@ site_name: ''
 repo_url: https://github.com/mscaudill/tabbed
 repo_name: mscaudill/tabbed
 
-
 # create light and dark palette schemes
 theme:
   name: material
