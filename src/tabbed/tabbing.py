@@ -6,7 +6,7 @@ for Tab instances to be constructed from keyword arguments.
 """
 
 import abc
-from datetime import datetime
+from datetime import time, date, datetime
 import operator as op
 import re
 from typing import Callable, cast, Dict, List, Literal, Optional, Sequence
@@ -22,7 +22,7 @@ from tabbed.utils.parsing import CellType
 # Tabs are designed to be function-like and so have few public methods
 # pylint: disable=too-few-public-methods
 
-Comparable = int | float | datetime | str
+Comparable = int | float | time | date | datetime | str
 
 
 class Tab(abc.ABC, ReprMixin):
