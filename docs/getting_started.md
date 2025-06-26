@@ -3,18 +3,16 @@ execute: true
 ---
 
 ## **__Introduction__**
-This guide walks you through using Tabbed to read a text file containing
-metadata and a header row that would be a challenge for many other text file
-readers.
+This guide walks you through reading a text file that contains metadata,
+a header row and mixed data types with `Tabbed`.
 
 <div class="grid cards" markdown>
-- :material-numeric-1-box-outline: [Sample Data](#sample-data)
+- :material-numeric-1-box-outline: [Sample File](#sample-file)
 - :material-numeric-2-box-outline: [Tabbed Wish List](#tabbed-wish-list)
-- :material-numeric-3-box-outline: [Building a Tabbed Reader](#building-a-reader)
-- :material-numeric-4-box-outline: [File Sniffing](#file-sniffing)
-- :material-numeric-5-box-outline: [Data Filtering](#data-filtering)
-- :material-numeric-6-box-outline: [Reading](#reading)
-- :material-numeric-7-box-outline: [When something goes wrong](#when-something-goes-wrong)
+- :material-numeric-3-box-outline: [The Tabbed Reader](#the-tabbed-reader)
+- :material-numeric-4-box-outline: [Data Filtering](#data-filtering)
+- :material-numeric-5-box-outline: [Reading](#reading)
+- :material-numeric-6-box-outline: [When Something Goes Wrong](#when-something-goes-wrong)
 </div>
 
 [comment]: # (pymdownx block which allows line nums but does not execute)
@@ -24,7 +22,6 @@ import os
 import tempfile
 import random
 from datetime import datetime, timedelta
-from itertools import chain
 
 from tabbed.reading import Reader
 ```
@@ -41,7 +38,7 @@ from itertools import chain
 from tabbed.reading import Reader
 ```
 
-## **__Sample Data__**
+## **__Sample File__**
 The documentation for Tabbed comes preloaded with a sample text file. Below we
 open this file to see what it looks like and **develop a list of operations we
 would like Tabbed to handle automatically for us.**
@@ -71,7 +68,7 @@ To read files like this, we desire Tabbed to support the following:
 
 === "Header Detection"
 
-    ### :material-numeric-1-box: __Header Detection__
+    :material-numeric-1-box: __Header Detection__
 
     This sample file contains a **metadata section** prior to the **header** on
     line 7. Metadata can be unstructured like a paragraph or structured into
@@ -80,7 +77,7 @@ To read files like this, we desire Tabbed to support the following:
 
 === "Type Inference"
 
-    ### :material-numeric-2-box: __Type Inference__
+    :material-numeric-2-box: __Type Inference__
     
     The string cells in the sample file are encoding 4 different data types;
     *integers, datetimes, floats and strings.* We want `Tabbed` to perform
@@ -88,7 +85,7 @@ To read files like this, we desire Tabbed to support the following:
 
 === "Data Filtering"
     
-    ### :material-numeric-3-box: __Data Filtering__
+    :material-numeric-3-box: __Data Filtering__
 
     We want `Tabbed` to support simple value based row and column filtering.
     For example, in this file we might want only rows at which the `Start Time`
@@ -98,28 +95,36 @@ To read files like this, we desire Tabbed to support the following:
 
 === "Partial & Iterative Reading"
 
-    ### :material-numeric-4-box: __Partial & Iterative Reading__
+    :material-numeric-4-box: __Partial & Iterative Reading__
 
     Text files can be large. `Tabbed` should support partial and iterative
     reading.
 
 === "Flexibility"
 
-    ### :material-numeric-5-box: __Flexibility__
+    :material-numeric-5-box: __Flexibility__
 
     Tabbed should be flexible. It should be able to `start` reading at any file
     position, `skip` reading of 'bad' rows, and allow users to choose how much
      memory to consume during iterative reading of large files. 
 
 
-## **__Building a Tabbed Reader__**
-`Tabbed's` Reader like Python's csv.Reader takes an `open` file instance. Here
-we will build a reader and look at its properties, attributes and methods. At
-any point you can use the help function to understand the Reader.
+## **__The Tabbed Reader__**
+Tabbed's `Reader` reads rows of an infile to dictionaries just like
+Python's built-in `csv.DictReader`. However, Tabbed's `Reader` embeds
+a sophisticated file `Sniffer` that can detect metadata, header & data sections
+of a file automatically (for details see
+[Sniffer](reference/sniffing/#sniffing.md)). The detected metadata, header and
+datatypes are available to the reader as properties. In this section, we will
+**build a reader** and see how to access the file's **dialect**, **metadata**,
+**header**, and **inferred datatypes**.
 
-``` py title="Build a Reader"
+[comment]: # (Building a reader)
+
+``` py title="Building a Reader"
 fp = './samples/annotations.txt'
 infile = open(fp, 'r')
+# like Python's csv.DictReader, we pass an open file instance
 reader = Reader(infile)
 ```
 
@@ -129,48 +134,78 @@ infile = open(fp, 'r')
 reader = Reader(infile)
 ```
 
-## **__File Sniffing__**
-`Tabbed's` reader has an embedded `Sniffer` instance. It is similar to Python's
-builtin `csv.Sniffer` but it is capable of detecting the metadata, header and
-data types in a file. It does this by sampling the file. The sample the sniffer
-uses can be modified by its `start`,`amount`, & `skips` properties.  In most
-cases the default values for these parameters will correctly detect the file
-structure and data types for type conversion.
+[comment]: # (Dialect)
 
-``` py title="Header and Metadata"
+``` py title="Accessing Dialect"
+fp = './samples/annotations.txt'
+infile = open(fp, 'r')
+# like Python's csv.DictReader, we pass an open file instance
+reader = Reader(infile)
+print(reader.sniffer.dialect)
+```
+!!! example "Dialect"
+``` python tags=['hide-input']
+fp = './samples/annotations.txt'
+infile = open(fp, 'r')
+reader = Reader(infile)
+print(reader.sniffer.dialect)
+```
+
+The output dialect is a SimpleDialect instance of the 
+[clevercsv](https://clevercsv.readthedocs.io/en/latest/) package.
+
+[comment]: # (Metadata and Header)
+
+``` py title="Metadata & Header Detection"
 # the reader's header and metadata properties call the sniffer
-print('Header instance (0-based indexing)\n', reader.header)
+print(reader.header)
 print('---')
-print('Metadata instance\n', reader.metadata())
+print(reader.metadata())
 ```
 
+!!! example "Metadata and Header Detection"
 ``` python tags=['hide-input']
-print('Header instance (0-based indexing)\n', reader.header)
-print('---')
-print('Metadata instance\n', reader.metadata())
+print(reader.header)
+print('***')
+print(reader.metadata())
 ```
+
+The Header was detected on line 6 and has 6 column names. The metadata string
+spans from line 0 upto line 6. The embedded `Sniffer` instance samples the file
+when the reader is created.
+
+[comment]: # (Type Inference)
 
 ``` py title="Type Inference"
-# the types are not a reader property but can be requested from the sniffer
+# request the sniffed types
 # consistent is a `bool` indicating if types are consistent across sample rows
 types, consistent = reader.sniffer.types()
 print(types)
 ```
 
+!!! example "Type Inference"
 ``` python tags=['hide-input']
 types, consistent = reader.sniffer.types()
-print(types)
+s = str(types)
+# escape all special characters
+s = f'`{s}`'
+print(s)
 ```
 
-``` py title="Changing the sniffer"
+Our deep testing on randomly generated text files indicates that Tabbed's
+`Reader` will detect dialect, metadata, header, and types correctly in most
+cases. Should you encounter a problem, you can change the sample the Sniffer
+uses to measure these properties. The `Sniffer`'s `start`,`amount`, & `skips`
+alter the sniffing sample. For help understanding these parameters type `#!python
+help(reader.sniffer)` or see [Sniffer](reference/sniffing/#sniffing.md). Below,
+we show the sniffer and it's default parameters used in this example.
+
+[comment]: # (Sniffer)
+
+``` py title="Default Sniffer"
 #print the current sniffer used by the reader
 print(reader.sniffer)
 ```
-
-The `start`,`amount`, & `skips` properties of the sniffer can be changed if the
-default values fail to detect the metadata and header.  For details on these
-parameters and their default values, ask for help:
- `#!python help(reader.sniffer)`
 
 ``` python tags=["hide-input"]
 print(reader.sniffer)
@@ -242,12 +277,12 @@ for row in chain.from_iterable(reader.read()):
     print(row)
 ```
 
-Again, focus on the highlihted line (2) where we tab the rows in the *Start_Time*
-column whose value is between `#!python '9:38:00'` and `#!python '9:42:00'` and
-request the reader to only read the *Number* and *Start_Time* columns using column indexing.
-Notice the output row dictionaries consist of rows that match this Tabbing. For
-more details on `Comparison` tabbing please see the
-[Comparison Tab](reference/tabbing.md#tabbed.tabbing.Comparison) 
+Again, focus on the highlihted line (2) where we tab the rows in the
+*Start_Time* column whose value is between `#!python '9:38:00'` and `#!python
+'9:42:00'` and request the reader to only read the *Number* and *Start_Time*
+columns using column indexing.  Notice the output row dictionaries consist of
+rows that match this Tabbing. For more details on `Comparison` tabbing please
+see the [Comparison Tab](reference/tabbing.md#tabbed.tabbing.Comparison) 
 
 
 ### Regular Expression Tabbing ###
@@ -269,94 +304,109 @@ for row in chain.from_iterable(reader.read()):
 
 Focus on the highlihted line (3) where we tab the rows in the *Start_Time*
 column whose value is between `#!python '9:38:00'` and `#!python '9:42:00'` and
-request the reader to only read the *Number* and *Start_Time* columns using column indexing.
-Notice the output row dictionaries consist of rows that match this Tabbing. For
-more details on `Regex` tabbing please see the: 
-[Regex Tab](reference/tabbing.md#tabbed.tabbing.Regex) 
+request the reader to only read the *Number* and *Start_Time* columns using
+column indexing.  Notice the output row dictionaries consist of rows that match
+this Tabbing. For more details on `Regex` tabbing please see the: [Regex
+Tab](reference/tabbing.md#tabbed.tabbing.Regex) 
 
 ### Custom Tabbing ###
 Tabbed also supports construction of `Calling` Tabs that allow you to provide
-your own custom logic for row filtering. For details see the
-[Calling Tab](reference/tabbing.md#tabbed.tabbing.Calling) in the reference manual.
+your own custom logic for row filtering. For details see the [Calling
+Tab](reference/tabbing.md#tabbed.tabbing.Calling) in the reference manual.
+
 
 ## **__Reading__** ##
-The `Reader.read` method returns an iterator of list of dictionaries
-representing chunk number of read, type casted and filtered rows from a file. It
-has several important parameters you can use to control the rows that will be
-read. These parameters include: `start`, `skips`, `indices`, and `chunksize`.
-We'll take a look at these parameters. You can find all parameters of the read
- method [here](reference/reading.md#tabbed.reading.Reader.read).
 
+The `Reader.read` method returns an iterator of lists. Each *yielded* list
+contains row dictionaries from the data section. The values in each `dict` are
+the type casted and tab filtered rows. The `chunksize` parameter of the `read`
+method determines how many row dictionaries to yield per iteration. Let's take
+a look at the `read` method with our sample file.  
 
-### Iterative Read ###
+[comment]: # (read returns an Iterator)
 
-``` py title="Reader.read returns an Iterator"
-# call read to create the iterator
+``` py title="Return Type"
+# for ease of reading just get the Number & Annotation columns
+reader.tab(columns=['Number', 'Annotation'])
+# calling read creates an iterator
 gen = reader.read(chunksize=5)
-#print the first chunk and its size
-print(f'Chunk 0 contains {len(next(chunk_iter))} row dictionaries')
+print(type(gen))
 ```
 
+!!! example "Return Type"
 ``` python tags=['hide-input']
-reader.tab()
-chunk_iter = reader.read(chunksize=5)
-print(f'Chunk 0 contains {len(next(chunk_iter))} row dictionaries')
+reader.tab(columns=['Number', 'Annotation'])
+# calling read creates an iterator
+gen = reader.read(chunksize=5)
+s = f'`{type(gen)}`'
+print(s)
 ```
 
-This feature allows Tabbed to stream very large text files. Lets print the
-cumulative data rows read during iteration.
+[comment]: # (chunksize)
 
-``` py title="Iterative Reading"
-rows_read = 0 # a counter of the rows we've read
-for idx, chunk in enumerate(reader.read(chunksize=5)):
-    rows_read += len(chunk)
-    print(f'Chunk number= {idx}, rows read = {rows_read}')
-```
-    
-``` python tags=['hide-input']
-rows_read = 0
-for idx, chunk in enumerate(reader.read(chunksize=5)):
-    rows_read += len(chunk)
-    print(f'Chunk number= {idx}, rows read = {rows_read}')
+```py title="Chunksize"
+for idx, chunk in enumerate(reader.read(chunksize=2)):
+    print(f'chunk {idx}: {chunk}')
 ```
 
-For large files, you will want to set the chunksize much larger, the default is
-200,000 rows per chunk. `Reader.read` always returns an iterator. If you need an
-in-memory list just use `itertools.chain.from_iterable` like so
+??? example "chunksize"
+```python tags=['hide-input']
+for idx, chunk in enumerate(reader.read(chunksize=2)):
+    print(f'**chunk {idx}:** `{chunk}`', end='<br>')
+```
+
+Each `yield` of the read iterator gave us 2 rows from the data section. You can
+set the `chunksize` to any `#!python int` value. The default is 200,000 rows per
+yield. Read has several parameters for controlling what rows will be yielded.
+These include;  `start`, `skips` and `indices`. Details on these parameters can
+be found using `#!python help(Reader.read)` or
+[read's](reference/reading.md#tabbed.reading.Reader.read) documentation. 
+
+The `read` method always returns an iterator but for small files you may want to
+read the file in completely. This is simple using python's `itertools` module.
+Below is a recipe for converting read's iterator to an in-memory list. 
 
 ``` py title="As in-memory list"
-data = list(chain.from_iterable(reader.read(chunksize=5)))
-# print first 10 lines of data
-print(*data[:10], sep='\n')
+from itertools import chain
+data = list(chain.from_iterable(reader.read(chunksize=2)))
+print(*data, sep='\n')
 ```
 
+??? example "Reading to an in-memory list"
 ``` python tags=['hide-input']
-data = list(chain.from_iterable(reader.read(chunksize=5)))
-print(*data[:10], sep='\n')
+data = chain.from_iterable(reader.read(chunksize=5))
+for row in data:
+    print(f'`{row}`', end='<br>')
 ```
 
-### Start of Read ###
+## When Something Goes Wrong ##
 
-If you would like to start reading at a location other than the detected data
-start location you can give a start relative to the file start.
+In most cases, we think `Tabbed` will work *out-of-the-box* on your text files
+but the variability in dialects and structures means we can't guarantee it.
+`Tabbed` provides several fallbacks to help you read files when something has
+gone wrong. Specifically there are two problems you may encounter:
 
-``` py title="Reading Start"
-# start reading at line 10 (0-based index)
-gen = reader.read(start=10, chunksize=5)
-print(f'{next(gen)}')
-```
+!!! tip "Incorrect Start Row"
+    If tab fails to detect the file's structure the start row for the read will
+    be incorrect. You have 2 options to deal with this.
+    
+    - Adjust the `start`, `amount`, or `skips`attributes of the sniffer or the
+      exclude parameter of the header and metadata sniffer methods.  These
+      control the sample the sniffer uses to detect the header and metadata if
+      they exist. You can use `Reader.peek` to help you determine good values
+      for these parameters.
+    - During Read, set the `start` parameter to force reading to begin at
+      a specific row.  This will also require you to manually set the reader's
+      header by setting `reader.header` to a list of header string names. This
+      method should always work when structure (metadata, header, etc) isn't
+      being detected.
 
-``` python tags=['hide-input']
-gen = reader.read(start=10, chunksize=5)
-print(f'{next(gen)}')
-```
-
-### Skipping Read ###
-
-Skipping lines during reading can help you handle problematic rows of
-a file. You can pass a list of line integers or a range instance of lines to
-skip during reading.
-
-### Partial Read ###
-
-
+!!! tip "Wonky Data Values"
+    Tabbed supports reading `#!python ints`, `#!python floats`,
+    `#!python complex`, `#!python time`, `#!python date` and `#!python datetime`
+    types.  It further assumes that these types are consistent across rows
+    within a column in the data section. If Tabbed encounters a type 
+    conversion error, it gracefully returns the value as a string type and 
+    logs the error to the `Reader.errors` attribute. You can use this log to
+    figure out what rows had problems and skip them or change the values using
+    your own callable after they have been read by Tabbed.
