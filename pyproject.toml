@@ -5,16 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tabbed"
 version = "1.0.0"
-authors =[{ name="Matthew Caudill", email="mscaudill@gmail.com" }]
-description = "An iterative, selective reader of variably structured text files."
+description = """
+An iterative reader of irregular text files supporting selective
+value-based reading of rows and columns.
+"""
 readme = "README.md"
-requires-python = ">=3.11"
-keywords = [
-    "text",
-    "delimited",
-    "csv",
-    "tsv"
-]
+authors =[{ name="Matthew Caudill", email="mscaudill@gmail.com" }]
+license = "BSD-3-Clause"
+license-files = ["LICEN[CS]E*"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Operating System :: POSIX :: Linux",
@@ -26,12 +24,17 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Information Analysis"
 ]
+keywords = [
+    "text",
+    "delimited",
+    "csv",
+    "tsv"
+]
 dependencies = [
     "clevercsv",
-    "tabulate",
     "ipython",
-    "notebook"
 ]
+requires-python = ">=3.12"
 
 [project.optional-dependencies]
 dev = [
