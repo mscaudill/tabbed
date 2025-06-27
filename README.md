@@ -86,6 +86,7 @@ print('---')
 print(types)
 ```
 
+**Output**
 ```
 SimpleDialect('\t', '"', None)
 ---
@@ -100,6 +101,7 @@ print('---')
 print(reader.metadata)
 ```
 
+**Output**
 ```
 Header(line=6,
        names=['Number', 'Start_Time', 'End_Time', 'Time_From_Start', 'Channel', 'Annotation'],
@@ -114,7 +116,8 @@ MetaData(lines=(0, 6),
 ```python
 from itertools import chain
 
-# tab rows whose Start_Time is < 9:40 & read only Number and Start_Time columns
+# tab rows whose Start_Time is between 9:38 and 9:40 and set reader to read
+# only the Number and Start_Time columns
 reader.tab(Start_Time='<2/09/2022 9:40:00', columns=['Number', 'Start_Time')
 
 # read the data to an iterator reading only 2 rows at a time
@@ -122,8 +125,16 @@ gen = reader.read(chunksize=2)
 
 # convert to an in-memory list
 data = chain.from_iterable(gen)
+print(data)
 ```
 
+**Output**
+```
+{'Number': 5, 'Start_Time': datetime.datetime(2022, 2, 9, 9, 38, 1, 262000)}
+{'Number': 6, 'Start_Time': datetime.datetime(2022, 2, 9, 9, 38, 7, 909000)}
+{'Number': 7, 'Start_Time': datetime.datetime(2022, 2, 9, 9, 38, 20, 258000)}
+{'Number': 8, 'Start_Time': datetime.datetime(2022, 2, 9, 9, 38, 25, 435000)}
+```
 
 ## Installation
 
