@@ -75,13 +75,15 @@ Number Start Time End Time Time From Start Channel Annotation
 ```python
 from tabbed.reading import Reader
 
-with open('annotations.txt', 'r') as infile:
-    reader = Reader(infile)
-    dialect = reader.dialect)
-    types, _ = reader.sniffer.types())
-    print(dialect)
-    print('---')
-    print(types)
+infile = open('annotations.txt', 'r')
+reader = Reader(infile)
+    
+dialect = reader.dialect
+types, _ = reader.sniffer.types()
+    
+print(dialect) # a clevercsv SimpleDialect
+print('---')
+print(types)
 ```
 
 ```
@@ -93,13 +95,9 @@ SimpleDialect('\t', '"', None)
 **Metadata and Header detection**
 
 ```python
-from tabbed.reading import Reader
-
-with open('annotations.txt', 'r') as infile:
-    reader = Reader(infile)
-    print(reader.header)
-    print('---')
-    print(reader.metadata)
+print(reader.header)
+print('---')
+print(reader.metadata)
 ```
 
 ```
@@ -109,6 +107,21 @@ Header(line=6,
 ---
 MetaData(lines=(0, 6),
          string='Experiment ID\tExperiment\nAnimal ID\tAnimal\nResearcher\tTest\nDirectory path\t\n\n')
+```
+
+**Filtered Reading with Tabs**
+
+```python
+from itertools import chain
+
+# tab rows whose Start_Time is < 9:40 & read only Number and Start_Time columns
+reader.tab(Start_Time='<2/09/2022 9:40:00', columns=['Number', 'Start_Time')
+
+# read the data to an iterator reading only 2 rows at a time
+gen = reader.read(chunksize=2)
+
+# convert to an in-memory list
+data = chain.from_iterable(gen)
 ```
 
 
