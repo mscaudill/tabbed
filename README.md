@@ -119,7 +119,7 @@ from itertools import chain
 # tab rows whose Start_Time is between 9:38 and 9:40 and set reader to read
 # only the Number and Start_Time columns
 reader.tab(
-    Start_Time='> 2/09/2022 9:38:00 and <2/09/2022 9:40:00',
+    Start_Time='>= 2/09/2022 9:38:00 and <2/09/2022 9:40:00',
     columns=['Number', 'Start_Time'
 )
 
@@ -133,7 +133,7 @@ print(data)
 
 *Output*
 ```
-{'Number': 5, 'Start_Time': datetime.datetime(2022, 2, 9, 9, 38, 1, 262000)}
+'Number': 5, 'Start_Time': datetime.datetime(2022, 2, 9, 9, 38, 1, 262000)}
 {'Number': 6, 'Start_Time': datetime.datetime(2022, 2, 9, 9, 38, 7, 909000)}
 {'Number': 7, 'Start_Time': datetime.datetime(2022, 2, 9, 9, 38, 20, 258000)}
 {'Number': 8, 'Start_Time': datetime.datetime(2022, 2, 9, 9, 38, 25, 435000)}
