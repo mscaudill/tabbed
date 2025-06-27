@@ -3,7 +3,6 @@
     style="width:600px;height:auto;"/>
 </h1>
 
------------------
 
 # Selective and Scalable Reading of Irregular Text Files
 
@@ -17,14 +16,15 @@ automatically deduces data start locations, data types and performs iterative
 and value-based conditional reading of data rows.
 
 [**Key Features**](#key-features)
-| [Usage](#usage)
-| [Documentation](#documentation)
-| [Installation](#installation)
-| [Dependencies](#dependencies)
-| [Acknowledgments](acknowledgements)
-| [License](#license)
-| [Contributing](#contributing)
+| [**Usage**](#usage)
+| [**Documentation**](#documentation)
+| [**Installation**](#installation)
+| [**Dependencies**](#dependencies)
+| [**Acknowledgments**](acknowledgements)
+| [**License**](#license)
+| [**Contributing**](#contributing)
 
+-----------------
 
 ## Key Features
 
