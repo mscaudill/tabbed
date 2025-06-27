@@ -70,22 +70,45 @@ Number Start Time End Time Time From Start Channel Annotation
 10 02/09/22 09:40:22.334 02/09/22 09:41:36.664 1363.3860 ALL exploring
 ```
 
+**Dialect and Type Inference**
+
+```python
+from tabbed.reading import Reader
+
+with open('annotations.txt', 'r') as infile:
+    reader = Reader(infile)
+    dialect = reader.dialect)
+    types, _ = reader.sniffer.types())
+    print(dialect)
+    print('---')
+    print(types)
+```
+
+```
+SimpleDialect('\t', '"', None)
+---
+[<class 'int'>, <class 'datetime.datetime'>, <class 'datetime.datetime'>, <class 'float'>, <class 'str'>, <class 'str'>]
+```
+
+**Metadata and Header detection**
+
 ```python
 from tabbed.reading import Reader
 
 with open('annotations.txt', 'r') as infile:
     reader = Reader(infile)
     print(reader.header)
+    print('---')
     print(reader.metadata)
 ```
 
-**Metadata and Header detection**
 ```
 Header(line=6,
        names=['Number', 'Start_Time', 'End_Time', 'Time_From_Start', 'Channel', 'Annotation'],
-        string='Number\tStart Time\tEnd Time\tTime From Start\tChannel\tAnnotation')
+       string='Number\tStart Time\tEnd Time\tTime From Start\tChannel\tAnnotation')
+---
 MetaData(lines=(0, 6),
-          string='Experiment ID\tExperiment\nAnimal ID\tAnimal\nResearcher\tTest\nDirectory path\t\n\n')
+         string='Experiment ID\tExperiment\nAnimal ID\tAnimal\nResearcher\tTest\nDirectory path\t\n\n')
 ```
 
 
