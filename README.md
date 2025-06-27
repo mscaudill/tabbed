@@ -3,48 +3,39 @@
     style="width:100px;height:auto;"/>
 </h1>
 
-<h2 align="center">
-  <i><font color='gray'>Fast, Iterative and Selective Reading of Irregular Text Files</font></i>
-</h2>
+-----------------
 
-<p align="center">
-  <a href="https://joss.theoj.org/papers/f737f4eb377a3bed6602dac51f6b13b4"><img 
-    src="https://joss.theoj.org/papers/f737f4eb377a3bed6602dac51f6b13b4/status.svg" 
-    alt="JOSS Review" />
-  </a>
-  <a href="https://github.com/mscaudill/openseize/blob/master/LICENSE"><img
-    src="https://img.shields.io/badge/License-BSD%203--Clause-teal" 
-    alt="Openseize is released under the BSD 3-Clause license." />
-  </a>
-  <a href="https://pypi.org/project/openseize/"><img 
-    src="https://img.shields.io/pypi/v/openseize?color=78437E&logo=pypi&logoColor=white" 
-    alt="Openseize pypi release" />
-  </a>
-  <a href="https://github.com/mscaudill/openseize/tree/master#Dependencies"><img 
-    src="https://img.shields.io/pypi/pyversions/openseize?logo=python&logoColor=gold" 
-    alt="Python versions supported." />
-  </a>
-  <a href="https://github.com/mscaudill/openseize/actions/workflows/test.yml"><img 
-    src="https://img.shields.io/github/actions/workflow/status/mscaudill/openseize/test.yml?label=CI&logo=github" 
-    alt="Openseize's test status" />
-  </a>
- <a href="https://github.com/mscaudill/openseize/pulls"><img 
-    src="https://img.shields.io/badge/PRs-welcome-F8A3A3"
-    alt="Pull Request Welcomed!" />
-  </a>
-</p>
+# Fast, Iterative and Selective Reading of Irregular Text Files
 
 
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+![PyPI - License](https://img.shields.io/pypi/l/openseize?color=teal)
 
-# Introduction
 
-Tabbed is a Python library for 
+Tabbed is a Python library for reading variably structured text files. It
+automatically deduces data start locations, data types and performs iterative
+and value-based conditional reading of data rows.
 
-A brief description of the project and its purpose.  [link to further documentation]
+## Key Features
 
-## Badges
+### Structural Inference
+A common variant of the [standard]() text file is one that contains *metadata*
+prior to a header or data section. Tabbed can locate the metadata, header and
+data locations in a file.
 
-[Badges for build status, code coverage, etc.]
+### Type inference
+Tabbed can parse `int`, `float`, `complex`, `time`, 'date' and full `datetime`
+instances at high-speed via a polling strategy.
+
+### Conditional Reading
+Tabbed can filter rows during reading with equality, membership, rich
+comparison, regular expression matching and custom callables via simple keyword
+arguments.
+
+### Partial and Iterative Reading
+Tabbed supports reading of large text files that consumes only as much memory as
+you choose.
+
 
 ## Table of Contents
 
