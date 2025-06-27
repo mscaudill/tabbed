@@ -4,7 +4,7 @@
 </h1>
 
 
-# Selective and Scalable Reading of Irregular Text Files 
+## Selective and Scalable Reading of Irregular Text Files 
 
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -129,6 +129,9 @@ gen = reader.read(chunksize=2)
 # convert to an in-memory list
 data = chain.from_iterable(gen)
 print(data)
+
+# close the reader when done or open under context-management
+reader.close()
 ```
 
 *Output*
