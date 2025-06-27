@@ -19,8 +19,8 @@ and value-based conditional reading of data rows.
 | [**Documentation**](#documentation)
 | [**Dependencies**](#dependencies)
 | [**Installation**](#installation)
-| [**Acknowledgments**](acknowledgements)
 | [**Contributing**](#contributing)
+| [**Acknowledgments**](acknowledgements)
 
 -----------------
 
@@ -77,7 +77,6 @@ from tabbed.reading import Reader
 
 infile = open('annotations.txt', 'r')
 reader = Reader(infile)
-    
 dialect = reader.dialect
 types, _ = reader.sniffer.types()
     
@@ -147,7 +146,8 @@ The official documentation is hosted on [github.io](#).
 
 
 ## Dependencies
-Tabbed depends on the excellent [clevercsv]() package for dialect detection. The
+Tabbed depends on the excellent [clevercsv](
+https://clevercsv.readthedocs.io/en/latest/) package for dialect detection. The
 rest is pure Python >= 3.11.
 
 
@@ -175,7 +175,8 @@ pip install -e .[dev]
 ## Contributing
 
 We're excited you want to contribute. Please check out our
-[Contribution]() guide!
+[Contribution](
+https://github.com/mscaudill/tabbed/blob/master/.github/CONTRIBUTING.md) guide!
 
 
 ## Acknowlegements

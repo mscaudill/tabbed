@@ -10,8 +10,6 @@
     * [Modifications](#modifications)
     * [Updating Documentation](#update-documentation)
     * [Review Process](#review-process)
-- [Commit Message Guide](#commit-message-guide)
-
 
 ## Contributing Etiquette
 
