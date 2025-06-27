@@ -1,9 +1,8 @@
 <h1 style="font-size:350%;">
-<img src="imgs/logo.png" style="width:60px;height:auto;"/> 
+<img src="https://github.com/mscaudill/tabbed/blob/master/docs/imgs/logo.png?raw=true"
+ style="width:60px;height:auto;"/> 
 <b><b><font size>The Tabbed Guide</b></b>
 </h1>
-    
-
 
 ## **__Introduction__**
 <div class="grid cards" markdown>
