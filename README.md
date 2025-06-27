@@ -18,21 +18,21 @@ and value-based conditional reading of data rows.
 
 ## Key Features
 
-- **Structural Inference:**
+- **Structural Inference:**  
 A common variant of the [standard]() text file is one that contains *metadata*
 prior to a header or data section. Tabbed can locate the metadata, header and
 data locations in a file.
 
-- **Type inference:**
+- **Type inference:**  
 Tabbed can parse `int`, `float`, `complex`, `time`, 'date' and full `datetime`
 instances at high-speed via a polling strategy.
 
-- **Conditional Reading:**
+- **Conditional Reading:**  
 Tabbed can filter rows during reading with equality, membership, rich
 comparison, regular expression matching and custom callables via simple keyword
 arguments.
 
-- **Partial and Iterative Reading:**
+- **Partial and Iterative Reading:**  
 Tabbed supports reading of large text files that consumes only as much memory as
 you choose.
 
