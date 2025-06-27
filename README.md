@@ -21,7 +21,6 @@ and value-based conditional reading of data rows.
 | [**Installation**](#installation)
 | [**Dependencies**](#dependencies)
 | [**Acknowledgments**](acknowledgements)
-| [**License**](#license)
 | [**Contributing**](#contributing)
 
 -----------------
