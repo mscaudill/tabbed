@@ -49,7 +49,9 @@ you choose.
 
 Examples of how to use the project.
 
-```linenums="1"
+<details>
+<summary>Example Data</summary>
+```
 Experiment ID Experiment
 Animal ID Animal
 Researcher Test
@@ -68,6 +70,7 @@ Number Start Time End Time Time From Start Channel Annotation
 9 02/09/22 09:40:07.055 02/09/22 09:40:22.334 1348.1070 ALL grooming
 10 02/09/22 09:40:22.334 02/09/22 09:41:36.664 1363.3860 ALL exploring
 ```
+</details>
 
 ## Installation
 
