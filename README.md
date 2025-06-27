@@ -17,8 +17,8 @@ and value-based conditional reading of data rows.
 [**Key Features**](#key-features)
 | [**Usage**](#usage)
 | [**Documentation**](#documentation)
-| [**Installation**](#installation)
 | [**Dependencies**](#dependencies)
+| [**Installation**](#installation)
 | [**Acknowledgments**](acknowledgements)
 | [**Contributing**](#contributing)
 
@@ -133,18 +133,26 @@ print(data)
 
 *Output*
 ```
-'Number': 5, 'Start_Time': datetime.datetime(2022, 2, 9, 9, 38, 1, 262000)}
+{'Number': 5, 'Start_Time': datetime.datetime(2022, 2, 9, 9, 38, 1, 262000)}
 {'Number': 6, 'Start_Time': datetime.datetime(2022, 2, 9, 9, 38, 7, 909000)}
 {'Number': 7, 'Start_Time': datetime.datetime(2022, 2, 9, 9, 38, 20, 258000)}
 {'Number': 8, 'Start_Time': datetime.datetime(2022, 2, 9, 9, 38, 25, 435000)}
 ```
+
+## Documentation
+The official documentation is hosted on [github.io](#).
+
+
+## Dependencies
+Tabbed depends on the excellent [clevercsv]() package for dialect detection. The
+rest is pure Python >= 3.11.
+
 
 ## Installation
 
 Detailed instructions on how to install the project.
 
 
-## Dependencies
 
 
 ## Contributing
@@ -152,11 +160,8 @@ Detailed instructions on how to install the project.
 Guidelines for contributing to the project.
 
 
-## Funding Acknowlegements
-
-
-## License
-
-[License information]
-
-
+## Acknowlegements
+[!NOTE]
+We are grateful for the support of the Ting Tsung and Wei Fong Chao Foundation
+and the Jan and Dan Duncan Neurological Research Institute at Texas Children's
+that generously supports Tabbed.
