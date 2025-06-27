@@ -12,9 +12,19 @@
 ![PyPI - License](https://img.shields.io/pypi/l/openseize?color=teal)
 
 
-Tabbed is a Python library for reading variably structured text files. It
+**Tabbed** is a Python library for reading variably structured text files. It
 automatically deduces data start locations, data types and performs iterative
 and value-based conditional reading of data rows.
+
+## Table of Contents
+
+*   [Key Features](#key-features)
+*   [Usage](#usage)
+*   [Installation](#installation)
+*   [Dependencies](#dependencies)
+*   [Contributing](#contributing)
+*   [Funding Acknowledgments](#funding-acknowledgements)
+*   [License](#license)
 
 ## Key Features
 
@@ -37,24 +47,26 @@ Tabbed supports reading of large text files that consumes only as much memory as
 you choose.
 
 
-## Table of Contents
+## Usage
 
-*   [Installation](#installation)
-*   [Usage](#usage)
-*   [Contributing](#contributing)
-*   [License](#license)
+Examples of how to use the project.
+
 
 ## Installation
 
 Detailed instructions on how to install the project.
 
-## Usage
 
-Examples of how to use the project.
+## Dependencies
+
 
 ## Contributing
 
 Guidelines for contributing to the project.
+
+
+## Funding Acknowlegements
+
 
 ## License
 
