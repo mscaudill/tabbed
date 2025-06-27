@@ -3,9 +3,9 @@
     style="width:600px;height:auto;"/>
 </h1>
 
-
-## Selective and Scalable Reading of Irregular Text Files 
-
+<h3 align="center"
+  <i>Selective and Scalable Reading of Irregular Text Files</i>
+</h3>
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![PyPI - License](https://img.shields.io/pypi/l/openseize?color=teal)
