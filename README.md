@@ -80,12 +80,14 @@ with open('annotations.txt', 'r') as infile:
 ```
 
 **Metadata and Header detection**
-[!TIP]
+```
 Header(line=6,
        names=['Number', 'Start_Time', 'End_Time', 'Time_From_Start', 'Channel', 'Annotation'],
         string='Number\tStart Time\tEnd Time\tTime From Start\tChannel\tAnnotation')
 MetaData(lines=(0, 6),
           string='Experiment ID\tExperiment\nAnimal ID\tAnimal\nResearcher\tTest\nDirectory path\t\n\n')
+```
+
 
 ## Installation
 
