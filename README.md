@@ -4,12 +4,11 @@
 </h1>
 
 
-# Selective and Scalable Reading of Irregular Text Files
+# Selective and Scalable Reading of Irregular Text Files  
 
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-![PyPI - License](https://img.shields.io/pypi/l/openseize?color=teal)
-  
+![PyPI - License](https://img.shields.io/pypi/l/openseize?color=teal)  
 
 **Tabbed** is a Python library for reading variably structured text files. It
 automatically deduces data start locations, data types and performs iterative
