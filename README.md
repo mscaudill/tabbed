@@ -161,6 +161,7 @@ Guidelines for contributing to the project.
 
 
 ## Acknowlegements
-[!NOTE] We are grateful for the support of the Ting Tsung and Wei Fong Chao Foundation
+> [!NOTE]
+> We are grateful for the support of the Ting Tsung and Wei Fong Chao Foundation
 and the Jan and Dan Duncan Neurological Research Institute at Texas Children's
 that generously supports Tabbed.
