@@ -9,7 +9,7 @@
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![PyPI - License](https://img.shields.io/pypi/l/openseize?color=teal)
-
+  
 
 **Tabbed** is a Python library for reading variably structured text files. It
 automatically deduces data start locations, data types and performs iterative
@@ -33,7 +33,7 @@ prior to a header or data section. Tabbed can locate the metadata, header and
 data locations in a file.
 
 - **Type inference:**  
-Tabbed can parse `int`, `float`, `complex`, `time`, 'date' and full `datetime`
+Tabbed can parse `int`, `float`, `complex`, `time`, `date` and `datetime`
 instances at high-speed via a polling strategy.
 
 - **Conditional Reading:**  
