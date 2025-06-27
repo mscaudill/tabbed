@@ -153,14 +153,29 @@ rest is pure Python >= 3.11.
 
 ## Installation
 
-Detailed instructions on how to install the project.
+Tabbed is hosted on [pypi]() and can be installed with pip into a virtual
+environment.
 
+```bash
+pip install tabbed
+```
 
+To get a development version of `Tabbed` from source start by cloning the
+repository
 
+```bash
+git clone git@github.com:mscaudill/tabbed.git
+```
+
+Go to the directory you just cloned and create an *editable install* with pip.
+```bash
+pip install -e .[dev]
+```
 
 ## Contributing
 
-Guidelines for contributing to the project.
+We're excited you want to contribute. Please check out our
+[Contribution]() guide!
 
 
 ## Acknowlegements
