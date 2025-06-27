@@ -16,15 +16,15 @@
 automatically deduces data start locations, data types and performs iterative
 and value-based conditional reading of data rows.
 
-## Table of Contents
+[**Key Features**](#key-features)
+| [Usage](#usage)
+| [Documentation](#documentation)
+| [Installation](#installation)
+| [Dependencies](#dependencies)
+| [Acknowledgments](acknowledgements)
+| [License](#license)
+| [Contributing](#contributing)
 
-*   [Key Features](#key-features)
-*   [Usage](#usage)
-*   [Installation](#installation)
-*   [Dependencies](#dependencies)
-*   [Contributing](#contributing)
-*   [Funding Acknowledgments](#funding-acknowledgements)
-*   [License](#license)
 
 ## Key Features
 
