@@ -37,6 +37,7 @@ theme:
 # configure navigation pane
 nav:
   - Home: index.md
+  - Installation: installation.md
   - "Getting Started": getting_started.md
   - Reference: reference/reference.md
   - About: about.md

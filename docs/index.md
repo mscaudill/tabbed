@@ -10,7 +10,7 @@
 </div>
 
 <div class="grid cards" markdown>
-- ## :material-arrow-down-circle: [Installation](#)
+- ## :material-arrow-down-circle: [Installation](installation.md)
 - ## :material-rocket-launch: [Getting Started](getting_started.md)
 - ## :material-book-open: [Reference](reference/reference.md)
 - ## :material-information-variant-circle: [About](about.md)
