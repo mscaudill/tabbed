@@ -45,7 +45,8 @@ you choose.
 
 ## Usage
 
-Examples of how to use the project.
+Below is a sample file with a *Metadata* section and *Header* using the tab
+character as the delimiter.
 
 **annotations.txt**
 ```AsciiDoc
@@ -70,6 +71,9 @@ Number Start Time End Time Time From Start Channel Annotation
 
 **Dialect and Type Inference**
 
+Tabbed can detect the dialect via [clevercsv](
+https://clevercsv.readthedocs.io/en/latest/)  and infer the data types.
+
 ```python
 from tabbed.reading import Reader
 
@@ -92,6 +96,8 @@ SimpleDialect('\t', '"', None)
 
 **Metadata and Header detection**
 
+Tabbed can automatically locate the metadata, header and data rows.
+
 ```python
 print(reader.header)
 print('---')
@@ -109,6 +115,10 @@ MetaData(lines=(0, 6),
 ```
 
 **Filtered Reading with Tabs**
+
+Tabbed has powerful row and column filtering supporting equality, membership,
+rich comparison and regular expression matching. It also is fully iterative
+allowing users to choose the amount of memory to consume during file reading.
 
 ```python
 from itertools import chain
@@ -172,9 +182,9 @@ pip install -e .[dev]
 
 ## Contributing
 
-We're excited you want to contribute. Please check out our
+We're excited you want to contribute! Please check out our
 [Contribution](
-https://github.com/mscaudill/tabbed/blob/master/.github/CONTRIBUTING.md) guide!
+https://github.com/mscaudill/tabbed/blob/master/.github/CONTRIBUTING.md) guide.
 
 
 ## Acknowlegements
