@@ -428,7 +428,7 @@ class Sniffer(ReprMixin):
 
         return common_types, consistent
 
-    def datetime_formats(self, poll: int) -> Tuple[List[str | None], bool]:
+    def datetime_formats(self, poll: int = 5) -> Tuple[List[str | None], bool]:
         """Infer time, date or datetime formats from last poll count rows.
 
         Args:
