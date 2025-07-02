@@ -3,7 +3,7 @@
     style="width:600px;height:auto;"/>
 </h1>
 
-## Selective and Scalable Reading of Irregular Text Files
+## A Selective & Scalable Reader of Irregular Text Files
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![PyPI - License](https://img.shields.io/pypi/l/openseize?color=teal)
@@ -25,9 +25,10 @@ and value-based conditional reading of data rows.
 ## Key Features
 
 - **Structural Inference:**  
-A common variant of the [standard]() text file is one that contains *metadata*
-prior to a header or data section. Tabbed can locate the metadata, header and
-data locations in a file.
+A common variant of the
+[standard](https://datatracker.ietf.org/doc/html/rfc4180) text file is one that
+contains *metadata* prior to a header or data section. Tabbed can locate the
+metadata, header and data locations in a file.
 
 - **Type inference:**  
 Tabbed can parse `int`, `float`, `complex`, `time`, `date` and `datetime`
@@ -116,9 +117,9 @@ MetaData(lines=(0, 6),
 
 **Filtered Reading with Tabs**
 
-Tabbed has powerful row and column filtering supporting equality, membership,
-rich comparison and regular expression matching. It also is fully iterative
-allowing users to choose the amount of memory to consume during file reading.
+Tabbed supports row and column filtering with equality, membership, rich
+comparison and regular expression matching. Its also fully iterative allowing
+users to choose the amount of memory to consume during file reading.
 
 ```python
 from itertools import chain
