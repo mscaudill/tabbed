@@ -294,15 +294,9 @@ def convert(
         ValueError: if celltype is provided and conversion fails.
     """
 
-    # try the celltype if given
     if celltype:
-        if celltype in (int, float, complex, str):
-            try:
-                return celltype(astring)
-            except (ValueError, OverflowError) as e:
-                raise e
-
         if fmt:
+            # try time, date, or datetime if celltype and fmt
             try:
                 adatetime = datetime.strptime(astring, fmt)
                 if celltype == datetime:
@@ -311,6 +305,12 @@ def convert(
                 return getattr(adatetime, celltype.__name__)()
             except (ValueError, OverflowError, AttributeError) as e:
                 raise e
+        # call the celltype if no fmt
+        try:
+            return celltype(astring)
+        except (ValueError, OverflowError) as e:
+            raise e
+
 
     # numeric
     if is_numeric(astring):
