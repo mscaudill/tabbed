@@ -28,7 +28,7 @@ files, a subset of the DSV format, returns 75 million matches. They are simple
 to create, easy to share and can represent many data formats. Despite their
 broad use, variability in the formatting and structure of DSV files has
 frustrated their automated parsing for decades. The *clevercsv* package
-[@vandenBurg2019] made significant progress on this problem with consistency
+@vandenBurg2019 made significant progress on this problem with consistency
 measures that accurately detect a file's dialect: delimiter, quote character and
 escape character. The structure of a DSV introduces another source of
 variability. DSVs may contain a *metadata* section that offsets the header and
@@ -48,7 +48,7 @@ the DSV shown in Figure 1.
 
 ![The first 12 lines of '|' delimiter separated file with metadata and header.
 Metadata lines 1-3 use a ';' delimiter while line 4 is an undelimited
-string.\label{fig: sample}](sample_dsv.png =300x)
+string.\label{fig: sample}](sample_dsv.png){width=300}
 
 ### Structural Detection
 The header located on line 7 marks the boundary between the metadata
@@ -87,7 +87,7 @@ feature is implemented using a first-in-first-out (FIFO) data structure with
 O(1) time complexity allowing Tabbed to linearly scale to large files. 
 
 # Comparison
-Tablib [@tablib], comma [@comma], and pandas [@pandas] are popular alternative packages to Tabbed. 
+Tablib @tablib, comma @comma, and pandas @pandas are popular alternative packages to Tabbed. 
 
 | **Software** | **Structural Detection** | **Casting** | **Value-based Filtering** | **Iterative** |
 |:------------:|:------------------------:|:-----------:|:-------------------------:|:-------------:|
