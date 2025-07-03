@@ -48,7 +48,7 @@ the DSV shown in Figure 1.
 
 ![The first 12 lines of '|' delimiter separated file with metadata and header.
 Metadata lines 1-3 use a ';' delimiter while line 4 is an undelimited
-string.\label{fig: sample}](sample_dsv.png){width=3000px}
+string.\label{fig: sample}](sample_dsv.png =300x)
 
 ### Structural Detection
 The header located on line 7 marks the boundary between the metadata
