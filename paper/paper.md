@@ -38,57 +38,75 @@ a value-based conditional reader for reading these irregular DSV files at
 scale.
 
 # Statement of need
-
 To the best of our knowledge, no parser of DSV files exist that can locate the
 start of the data section irrespective of the presence of metadata and/or
 a header. Further, we found no reader of DSV files that can conditionally read
 rows from the data section based on a row's type casted values. We here define
 a set of desiderata for parsing irregular text files that optionally contain
-metadata, header and ragged data rows. To motivate these desiderata we consider
+metadata, header and ragged data rows. To motivate this set we consider
 the DSV shown in Figure 1.
 
-```
-Experiment ID | 6412
-Name | Dirac, P.M.
+![The first 12 lines of '|' delimiter separated file with metadata and header.
+Metadata lines 1-3 use a ';' delimiter while line 4 is an undelimited
+string.\label{fig: sample}](sample_dsv.png){width=3000px}
 
-Index; Date; Temperature; Age
-0; 9/22/2023; 90.43; 1.3
-1; 9/23/2023; 88.11; 2.3
-```
-
-## Header & Data Section Detection
-The header located on line index 3 demarks the boundary between the metadata
+### Structural Detection
+The header located on line 7 marks the boundary between the metadata
 and data section of the file. Automated detection of this line is critical for
-correct parsing of the file. Tabbed will auto-locate this line using either type
+correct parsing of the file. Tabbed auto-locates this line using either type
 inconsistencies or string value inconsistencies without user input.
 
-## Type Casting
+### Type Casting
 The strings in the data section of the file represent mixed types that need to
 be type casted. Tabbed supports conversion to ints, floats, complex,
-time, date and datatime instances. These conversions are graceful in that they
+time, date and datetime instances. These conversions are graceful in that they
 return strings on failures while logging the conversion error.
 
-## Value-based Filtering
+### Value-based Filtering
 Selective reading from DSV files based on cell content is extremely useful for
-selecting subsets of the data. Tabbed supports both column selection and row filtering
-with equality, membership, rich comparison, regular expression matching and
-custom callables. For example, filtering all the rows where the date
-> 9/22/2023...
+selecting subsets of the data. Tabbed supports both column selection and row
+filtering with equality, membership, rich comparison, regular expression
+matching and custom callables. These may be supplied via keyword arguments to
+the `tab` method of Tabbed's `Reader` class.
 
+```python
+from tabbed.reading import Reader
 
- 
-[comment]: <> (Value Based Filtering of rows and columns)
-[comment]: <> (Iterative reading for large text files)
+with open('sample.txt', 'r') as infile:
+    reader = Reader(infile)
+    # Tell the reader to only read these Tabbed rows
+    reader.tab(Start_Time ='>=2/09/2022 9:37:00', Annotation = 'exploring')
+    result = reader.read()
+```
+
+### Iterative Reading
+Given that there is no hard-limit on the size of a DSV file, it is
+essential that readers support file streaming. Tabbed's reader returns an
+iterator whose per-iteration memory consumption is tuneable. For speed, this
+feature is implemented using a first-in-first-out (FIFO) data structure with
+O(1) time complexity allowing Tabbed to linearly scale to large files. 
 
 # Comparison
-[comment]: <> (Table Feature Comparison)
-[comment]: <> (Figure Performance Comparsion)
-[comment]: <> (Diagram of Flexibility for Comparison)
-[comment]: <> (Deep testing)
+Tablib [@tablib], comma [@comma], and pandas [@pandas] are popular alternative packages to Tabbed. 
 
+| **Software** | **Structural Detection** | **Casting** | **Value-based Filtering** | **Iterative** |
+|:------------:|:------------------------:|:-----------:|:-------------------------:|:-------------:|
+|  **tablib**  |           **-**          |    **+**    |       equality only       |     **-**     |
+|   **comma**  |           **-**          |   limited   |           **-**           |     **-**     |
+|  **pandas**  |           **-**          |    **+**    |        columns only       |     **+**     |
+|  **tabbed**  |           **+**          |    **+**    |           **+**           |     **+**     |
+
+Table: Comparison of features for four common open-source software packages for
+reading DSV files. Plus (+) indicates full support, (-) indicates no support.
 
 # Conclusion
 
 # Acknowlegements
+We thank Brad Sheppard for constructive discussions about testing Tabbed and
+Claudia Tischler for her thoughtful reading of the manuscript.
+
+We are grateful for the support of the Ting Tsung and Wei Fong Chao Foundation
+and the Jan and Dan Duncan Neurological Research Institute at Texas Children's
+that generously supports Tabbed.
 
 # References
