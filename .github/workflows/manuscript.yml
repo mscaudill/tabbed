@@ -1,20 +1,21 @@
+name: JOSS Manuscript
 on: [push]
 
 jobs:
   paper:
     runs-on: ubuntu-latest
-    name: Paper Draft
+    name: JOSS Manuscript
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
-      - name: Build JOSS manuscript
+        uses: actions/download-artifact@v4
+      - name: Build
         uses: openjournals/openjournals-draft-action@master
         with:
           journal: joss
           # This should be the path to the paper within your repo.
           paper-path: paper/paper.md
       - name: Upload
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: paper
           # This is the output path where Pandoc will write the compiled
