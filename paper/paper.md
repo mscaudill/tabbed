@@ -48,19 +48,20 @@ the DSV shown in Figure 1.
 
 ![The first 12 lines of a delimiter separated file with metadata and header.
 Metadata lines 1-3 use a ';' delimiter while line 4 is an undelimited
-string.\label{fig: sample}](sample_dsv.png)
+string. The header and data sections use the pipe '|' delimiter \label{fig: sample}](
+sample_dsv.png){width=600}
 
 ### Structural Detection
 The header located on line 7 marks the boundary between the metadata
 and data section of the file. Automated detection of this line is critical for
 correct parsing of the file. Tabbed auto-locates this line using either type
-inconsistencies or string value inconsistencies without user input.
+inconsistencies or string value inconsistencies.
 
 ### Type Casting
 The strings in the data section of the file represent mixed types that need to
-be type casted. Tabbed supports conversion to ints, floats, complex,
-time, date and datetime instances. These conversions are graceful in that they
-return strings on failures while logging the conversion error.
+be type casted. Tabbed supports conversion to `int`, `float`, `complex`, `time`,
+`date` and `datetime` instances. These conversions gracefully return strings on
+failure and log the conversion error.
 
 ### Value-based Filtering
 Selective reading from DSV files based on cell content is extremely useful for
@@ -86,25 +87,26 @@ iterator whose per-iteration memory consumption is tuneable. For speed, this
 feature is implemented using a first-in-first-out (FIFO) data structure with
 O(1) time complexity allowing Tabbed to linearly scale to large files. 
 
-# Comparison
+# Comparison FIXME ADD speed with and without filtering to Figure 2!!!
 
 Tablib, comma, and pandas are popular alternative packages to Tabbed.
 
 | **Software** | **Structural Detection** | **Casting** | **Value-based Filtering** | **Iterative** |
 |:------------:|:------------------------:|:-----------:|:-------------------------:|:-------------:|
-|  **tablib**  |           -          |    +    |       equality only       |     -     |
-|   **comma**  |           -          |   limited   |           -           |     -     |
-|  **pandas**  |           -          |    +    |        columns only       |     +     |
-|  **tabbed**  |           +          |    +    |           +           |     +     |
+|  **tablib**  |           -              |    +        |       equality only       |     -     |
+|   **comma**  |           -              |   limited   |           -               |     -     |
+|  **pandas**  |           -              |    +        |        columns only       |     +     |
+|  **tabbed**  |           +              |    +        |           +               |     +     |
 
 Table: Comparison of features for four common open-source software packages for
 reading DSV files. Plus (+) and minus (-) indicates package support or lack of support respectively.
 
 
 ![Comparison of number of cells type casted per second between Tabbed and Pandas
-for a DSV composed of only floats (left) or mixed types (right). The conversion
-engine for Pandas was chosen to be "python" for a fair comparison with Tabbed's
-python implementation.\label{fig: speeds}](read_speeds.png)
+for DSVs composed of floats (left) or mixed types (right). The conversion engine
+for Pandas was chosen to be "python" for a fair comparison with Tabbed's python
+implementation. Black circles and error bars are the mean and standard deviation
+across 30 trials.\label{fig: speeds}](read_speeds.png)
 
 # Conclusion
 
