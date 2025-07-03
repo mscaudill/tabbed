@@ -46,9 +46,9 @@ a set of desiderata for parsing irregular text files that optionally contain
 metadata, header and ragged data rows. To motivate this set we consider
 the DSV shown in Figure 1.
 
-![The first 12 lines of '|' delimiter separated file with metadata and header.
+![The first 12 lines of a delimiter separated file with metadata and header.
 Metadata lines 1-3 use a ';' delimiter while line 4 is an undelimited
-string.\label{fig: sample}](sample_dsv.png){width=300}
+string.\label{fig: sample}](sample_dsv.png)
 
 ### Structural Detection
 The header located on line 7 marks the boundary between the metadata
@@ -87,17 +87,24 @@ feature is implemented using a first-in-first-out (FIFO) data structure with
 O(1) time complexity allowing Tabbed to linearly scale to large files. 
 
 # Comparison
-Tablib, comma, and pandas are popular alternative packages to Tabbed. 
+
+Tablib, comma, and pandas are popular alternative packages to Tabbed.
 
 | **Software** | **Structural Detection** | **Casting** | **Value-based Filtering** | **Iterative** |
 |:------------:|:------------------------:|:-----------:|:-------------------------:|:-------------:|
-|  **tablib**  |           **-**          |    **+**    |       equality only       |     **-**     |
-|   **comma**  |           **-**          |   limited   |           **-**           |     **-**     |
-|  **pandas**  |           **-**          |    **+**    |        columns only       |     **+**     |
-|  **tabbed**  |           **+**          |    **+**    |           **+**           |     **+**     |
+|  **tablib**  |           -          |    +    |       equality only       |     -     |
+|   **comma**  |           -          |   limited   |           -           |     -     |
+|  **pandas**  |           -          |    +    |        columns only       |     +     |
+|  **tabbed**  |           +          |    +    |           +           |     +     |
 
 Table: Comparison of features for four common open-source software packages for
-reading DSV files. Plus (+) indicates full support, (-) indicates no support.
+reading DSV files. Plus (+) and minus (-) indicates package support or lack of support respectively.
+
+
+![Comparison of number of cells type casted per second between Tabbed and Pandas
+for a DSV composed of only floats (left) or mixed types (right). The conversion
+engine for Pandas was chosen to be "python" for a fair comparison with Tabbed's
+python implementation.\label{fig: speeds}](read_speeds.png)
 
 # Conclusion
 
