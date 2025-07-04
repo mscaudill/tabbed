@@ -106,14 +106,15 @@ in Tabbed. During the reading of a DSV file, pandas allows specific columns to
 be read but has no mechanism for conditionally reading rows. 
 
 | **Software** | **Structural Detection** | **Type Casting** | **Filtereable** | **Iterative** |
-|:------------:|:------------------------:|:-----------:|:--------------------:|:-------------:|
-|  **tablib**  |           -              |    +        |       limited        |        -      |
-|   **comma**  |           -              |   limited   |           -          |        -      |
-|  **pandas**  |           -              |    +        |        columns only  |        +      |
-|  **tabbed**  |           +              |    +        |           +          |        +      |
+|:------------:|:------------------------:|:----------------:|:---------------:|:-------------:|
+|  **tablib**  |           -              |    +             |     limited     |        -      |
+|   **comma**  |           -              |   limited        |           -     |        -      |
+|  **pandas**  |           -              |    +             |    columns only |        +      |
+|  **tabbed**  |           +              |    +             |           +     |        +      |
 
 Table: Comparison of features for four common open-source software packages for
-reading DSV files. Plus (+) and minus (-) indicates package support or lack of support respectively. {table: table1}
+reading DSV files. Plus (+) and minus (-) indicates package support or lack of
+support respectively. \label{tbl: table1}
 
 
 ![Comparison of number of cells type casted per second between Tabbed and Pandas
