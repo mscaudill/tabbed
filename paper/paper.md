@@ -1,5 +1,5 @@
 ---
-title: "Tabbed: A Python package for parsing variably structured text files at
+title: "Tabbed: A Python package for reading variably structured text files at
 scale."
 tags:
     - Python
@@ -28,12 +28,12 @@ files, a subset of the DSV format, returns 75 million matches. They are simple
 to create, easy to share and can represent many data formats. Despite their
 broad use, variability in the formatting and structure of DSV files has
 frustrated their automated parsing for decades. The *clevercsv* package
-made significant progress on this problem with consistency
+[@vandenBurg2019] made significant progress on this problem with consistency
 measures that accurately detect a file's dialect: delimiter, quote character and
 escape character. The structure of a DSV introduces another source of
 variability. DSVs may contain a *metadata* section that offsets the header and
 start row. Tabbed uses row length and type consistency measures to automatically
-locate metadata, header and data sections of a DSV. Furthermore, Tabbed provides
+detect metadata, header and data sections of a DSV. Furthermore, Tabbed provides
 a value-based conditional reader for reading these irregular DSV files at
 scale.
 
@@ -46,29 +46,39 @@ a set of desiderata for parsing irregular text files that optionally contain
 metadata, header and ragged data rows. To motivate this set we consider
 the DSV shown in Figure 1.
 
-![The first 12 lines of a delimiter separated file with metadata and header.
-Metadata lines 1-3 use a ';' delimiter while line 4 is an undelimited
-string. The header and data sections use the pipe '|' delimiter \label{fig: sample}](
-sample_dsv.png){width=600}
+![The first 12 lines of a delimiter separated file named *sample.txt' with
+metadata on lines 1-4 and a header on line 7. The metadata contains both
+semicolon delimited and undelimited strings. Notice the data section uses
+a different delimiter than the metadta and contains mixed data types.
+\label{fig: figure1}]( sample_dsv.png){width=900}
 
 ### Structural Detection
-The header located on line 7 marks the boundary between the metadata
-and data section of the file. Automated detection of this line is critical for
-correct parsing of the file. Tabbed auto-locates this line using either type
-inconsistencies or string value inconsistencies.
+A header line (line 7 of \autoref{fig: figure1} marks the boundary between the
+metadata and data sections of a file.  Detection of this line is critical for
+correct automated parsing. Tabbed can locate a header line using string
+inconsistencies or type inconsistencies depending on the data types represented
+in the data section of the file.  Importantly, some irregular DSV files do not
+have a header, in this case, Tabbed generates a header based on the number of
+data columns it measures from a sample of the file.
 
 ### Type Casting
-The strings in the data section of the file represent mixed types that need to
-be type casted. Tabbed supports conversion to `int`, `float`, `complex`, `time`,
-`date` and `datetime` instances. These conversions gracefully return strings on
-failure and log the conversion error.
+Strings in the data section of the file shown in \autoref{fig: figure1}
+represent mixed types that need to be type casted. Tabbed supports conversion to
+`int`, `float`, `complex`, `time`, `date` and `datetime` instances. These
+conversions are graceful; they return strings on failure and log the conversion
+problem to an error log for post reading introspection. 
 
 ### Value-based Filtering
-Selective reading from DSV files based on cell content is extremely useful for
-selecting subsets of the data. Tabbed supports both column selection and row
-filtering with equality, membership, rich comparison, regular expression
-matching and custom callables. These may be supplied via keyword arguments to
-the `tab` method of Tabbed's `Reader` class.
+Selectively reading rows from a DSV file based on type casted content is
+extremely useful for selecting subsets of the data. For example, in the sample
+file of \autoref{fig:figure1}, users may want to only read data rows where the
+column named 'annotation' has a string value of 'exploring'. Tabbed supports
+both column selection and row filtering with equality, membership, rich
+comparison, regular expression matching and custom callables. To support an
+intuitive interface for creating these filters, Tabbed uses simple keyword
+arguments passed to a method called `tab' of the Reader class. Below we
+illustrate the simplicity of constructing these filters for the sample file
+shown in \autoref{fig:figure1}.
 
 ```python
 from tabbed.reading import Reader
@@ -81,13 +91,13 @@ with open('sample.txt', 'r') as infile:
 ```
 
 ### Iterative Reading
-Given that there is no hard-limit on the size of a DSV file, it is
-essential that readers support file streaming. Tabbed's reader returns an
-iterator whose per-iteration memory consumption is tuneable. For speed, this
-feature is implemented using a first-in-first-out (FIFO) data structure with
-O(1) time complexity allowing Tabbed to linearly scale to large files. 
+DSV files have no file size limits making it essential that readers support file
+streaming. Tabbed's reader returns an iterator whose per-iteration memory
+consumption is tuneable. For speed, this feature is implemented using
+a first-in-first-out (FIFO) data structure with O(1) time complexity allowing
+Tabbed to linearly scale to large files. 
 
-# Comparison FIXME ADD speed with and without filtering to Figure 2!!!
+# Comparison
 
 Tablib, comma, and pandas are popular alternative packages to Tabbed.
 
