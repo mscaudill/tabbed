@@ -99,17 +99,21 @@ Tabbed to linearly scale to large files.
 
 # Comparison
 
-Tablib [@tablib], comma [@comma], and pandas [@pandas] are popular alternative packages to Tabbed.
+Tablib [@tablib], comma [@comma], and pandas [@pandas] are popular alternative
+packages to Tabbed.  \autoref{tbl: table1} compares the features of these
+packages. Pandas `read_csv` function most closely matches the available features
+in Tabbed. During the reading of a DSV file, pandas allows specific columns to
+be read but has no mechanism for conditionally reading rows. 
 
-| **Software** | **Structural Detection** | **Casting** | **Value-based Filtering** | **Iterative** |
-|:------------:|:------------------------:|:-----------:|:-------------------------:|:-------------:|
-|  **tablib**  |           -              |    +        |       equality only       |     -     |
-|   **comma**  |           -              |   limited   |           -               |     -     |
-|  **pandas**  |           -              |    +        |        columns only       |     +     |
-|  **tabbed**  |           +              |    +        |           +               |     +     |
+| **Software** | **Structural Detection** | **Type Casting** | **Filtereable** | **Iterative** |
+|:------------:|:------------------------:|:-----------:|:--------------------:|:-------------:|
+|  **tablib**  |           -              |    +        |       limited        |        -      |
+|   **comma**  |           -              |   limited   |           -          |        -      |
+|  **pandas**  |           -              |    +        |        columns only  |        +      |
+|  **tabbed**  |           +              |    +        |           +          |        +      |
 
 Table: Comparison of features for four common open-source software packages for
-reading DSV files. Plus (+) and minus (-) indicates package support or lack of support respectively.
+reading DSV files. Plus (+) and minus (-) indicates package support or lack of support respectively. {table: table1}
 
 
 ![Comparison of number of cells type casted per second between Tabbed and Pandas
