@@ -99,7 +99,7 @@ Tabbed to linearly scale to large files.
 
 # Comparison
 Tablib [@tablib], comma [@comma], and pandas [@pandas] are popular alternative
-packages to Tabbed. \autoref{tbl: table1} compares the features of these
+packages to tabbed. \autoref{tbl: table1} compares the features of these
 packages. Pandas `read_csv` function most closely matches the available features
 in Tabbed but it has two draw backs; it does not detect where the data section
 begins and it does not support conditional reading of data rows. The first issue
@@ -117,14 +117,27 @@ Table: Comparison of features for four common open-source software packages for
 reading DSV files. Plus (+) and minus (-) indicates package support or lack of
 support for each feature respectively. \label{tbl: table1}
 
-Given that pandas most closely matches with Tabbed's supported feature set, we
-tested the Tabbed's read speeds against pandas in \autoref{fig: figure2}. 
+Given that pandas `read_csv` most closely matches with Tabbed's capabilities, we
+tested tabbed's read speeds against pandas in \autoref{fig: figure2}. For this
+test, we selected the `python` engine in pandas rather than the `c` or `pyarrow`
+engine for parsing files. This is important because the c++ and pyarrow
+engines achieve an order of magnitude greater read speed over the python engine.
+The speed test was conducted on a DSV file with all floats and a DSV file with
+floats and datetime instances. The file size in each case was 10 columns by
+100,000 rows. The left panel of \autoref{fig: figure2} shows that tabbed is
+slower on both the float and mixed type files by approximately 30%.
+Nevertheless, users can expect to read millions of cells from DSV in just a few
+seconds with tabbed.
 
 ![Comparison of number of cells type casted per second between Tabbed and Pandas
 for DSVs composed of floats (left) or mixed types (right). The conversion engine
 for Pandas was chosen to be "python" for a fair comparison with Tabbed's python
 implementation. Black circles and error bars are the mean and standard deviation
 across 30 trials.\label{fig: figure2}](figure2.png)
+
+To further understand the performance of tabbed's reading, we tested how
+filtering the rows with value conditions impacts the read speed. The right panel
+of \autoref{fig: figure2} shows 
 
 # Conclusion
 
