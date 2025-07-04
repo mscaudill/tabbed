@@ -98,12 +98,13 @@ a first-in-first-out (FIFO) data structure with O(1) time complexity allowing
 Tabbed to linearly scale to large files. 
 
 # Comparison
-
 Tablib [@tablib], comma [@comma], and pandas [@pandas] are popular alternative
-packages to Tabbed.  \autoref{tbl: table1} compares the features of these
+packages to Tabbed. \autoref{tbl: table1} compares the features of these
 packages. Pandas `read_csv` function most closely matches the available features
-in Tabbed. During the reading of a DSV file, pandas allows specific columns to
-be read but has no mechanism for conditionally reading rows. 
+in Tabbed but it has two draw backs; it does not detect where the data section
+begins and it does not support conditional reading of data rows. The first issue
+is perhaps the most serious because it requires the user to tell pandas where to
+begin reading via the `start` parameter for each irregular DSV file. 
 
 | **Software** | **Structural Detection** | **Type Casting** | **Filtereable** | **Iterative** |
 |:------------:|:------------------------:|:----------------:|:---------------:|:-------------:|
@@ -114,14 +115,16 @@ be read but has no mechanism for conditionally reading rows.
 
 Table: Comparison of features for four common open-source software packages for
 reading DSV files. Plus (+) and minus (-) indicates package support or lack of
-support respectively. \label{tbl: table1}
+support for each feature respectively. \label{tbl: table1}
 
+Given that pandas most closely matches with Tabbed's supported feature set, we
+tested the Tabbed's read speeds against pandas in \autoref{fig: figure2}. 
 
 ![Comparison of number of cells type casted per second between Tabbed and Pandas
 for DSVs composed of floats (left) or mixed types (right). The conversion engine
 for Pandas was chosen to be "python" for a fair comparison with Tabbed's python
 implementation. Black circles and error bars are the mean and standard deviation
-across 30 trials.\label{fig: speeds}](read_speeds.png)
+across 30 trials.\label{fig: figure2}](figure2.png)
 
 # Conclusion
 

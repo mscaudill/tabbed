@@ -3,7 +3,7 @@
     style="width:600px;height:auto;"/>
 </h1>
 
-## A Selective & Scalable Reader of Irregular Text Files
+## A Python package for reading variably structured text files at scale.
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![PyPI - License](https://img.shields.io/pypi/l/openseize?color=teal)
