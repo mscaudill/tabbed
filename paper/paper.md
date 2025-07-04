@@ -99,7 +99,7 @@ Tabbed to linearly scale to large files.
 
 # Comparison
 
-Tablib [@tablib], comma, and pandas are popular alternative packages to Tabbed.
+Tablib [@tablib], comma [@comma], and pandas [@pandas] are popular alternative packages to Tabbed.
 
 | **Software** | **Structural Detection** | **Casting** | **Value-based Filtering** | **Iterative** |
 |:------------:|:------------------------:|:-----------:|:-------------------------:|:-------------:|
