@@ -129,17 +129,27 @@ slower on both the float and mixed type files by approximately 30%.
 Nevertheless, users can expect to read millions of cells from DSV in just a few
 seconds with tabbed.
 
-![Comparison of number of cells type casted per second between Tabbed and Pandas
-for DSVs composed of floats (left) or mixed types (right). The conversion engine
-for Pandas was chosen to be "python" for a fair comparison with Tabbed's python
-implementation. Black circles and error bars are the mean and standard deviation
-across 30 trials.\label{fig: figure2}](figure2.png)
+![Tabbed's read speed comparisons. Left: Comparison of number of cells
+casted per second between Tabbed and Pandas for DSVs composed of floats
+or mixed types. The conversion engine for Pandas was chosen to be
+"python". Right: Tabbed's read speed as a function of the number of filters
+applied to each row during reading. In both panels black circles and error bars
+are the mean and standard deviation across 30 trials. These comparisons were
+carried out on a single 2.4 GHz Intel Core i5-6300U processor. \label{fig:
+figure2}](figure2.png)
 
 To further understand the performance of tabbed's reading, we tested how
-filtering the rows with value conditions impacts the read speed. The right panel
-of \autoref{fig: figure2} shows 
+value-based filtering of the rows with multiple filters impacts the read speed.
+The right panel of \autoref{fig: figure2} shows the read speed as a function of
+the number of filters applied to each data row. The left-most point is the
+baseline with no filters. We measure an approximately 2% reduction in speed for
+each new filter added.
 
 # Conclusion
+DSV files are heavily used to store data across many disciplines.  Tabbed's four
+features; structural detection, automatic type casting, value-based filtering
+and iterative row reading paired with a simple and deeply tested interface make
+automated reading of these highly variable files possible.
 
 # Acknowlegements
 We thank Brad Sheppard for constructive discussions about testing Tabbed and
