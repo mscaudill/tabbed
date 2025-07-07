@@ -1,5 +1,8 @@
-name: JOSS Manuscript
-on: [push]
+name: Manuscript
+on:
+  push:
+    branches:
+      - master
 
 jobs:
   paper:
