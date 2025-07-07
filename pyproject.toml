@@ -29,7 +29,7 @@ keywords = [
     "csv",
     "tsv"
 ]
-dependencies = ["clevercsv", "typing-extensions"]
+dependencies = ["clevercsv"]
 requires-python = ">=3.12"
 
 [project.optional-dependencies]
@@ -51,6 +51,7 @@ dev = [
     "twine"
 ]
 linting = ["codespell", "isort", "pylint", "black"]
+typing = ["mypy"]
 testing = ["pytest"]
 
 [project.urls]
