@@ -20,7 +20,7 @@
 
 <div class="grid cards" markdown>
 - automatic type inference
-- metadata, header and data section dection
+- metadata, header and data section detection
 - sophisticated value based row filtering
 - high-speed iterative reading of large files
 - partial file reading

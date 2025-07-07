@@ -3,7 +3,10 @@ module builds temporary text files containing mixtures of Tabbed's supported
 types.
 """
 
-from datetime import time, date, datetime, timedelta
+from datetime import date
+from datetime import datetime
+from datetime import time
+from datetime import timedelta
 import random
 from string import ascii_letters
 from tempfile import TemporaryFile

@@ -1,0 +1,39 @@
+name: Linting
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .['linting']
+
+      - name: codespell
+        run: codespell
+
+      - name: isort
+        run: isort
+
+      - name: pylint
+        run: pylint
+
+      - name: black
+        run: black
+

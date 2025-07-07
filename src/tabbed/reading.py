@@ -8,29 +8,28 @@
 - Iterative reading of rows from the input file.
 """
 
-from collections import deque
 import csv
 import itertools
 import re
+import warnings
+from collections import deque
 from types import SimpleNamespace
 from typing import (
+    IO,
     Callable,
     Deque,
     Dict,
-    IO,
     Iterator,
     List,
     Optional,
     Sequence,
     Tuple,
 )
-import warnings
 
 from clevercsv.dialect import SimpleDialect
 
 from tabbed import tabbing
-from tabbed.sniffing import Header
-from tabbed.sniffing import Sniffer
+from tabbed.sniffing import Header, Sniffer
 from tabbed.tabbing import Tabulator
 from tabbed.utils import parsing
 from tabbed.utils.mixins import ReprMixin
@@ -145,7 +144,7 @@ class Reader(ReprMixin):
         """
 
         if self._header.line is not None:
-            #print('Resniffing Header and resetting metadata and Tabulator')
+            # print('Resniffing Header and resetting metadata and Tabulator')
             self._header = self._sniffer.header()
             self.tabulator = Tabulator(self.header, columns=None, tabs=None)
 
@@ -235,7 +234,7 @@ class Reader(ReprMixin):
             kwargs:
                 - poll:
                     number of sample lines to poll in sniffer. If header is
-                    known to ths Sniffer, this kwarg is ignored.
+                    known to this Sniffer, this kwarg is ignored.
                 - exclude:
                     list of string values indicating missing values. Rows with
                     any exclude string will be skipped. If a header is known to
@@ -548,14 +547,6 @@ class Reader(ReprMixin):
 
 if __name__ == '__main__':
 
-
-    """
     import doctest
+
     doctest.testmod()
-    """
-
-    fp = '/home/matt/python/nri/tabbed/__data__/mouse_annotations.txt'
-
-    infile = open(fp, 'r')
-    reader = Reader(infile)
-    reader.tab(columns=['Number', 'Start_Time', 'Channel'])

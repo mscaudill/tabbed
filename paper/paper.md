@@ -15,7 +15,7 @@ affiliations:
       TX, United States of America
     index: 1
   - name: Jan and Dan Duncan Neurological Research Institute at Texas
-      Childrens Hospital, Houston, TX, United States of America 
+      Children's Hospital, Houston, TX, United States of America 
     index: 2 
 date: 7 July 2025
 bibliography: paper.bib
@@ -49,7 +49,7 @@ the DSV shown in Figure 1.
 ![The first 12 lines of a delimiter separated file named *sample.txt* with
 metadata on lines 1-4 and a header on line 7. The metadata contains both
 semicolon delimited and undelimited strings. Notice the data section uses
-a different delimiter than the metadta and contains mixed data types.
+a different delimiter than the metadata and contains mixed data types.
 \label{fig: figure1}](figure1.png){width=900}
 
 ### Structural Detection
@@ -153,7 +153,7 @@ tested API of these features (see [documentation](
 https://mscaudill.github.io/tabbed/)) makes tabbed accessible to a broad
 audience of analyst, researchers and developers across disciplines.
 
-# Acknowlegements
+# Acknowledgements
 We thank Claudia Tischler for her thoughtful reading of the manuscript and Brad
 Sheppard for useful discussions about testing tabbed.
 

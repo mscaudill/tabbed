@@ -6,11 +6,11 @@ for Tab instances to be constructed from keyword arguments.
 """
 
 import abc
-from datetime import time, date, datetime
 import operator as op
 import re
-from typing import Callable, cast, Dict, List, Literal, Optional, Sequence
 import warnings
+from datetime import date, datetime, time
+from typing import Callable, Dict, List, Literal, Optional, Sequence, cast
 
 from typing_extensions import Self
 
@@ -247,9 +247,9 @@ class Comparison(Tab):
             An operator module function & the casted comparing value.
         """
 
-        # -? => 0 or 1 occurence of negative sign
-        # \d* => 0 or more integer occurences
-        # .? => 0 or 1 occurence of a decimal
+        # -? => 0 or 1 occurrence of negative sign
+        # \d* => 0 or more integer occurrences
+        # .? => 0 or 1 occurrence of a decimal
         # \d+ => greedily get remaining integers
         idx = re.search(r'-?\d*\.?\d+', compare_str).span()[0]
         name, value_str = compare_str[:idx], compare_str[idx:]

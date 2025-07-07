@@ -7,8 +7,10 @@ import re
 import string
 
 import pytest
+
 from tabbed.sniffing import Header
-from tabbed.tabbing import Tabulator, Accepting
+from tabbed.tabbing import Accepting
+from tabbed.tabbing import Tabulator
 from tabbed.utils import parsing
 
 

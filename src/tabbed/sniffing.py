@@ -2,15 +2,13 @@
 contain metadata, a header, and a data section.
 """
 
+import warnings
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date
-from datetime import datetime
-from datetime import time
+from datetime import date, datetime, time
 from itertools import chain
 from types import SimpleNamespace
 from typing import IO, List, Optional, Tuple
-import warnings
 
 import clevercsv
 from clevercsv.dialect import SimpleDialect

@@ -7,12 +7,12 @@ hide:
 Tabbed was developed out of necessity. We work with text files from many
 different software vendors that create their own idiosyncratic CSV files that we
 need to read for machine and deep-learning projects. These files include
-different kinds of metadata, unusual headers, and different representions of
+different kinds of metadata, unusual headers, and different representations of
 "missing" values.  We also found no way to conditionally read rows from files
-that are very large.  These considerations motivated us to create Tabbed. If you
-find Tabbed useful in your work, please cite Tabbed's paper.
+that are very large.  These considerations motivated us to create tabbed. If you
+find Tabbed useful in your work, please cite tabbed's paper.
 
-## Acknowlegements
+## Acknowledgements
 !!! info ""
     <h2> We are grateful for the support of the Ting Tsung and Wei Fong Chao
     Foundation and the Jan and Dan Duncan Neurological Research Institute at Texas

@@ -188,7 +188,7 @@ We're excited you want to contribute! Please check out our
 https://github.com/mscaudill/tabbed/blob/master/.github/CONTRIBUTING.md) guide.
 
 
-## Acknowlegements
+## Acknowledgements
 
 ------
 

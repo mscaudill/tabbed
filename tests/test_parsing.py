@@ -8,7 +8,6 @@ import pytest
 
 from tabbed.utils import parsing
 
-
 # Number of random runs per test function
 NUM_TEST = 1000
 

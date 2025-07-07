@@ -104,11 +104,11 @@ attr-naming-style = "any"
 disable = ["ungrouped-imports"]
 
 [tool.isort]
-profile = 'google'
+profile = 'black'
 line_length = 80
 
 [tool.codespell]
-skip = '*.txt,*.ipynb'
+skip = '*.txt,*.ipynb, tests, ./src/tabbed.egg-info'
 before-context = 3
 after-context = 3
 quiet-level = 3

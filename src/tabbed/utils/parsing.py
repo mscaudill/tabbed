@@ -3,14 +3,12 @@ Tabbed. These tools are wrapped by the `convert` function which dispatches
 a string to a type specific convert callable.
 """
 
-from collections import Counter
-from datetime import date
-from datetime import datetime
-from datetime import time
 import itertools
 import re
 import string
-from typing import Callable, List, Optional, Type
+from collections import Counter
+from datetime import date, datetime, time
+from typing import List, Optional, Type
 
 # define the supported intrinsic types for each list element read by Tabbed
 CellType = int | float | complex | time | date | datetime | str
@@ -256,7 +254,6 @@ def convert(
     astring: str,
     celltype: Type[CellType] = None,
     fmt: Optional[str] = None,
-    verbose: bool = True,
 ) -> CellType:
     """Attempts to convert a string to a valid Cell type.
 
@@ -281,11 +278,6 @@ def convert(
         fmt:
             A datetime format required by time, date and datetime celltypes. If
             None, automatic conversion of asting will be attempted.
-        verbose:
-            Boolean indicating if func conversion fails and auto-conversion is
-            being attempted. Default is True to make clients aware their func
-            has failed to convert astring and convert is attempting slower
-            auto-conversion.
 
     Returns:
         A CellType
@@ -310,7 +302,6 @@ def convert(
             return celltype(astring)
         except (ValueError, OverflowError) as e:
             raise e
-
 
     # numeric
     if is_numeric(astring):

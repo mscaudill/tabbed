@@ -17,10 +17,12 @@ import tempfile
 from types import SimpleNamespace
 import warnings
 
-import pytest
 from clevercsv.dialect import SimpleDialect
+import pytest
 
-from tabbed.sniffing import Sniffer, MetaData, Header
+from tabbed.sniffing import Header
+from tabbed.sniffing import MetaData
+from tabbed.sniffing import Sniffer
 from tabbed.utils import parsing
 
 # number of test to run per test is SEEDS * DELIMITERS * COLUMNS

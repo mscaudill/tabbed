@@ -2,9 +2,6 @@
 
 __version__ = "1.0.0"
 
-from . import reading
-from . import sniffing
-from . import tabbing
-from . import utils
+from . import reading, sniffing, tabbing, utils
 
 __all__ = ['reading', 'sniffing', 'tabbing', 'utils']

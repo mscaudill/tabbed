@@ -36,11 +36,11 @@ class ReprMixin:
     def __repr__(self) -> str:
         """Returns the __init__'s signature as the echo representation."""
 
-        #build a signature and get its args and class name
-        signature = inspect.signature(self.__init__) # type: ignore[misc]
+        # build a signature and get its args and class name
+        signature = inspect.signature(self.__init__)  # type: ignore[misc]
         args = str(signature)
         cls_name = type(self).__name__
-        return '{}{}'.format(cls_name, args)
+        return f'{cls_name}{args}'
 
     def __str__(self) -> str:
         """Returns this instances print representation."""
@@ -51,18 +51,18 @@ class ReprMixin:
         props = self._properties()
         methods = self._methods()
 
-        #make a help msg
-        help_msg = 'Type help({}) for full documentation'.format(cls_name)
-        #construct print string
+        # make a help msg
+        help_msg = f'Type help({cls_name}) for full documentation'
+        # construct print string
         msg = [
-                f'{cls_name}',
-                f'--- Attributes ---',
-                '\n'.join(attrs),
-                '--- Properties ---',
-                '\n'.join(props),
-                '--- Methods ---',
-                '\n'.join(methods),
-                help_msg
-                ]
+            f'{cls_name}',
+            '--- Attributes ---',
+            '\n'.join(attrs),
+            '--- Properties ---',
+            '\n'.join(props),
+            '--- Methods ---',
+            '\n'.join(methods),
+            help_msg,
+        ]
 
         return '\n'.join(msg)
