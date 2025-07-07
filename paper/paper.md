@@ -95,13 +95,13 @@ DSV files have no file size limits making it essential that readers support file
 streaming. Tabbed's reader returns an iterator whose per-iteration memory
 consumption is tuneable. For speed, this feature is implemented using
 a first-in-first-out (FIFO) data structure with O(1) time complexity allowing
-Tabbed to linearly scale to large files. 
+tabbed to linearly scale to large files. 
 
 # Comparison
 Tablib [@tablib], comma [@comma], and pandas [@pandas] are popular alternative
 packages to tabbed. \autoref{tbl: table1} compares the features of these
 packages. Pandas `read_csv` function most closely matches the available features
-in Tabbed but it has two draw backs; it does not detect where the data section
+in tabbed but it has two draw backs; it does not detect where the data section
 begins and it does not support conditional reading of data rows. The first issue
 is perhaps the most serious because it requires the user to tell pandas where to
 begin reading via the `start` parameter for each irregular DSV file. 
@@ -117,7 +117,7 @@ Table: Comparison of features for four common open-source software packages for
 reading DSV files. Plus (+) and minus (-) indicates package support or lack of
 support for each feature respectively. \label{tbl: table1}
 
-Given that pandas `read_csv` most closely matches with Tabbed's capabilities, we
+Given that pandas `read_csv` most closely matches with tabbed's capabilities, we
 tested tabbed's read speeds against pandas in \autoref{fig: figure2}. For this
 test, we selected the `python` engine in pandas rather than the `c` or `pyarrow`
 engine for parsing files. This is important because these alternative
@@ -129,9 +129,9 @@ slower on both the float and mixed type files by approximately 30%.
 Nevertheless, users can expect to read millions of cells from DSV in just a few
 seconds with tabbed.
 
-![Tabbed's read speed comparisons. Left: Comparison of number of cells
-casted per second between Tabbed and Pandas for DSVs composed of floats
-or mixed types. The conversion engine for Pandas was chosen to be
+![Tabbed and pandas read speed comparison. Left: Comparison of number of cells
+casted per second between tabbed and pandas for DSVs composed of floats
+or mixed types. The conversion engine for pandas was chosen to be
 "python". Right: Tabbed's read speed as a function of the number of filters
 applied to each row during reading. In both panels black circles and error bars
 are the mean and standard deviation across 30 trials. These comparisons were
@@ -154,8 +154,8 @@ https://mscaudill.github.io/tabbed/)) makes tabbed accessible to a broad
 audience of analyst, researchers and developers across disciplines.
 
 # Acknowlegements
-We thank Brad Sheppard for constructive discussions about testing Tabbed and
-Claudia Tischler for her thoughtful reading of the manuscript.
+We thank Claudia Tischler for her thoughtful reading of the manuscript and Brad
+Sheppard for useful discussions about testing tabbed.
 
 We are grateful for the support of the Ting Tsung and Wei Fong Chao Foundation
 and the Jan and Dan Duncan Neurological Research Institute at Texas Children's
