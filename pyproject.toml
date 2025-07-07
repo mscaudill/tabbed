@@ -50,7 +50,8 @@ dev = [
     "build",
     "twine"
 ]
-test = ["pytest"]
+linting = ["codespell", "isort", "pylint", "black"]
+testing = ["pytest"]
 
 [project.urls]
 Homepage = "https://github.com/mscaudill/tabbed"
