@@ -30,4 +30,4 @@ jobs:
           pip install -e .['testing']
 
       - name: run pytest
-        run: pytest -rP -x ./test
+        run: pytest -rP -x ./tests
