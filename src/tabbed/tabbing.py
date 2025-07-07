@@ -10,9 +10,7 @@ import operator as op
 import re
 import warnings
 from datetime import date, datetime, time
-from typing import Callable, Dict, List, Literal, Optional, Sequence, cast
-
-from typing_extensions import Self
+from typing import Callable, Dict, List, Literal, Optional, Self, Sequence, cast
 
 from tabbed.sniffing import Header
 from tabbed.utils import parsing
@@ -251,7 +249,11 @@ class Comparison(Tab):
         # \d* => 0 or more integer occurrences
         # .? => 0 or 1 occurrence of a decimal
         # \d+ => greedily get remaining integers
-        idx = re.search(r'-?\d*\.?\d+', compare_str).span()[0]
+        match = re.search(r'-?\d*\.?\d+', compare_str)
+        if not match:
+            msg = f'Could not parse {compare_str}'
+            raise ValueError(msg)
+        idx = match.span()[0]
         name, value_str = compare_str[:idx], compare_str[idx:]
         comparator = self.comparators[name.strip()]
         value = parsing.convert(value_str)

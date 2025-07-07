@@ -227,7 +227,7 @@ class Reader(ReprMixin):
 
         self.tabulator = tblr
 
-    def metadata(self, **kwargs: Dict):
+    def metadata(self, **kwargs):
         """Returns this Reader's current metadata.
 
         Args:
