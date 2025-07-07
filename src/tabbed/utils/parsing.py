@@ -252,7 +252,7 @@ def as_datetime(astring: str, fmt: str) -> datetime | str:
 # pylint: disable-next=too-many-return-statements
 def convert(
     astring: str,
-    celltype: Type[CellType] = None,
+    celltype: Optional[Type[CellType]] = None,
     fmt: Optional[str] = None,
 ) -> CellType:
     """Attempts to convert a string to a valid Cell type.
@@ -277,7 +277,7 @@ def convert(
             astring will be attempted.
         fmt:
             A datetime format required by time, date and datetime celltypes. If
-            None, automatic conversion of asting will be attempted.
+            None, automatic conversion of astring will be attempted.
 
     Returns:
         A CellType
@@ -286,22 +286,19 @@ def convert(
         ValueError: if celltype is provided and conversion fails.
     """
 
-    if celltype:
-        if fmt:
-            # try time, date, or datetime if celltype and fmt
-            try:
-                adatetime = datetime.strptime(astring, fmt)
-                if celltype == datetime:
-                    return adatetime
-                # call date or time method of datetime instance
-                return getattr(adatetime, celltype.__name__)()
-            except (ValueError, OverflowError, AttributeError) as e:
-                raise e
-        # call the celltype if no fmt
-        try:
-            return celltype(astring)
-        except (ValueError, OverflowError) as e:
-            raise e
+    if celltype and fmt:
+        adatetime = datetime.strptime(astring, fmt)
+        if celltype == datetime:
+            return adatetime
+        # avoid instance assertions for speed here
+        # we know this should be a date or time instance
+        return getattr(  # type: ignore[no-any-return]
+            adatetime, celltype.__name__
+        )()
+
+    if celltype and not fmt:
+        # avoid instance assertions - we know this is numeric or string
+        return celltype(astring)  # type: ignore[call-arg, arg-type]
 
     # numeric
     if is_numeric(astring):
