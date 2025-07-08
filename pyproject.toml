@@ -57,6 +57,13 @@ testing = ["pytest"]
 [project.urls]
 Homepage = "https://github.com/mscaudill/tabbed"
 
+# inform setuptools where to find submodules, project typing and additional data
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.setuptools.package-data]
+"tabbed" = ["py.typed"]
+"tabbed.samples" = ["*.txt"]
+
 # bumpver configuration
 [tool.bumpver]
 current_version = "1.0.0"
@@ -73,12 +80,6 @@ push = true
 ]
 "src/tabbed/__init__.py" = ['__version__ = "{version}"']
 
-# inform type checkers tabbed supports annotations
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools.package-data]
-tabbed = ["py.typed"]
 
 # mypy configuration
 [tool.mypy]
