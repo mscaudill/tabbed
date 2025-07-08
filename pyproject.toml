@@ -6,8 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "tabbed"
 version = "1.0.0"
 description = """
-An iterative reader of irregular text files supporting selective
-value-based reading of rows and columns.
+An iterative reader of irregular text files
 """
 readme = "README.md"
 authors =[{ name="Matthew Caudill", email="mscaudill@gmail.com" }]

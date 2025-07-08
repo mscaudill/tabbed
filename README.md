@@ -3,7 +3,7 @@
     style="width:600px;height:auto;"/>
 </h1>
 
-## A Python package for reading variably structured text files at scale.
+## A Python package for reading variably structured text files at scale
 
 ![PyPI - License](https://img.shields.io/pypi/l/openseize?color=purple)
 [![pytest](https://github.com/mscaudill/tabbed/actions/workflows/testing.yml/badge.svg)](
@@ -154,7 +154,7 @@ reader.close()
 ```
 
 ## Documentation
-The official documentation is hosted on [github.io](#).
+The official documentation is hosted on [github.io](#https://mscaudill.github.io/tabbed/).
 
 
 ## Dependencies
