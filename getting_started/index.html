@@ -1,0 +1,1241 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../installation/">
+      
+      
+        <link rel="next" href="../reference/reference/">
+      
+      
+      <link rel="icon" href="../imgs/logo.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.4">
+    
+    
+      
+        <title>Getting Started - </title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.8608ea7d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="grey">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#introduction" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="" class="md-header__button md-logo" aria-label="" data-md-component="logo">
+      
+  <img src="../imgs/namedlogo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Getting Started
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="grey"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="white" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mscaudill/tabbed" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mscaudill/tabbed
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="" class="md-nav__button md-logo" aria-label="" data-md-component="logo">
+      
+  <img src="../imgs/namedlogo.png" alt="logo">
+
+    </a>
+    
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mscaudill/tabbed" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mscaudill/tabbed
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+  
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sample-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sample File
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tabbed-wish-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tabbed Wish List
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-tabbed-reader" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Tabbed Reader
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      Data Filtering
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#equality-tabbing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Equality Tabbing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#membership-tabbing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Membership Tabbing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#comparison-tabbing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Comparison Tabbing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#regular-expression-tabbing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Regular Expression Tabbing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-tabbing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Tabbing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reading
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-something-goes-wrong" class="md-nav__link">
+    <span class="md-ellipsis">
+      When Something Goes Wrong
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../about/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    About
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+  
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sample-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sample File
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tabbed-wish-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tabbed Wish List
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-tabbed-reader" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Tabbed Reader
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      Data Filtering
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#equality-tabbing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Equality Tabbing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#membership-tabbing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Membership Tabbing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#comparison-tabbing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Comparison Tabbing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#regular-expression-tabbing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Regular Expression Tabbing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-tabbing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Tabbing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reading
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-something-goes-wrong" class="md-nav__link">
+    <span class="md-ellipsis">
+      When Something Goes Wrong
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+  <h1>Getting Started</h1>
+
+<h2 id="introduction"><strong><strong>Introduction</strong></strong></h2>
+<p>This guide walks you through reading a text file that contains metadata,
+a header row and mixed data types with <code>Tabbed</code>.</p>
+<div class="grid cards">
+<ul>
+<li><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 19H5V5h14m0-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2m-7 14h2V7h-4v2h2"/></svg></span> <a href="#sample-file">Sample File</a></li>
+<li><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 15h-4v-2h2a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H9v2h4v2h-2a2 2 0 0 0-2 2v4h6m4 2H5V5h14m0-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2"/></svg></span> <a href="#tabbed-wish-list">Tabbed Wish List</a></li>
+<li><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 15v-1.5a1.5 1.5 0 0 0-1.5-1.5 1.5 1.5 0 0 0 1.5-1.5V9a2 2 0 0 0-2-2H9v2h4v2h-2v2h2v2H9v2h4a2 2 0 0 0 2-2m4 4H5V5h14m0-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2"/></svg></span> <a href="#the-tabbed-reader">The Tabbed Reader</a></li>
+<li><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 19H5V5h14m0-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2m-6 14h2V7h-2v4h-2V7H9v6h4"/></svg></span> <a href="#data-filtering">Data Filtering</a></li>
+<li><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 15v-2a2 2 0 0 0-2-2h-2V9h4V7H9v6h4v2H9v2h4a2 2 0 0 0 2-2m4 4H5V5h14m0-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2"/></svg></span> <a href="#reading">Reading</a></li>
+<li><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 13h2v2h-2m0 2h2a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-2V9h4V7h-4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2m8 2H5V5h14m0-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2"/></svg></span> <a href="#when-something-goes-wrong">When Something Goes Wrong</a></li>
+</ul>
+</div>
+<div class="language-py highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Imports</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1">1</a></span>
+<span class="normal"><a href="#__codelineno-0-2">2</a></span>
+<span class="normal"><a href="#__codelineno-0-3">3</a></span>
+<span class="normal"><a href="#__codelineno-0-4">4</a></span>
+<span class="normal"><a href="#__codelineno-0-5">5</a></span>
+<span class="normal"><a href="#__codelineno-0-6">6</a></span>
+<span class="normal"><a href="#__codelineno-0-7">7</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5"></a>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">tabbed</span><span class="w"> </span><span class="kn">import</span> <span class="n">samples</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7"></a><span class="kn">from</span><span class="w"> </span><span class="nn">tabbed.reading</span><span class="w"> </span><span class="kn">import</span> <span class="n">Reader</span>
+</span></code></pre></div></td></tr></table></div>
+<h2 id="sample-file"><strong><strong>Sample File</strong></strong></h2>
+<p>Tabbed comes preloaded with a sample text file called <em>annotations.txt</em>. Below we
+open this file to see what it looks like and <strong>develop a list of operations we
+would like Tabbed to handle automatically for us.</strong></p>
+<div class="language-py highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Preview Sample Data</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-1-1">1</a></span>
+<span class="normal"><a href="#__codelineno-1-2">2</a></span>
+<span class="normal"><a href="#__codelineno-1-3">3</a></span>
+<span class="normal"><a href="#__codelineno-1-4">4</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1"></a><span class="n">fp</span> <span class="o">=</span> <span class="n">samples</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">annotations</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">infile</span><span class="p">:</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3"></a>    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">infile</span><span class="p">:</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4"></a>        <span class="nb">print</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+<details class="example">
+<summary>View Sample Data</summary>
+<p>Experiment ID&emsp;Experiment<br />
+Animal ID&emsp;Animal<br />
+Researcher&emsp;Test<br />
+Directory path&emsp;  </p>
+<p>Number&emsp;Start Time&emsp;End Time&emsp;Time From Start&emsp;Channel&emsp;Annotation<br />
+0&emsp;02/09/22 09:17:38.948&emsp;02/09/22 09:17:38.948&emsp;0.0000&emsp;ALL&emsp;Started Recording<br />
+1&emsp;02/09/22 09:37:00.000&emsp;02/09/22 09:37:00.000&emsp;1161.0520&emsp;ALL&emsp;start<br />
+2&emsp;02/09/22 09:37:00.000&emsp;02/09/22 09:37:08.784&emsp;1161.0520&emsp;ALL&emsp;exploring<br />
+3&emsp;02/09/22 09:37:08.784&emsp;02/09/22 09:37:13.897&emsp;1169.8360&emsp;ALL&emsp;grooming<br />
+4&emsp;02/09/22 09:37:13.897&emsp;02/09/22 09:38:01.262&emsp;1174.9490&emsp;ALL&emsp;exploring<br />
+5&emsp;02/09/22 09:38:01.262&emsp;02/09/22 09:38:07.909&emsp;1222.3140&emsp;ALL&emsp;grooming<br />
+6&emsp;02/09/22 09:38:07.909&emsp;02/09/22 09:38:20.258&emsp;1228.9610&emsp;ALL&emsp;exploring<br />
+7&emsp;02/09/22 09:38:20.258&emsp;02/09/22 09:38:25.435&emsp;1241.3100&emsp;ALL&emsp;grooming<br />
+8&emsp;02/09/22 09:38:25.435&emsp;02/09/22 09:40:07.055&emsp;1246.4870&emsp;ALL&emsp;exploring<br />
+9&emsp;02/09/22 09:40:07.055&emsp;02/09/22 09:40:22.334&emsp;1348.1070&emsp;ALL&emsp;grooming<br />
+10&emsp;02/09/22 09:40:22.334&emsp;02/09/22 09:41:36.664&emsp;1363.3860&emsp;ALL&emsp;exploring<br />
+11&emsp;02/09/22 09:41:36.664&emsp;02/09/22 09:41:46.326&emsp;1437.7160&emsp;ALL&emsp;grooming<br />
+12&emsp;02/09/22 09:41:46.326&emsp;02/09/22 09:44:16.857&emsp;1447.3780&emsp;ALL&emsp;exploring<br />
+13&emsp;02/09/22 09:44:16.857&emsp;02/09/22 09:44:58.225&emsp;1597.9090&emsp;ALL&emsp;grooming<br />
+14&emsp;02/09/22 09:44:58.225&emsp;02/09/22 09:45:35.800&emsp;1639.2770&emsp;ALL&emsp;exploring<br />
+15&emsp;02/09/22 09:45:35.800&emsp;02/09/22 09:45:40.506&emsp;1676.8520&emsp;ALL&emsp;grooming<br />
+16&emsp;02/09/22 09:45:40.506&emsp;02/09/22 09:47:03.165&emsp;1681.5580&emsp;ALL&emsp;exploring<br />
+17&emsp;02/09/22 09:47:03.165&emsp;02/09/22 09:47:16.448&emsp;1764.2170&emsp;ALL&emsp;grooming<br />
+18&emsp;02/09/22 09:47:16.448&emsp;02/09/22 09:47:55.227&emsp;1777.5000&emsp;ALL&emsp;exploring<br />
+19&emsp;02/09/22 09:47:55.227&emsp;02/09/22 09:48:05.044&emsp;1816.2790&emsp;ALL&emsp;grooming<br />
+20&emsp;02/09/22 09:48:05.044&emsp;02/09/22 09:51:40.919&emsp;1826.0960&emsp;ALL&emsp;exploring<br />
+21&emsp;02/09/22 09:51:40.919&emsp;02/09/22 09:51:47.331&emsp;2041.9710&emsp;ALL&emsp;grooming<br />
+22&emsp;02/09/22 09:51:47.331&emsp;02/09/22 09:52:20.626&emsp;2048.3830&emsp;ALL&emsp;exploring<br />
+23&emsp;02/09/22 09:52:20.626&emsp;02/09/22 09:52:29.406&emsp;2081.6780&emsp;ALL&emsp;grooming<br />
+24&emsp;02/09/22 09:52:29.406&emsp;02/09/22 09:53:07.268&emsp;2090.4580&emsp;ALL&emsp;exploring<br />
+25&emsp;02/09/22 09:53:07.268&emsp;02/09/22 09:53:21.147&emsp;2128.3200&emsp;ALL&emsp;grooming<br />
+26&emsp;02/09/22 09:53:21.147&emsp;02/09/22 09:54:19.752&emsp;2142.1990&emsp;ALL&emsp;exploring<br />
+27&emsp;02/09/22 09:54:19.752&emsp;02/09/22 09:54:38.782&emsp;2200.8040&emsp;ALL&emsp;grooming<br />
+28&emsp;02/09/22 09:54:38.782&emsp;02/09/22 09:56:30.491&emsp;2219.8340&emsp;ALL&emsp;exploring<br />
+29&emsp;02/09/22 09:56:30.491&emsp;02/09/22 09:56:40.306&emsp;2331.5430&emsp;ALL&emsp;grooming<br />
+30&emsp;02/09/22 09:56:40.306&emsp;02/09/22 09:57:11.920&emsp;2341.3580&emsp;ALL&emsp;exploring<br />
+31&emsp;02/09/22 09:57:11.920&emsp;02/09/22 09:57:18.783&emsp;2372.9720&emsp;ALL&emsp;grooming<br />
+32&emsp;02/09/22 09:57:18.783&emsp;02/09/22 10:00:02.036&emsp;2379.8350&emsp;ALL&emsp;exploring<br />
+33&emsp;02/09/22 10:00:02.036&emsp;02/09/22 10:00:08.325&emsp;2543.0880&emsp;ALL&emsp;resting<br />
+34&emsp;02/09/22 10:00:08.325&emsp;02/09/22 10:01:57.278&emsp;2549.3770&emsp;ALL&emsp;exploring<br />
+35&emsp;02/09/22 10:01:57.278&emsp;02/09/22 10:02:17.993&emsp;2658.3300&emsp;ALL&emsp;grooming<br />
+36&emsp;02/09/22 10:02:17.993&emsp;02/09/22 10:03:04.118&emsp;2679.0450&emsp;ALL&emsp;exploring<br />
+37&emsp;02/09/22 10:03:04.118&emsp;02/09/22 10:03:04.118&emsp;2725.1700&emsp;ALL&emsp;stop<br />
+38&emsp;02/09/22 10:17:30.082&emsp;02/09/22 10:17:30.082&emsp;3591.1340&emsp;ALL&emsp;Stopped Recording  </p>
+</details>
+<h2 id="tabbed-wish-list"><strong><strong>Tabbed Wish List</strong></strong></h2>
+<p>To read files like this, we desire Tabbed to support the following:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:5"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><input id="__tabbed_1_4" name="__tabbed_1" type="radio" /><input id="__tabbed_1_5" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Header Detection</label><label for="__tabbed_1_2">Type Inference</label><label for="__tabbed_1_3">Data Filtering</label><label for="__tabbed_1_4">Partial &amp; Iterative Reading</label><label for="__tabbed_1_5">Flexibility</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 17h-2V9h-2V7h4m5-4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2"/></svg></span> <strong>Header Detection</strong></p>
+<p>This sample file contains a <strong>metadata section</strong> prior to the <strong>header</strong> on
+line 7. Metadata can be unstructured like a paragraph or structured into
+columns separated by a delimiter. We want <code>Tabbed</code> to automatically detect
+the Metadata section and Header line of <em>any</em> file.</p>
+</div>
+<div class="tabbed-block">
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 11a2 2 0 0 1-2 2h-2v2h4v2H9v-4a2 2 0 0 1 2-2h2V9H9V7h4a2 2 0 0 1 2 2m4-6H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2"/></svg></span> <strong>Type Inference</strong></p>
+<p>The string cells in the sample file are encoding 4 different data types;
+<em>integers, datetimes, floats and strings.</em> We want <code>Tabbed</code> to perform
+ <strong>Type inference</strong>.</p>
+</div>
+<div class="tabbed-block">
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 10.5a1.5 1.5 0 0 1-1.5 1.5c.84 0 1.5.67 1.5 1.5V15c0 1.11-.89 2-2 2H9v-2h4v-2h-2v-2h2V9H9V7h4c1.11 0 2 .89 2 2m4-6H5c-1.09 0-2 .9-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2"/></svg></span> <strong>Data Filtering</strong></p>
+<p>We want <code>Tabbed</code> to support simple value based row and column filtering.
+For example, in this file we might want only rows at which the <code>Start Time</code>
+column is less than <code class="language-python highlight"><span class="n">datetime</span><span class="p">(</span><span class="mi">2022</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">37</span><span class="p">,</span> <span class="mi">13</span><span class="p">)</span></code> or where the
+<code>Annotation</code> column has a string value of <code class="language-python highlight"><span class="s1">&#39;exploring&#39;</span></code> or both
+conditions.</p>
+</div>
+<div class="tabbed-block">
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 17h-2v-4H9V7h2v4h2V7h2m4-4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2"/></svg></span> <strong>Partial &amp; Iterative Reading</strong></p>
+<p>Text files can be large. <code>Tabbed</code> should support partial and iterative
+reading.</p>
+</div>
+<div class="tabbed-block">
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 9h-4v2h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H9v-2h4v-2H9V7h6m4-4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2"/></svg></span> <strong>Flexibility</strong></p>
+<p>Tabbed should be flexible. It should be able to <code>start</code> reading at any file
+position, <code>skip</code> reading of 'bad' rows, and allow users to choose how much
+ memory to consume during iterative reading of large files. </p>
+</div>
+</div>
+</div>
+<h2 id="the-tabbed-reader"><strong><strong>The Tabbed Reader</strong></strong></h2>
+<p>Tabbed's <code>Reader</code> reads rows of an infile to dictionaries just like
+Python's built-in <code>csv.DictReader</code>. However, Tabbed's <code>Reader</code> embeds
+a sophisticated file <code>Sniffer</code> that can detect metadata, header &amp; data sections
+of a file automatically (for details see
+<a href="reference/sniffing/#sniffing.md">Sniffer</a>). The detected metadata, header and
+datatypes are available to the reader as properties. In this section, we will
+<strong>build a reader</strong> and see how to access the file's <strong>dialect</strong>, <strong>metadata</strong>,
+<strong>header</strong>, and <strong>inferred datatypes</strong>.</p>
+<div class="language-py highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Building a Reader</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-2-1">1</a></span>
+<span class="normal"><a href="#__codelineno-2-2">2</a></span>
+<span class="normal"><a href="#__codelineno-2-3">3</a></span>
+<span class="normal"><a href="#__codelineno-2-4">4</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1"></a><span class="n">fp</span> <span class="o">=</span> <span class="n">samples</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">annotations</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2"></a><span class="n">infile</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3"></a><span class="c1"># like Python&#39;s csv.DictReader, we pass an open file instance</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4"></a><span class="n">reader</span> <span class="o">=</span> <span class="n">Reader</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+<div class="language-py highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Accessing Dialect</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-3-1">1</a></span>
+<span class="normal"><a href="#__codelineno-3-2">2</a></span>
+<span class="normal"><a href="#__codelineno-3-3">3</a></span>
+<span class="normal"><a href="#__codelineno-3-4">4</a></span>
+<span class="normal"><a href="#__codelineno-3-5">5</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1"></a><span class="n">fp</span> <span class="o">=</span> <span class="n">samples</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">annotations</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2"></a><span class="n">infile</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3"></a><span class="c1"># like Python&#39;s csv.DictReader, we pass an open file instance</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4"></a><span class="n">reader</span> <span class="o">=</span> <span class="n">Reader</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">reader</span><span class="o">.</span><span class="n">sniffer</span><span class="o">.</span><span class="n">dialect</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+<div class="admonition example">
+<p class="admonition-title">Dialect</p>
+<p>SimpleDialect('\t', '"', None)</p>
+</div>
+<p>The output dialect is a SimpleDialect instance of the 
+<a href="https://clevercsv.readthedocs.io/en/latest/">clevercsv</a> package.</p>
+<div class="language-py highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Metadata & Header Detection</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-4-1">1</a></span>
+<span class="normal"><a href="#__codelineno-4-2">2</a></span>
+<span class="normal"><a href="#__codelineno-4-3">3</a></span>
+<span class="normal"><a href="#__codelineno-4-4">4</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1"></a><span class="c1"># the reader&#39;s header and metadata properties call the sniffer</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">reader</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3"></a><span class="nb">print</span><span class="p">(</span><span class="s1">&#39;---&#39;</span><span class="p">)</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">reader</span><span class="o">.</span><span class="n">metadata</span><span class="p">())</span>
+</span></code></pre></div></td></tr></table></div>
+<div class="admonition example">
+<p class="admonition-title">Metadata and Header Detection</p>
+<p>Header(line=6, names=['Number', 'Start_Time', 'End_Time', 'Time_From_Start', 'Channel', 'Annotation'], string='Number\tStart Time\tEnd Time\tTime From Start\tChannel\tAnnotation')</p>
+<hr />
+<p>MetaData(lines=(0, 6), string='Experiment ID\tExperiment\nAnimal ID\tAnimal\nResearcher\tTest\nDirectory path\t\n\n')</p>
+</div>
+<p>The Header was detected on line 6 and has 6 column names. The metadata string
+spans from line 0 upto line 6. The embedded <code>Sniffer</code> instance samples the file
+when the reader is created.</p>
+<div class="language-py highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Type Inference</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-5-1">1</a></span>
+<span class="normal"><a href="#__codelineno-5-2">2</a></span>
+<span class="normal"><a href="#__codelineno-5-3">3</a></span>
+<span class="normal"><a href="#__codelineno-5-4">4</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1"></a><span class="c1"># request the sniffed types</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2"></a><span class="c1"># consistent is a `bool` indicating if types are consistent across sample rows</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3"></a><span class="n">types</span><span class="p">,</span> <span class="n">consistent</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">sniffer</span><span class="o">.</span><span class="n">types</span><span class="p">()</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">types</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+<div class="admonition example">
+<p class="admonition-title">Type Inference</p>
+<p><code>[&lt;class 'int'&gt;, &lt;class 'datetime.datetime'&gt;, &lt;class 'datetime.datetime'&gt;, &lt;class 'float'&gt;, &lt;class 'str'&gt;, &lt;class 'str'&gt;]</code></p>
+</div>
+<p>Our deep testing on randomly generated text files indicates that Tabbed's
+<code>Reader</code> will detect dialect, metadata, header, and types correctly in most
+cases. Should you encounter a problem, you can change the sample the Sniffer
+uses to measure these properties. The <code>Sniffer</code>'s <code>start</code>,<code>amount</code>, &amp; <code>skips</code>
+alter the sniffing sample. For help understanding these parameters type <code class="language-python highlight"><span class="n">help</span><span class="p">(</span><span class="n">reader</span><span class="o">.</span><span class="n">sniffer</span><span class="p">)</span></code> or see <a href="reference/sniffing/#sniffing.md">Sniffer</a>. Below,
+we show the sniffer and it's default parameters used in this example.</p>
+<div class="language-py highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Default Sniffer</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-6-1">1</a></span>
+<span class="normal"><a href="#__codelineno-6-2">2</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1"></a><span class="c1">#print the current sniffer used by the reader</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">reader</span><span class="o">.</span><span class="n">sniffer</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span></pre></div></td><td class="code"><div><pre><span></span><code>Sniffer
+--- Attributes ---
+infile: &lt;_io.TextIOWr...oding=&#39;UTF-8&#39;&gt;
+--- Properties ---
+amount: 100
+dialect: SimpleDialect(&#39;\t&#39;, &#39;&quot;&#39;, None)
+lines: [0, 1, 2, 3, 4, 5, ...]
+rows: [[&#39;Experiment ID&#39;, &#39;Experiment&#39;], [&#39;Animal ID&#39;, &#39;Animal&#39;], [&#39;Researcher&#39;, &#39;Test&#39;], [&#39;Directory path&#39;], [&#39;&#39;], [&#39;&#39;], ...]
+sample: &#39;Experiment I...d Recording\n&#39;
+skips: []
+start: 0
+--- Methods ---
+datetime_formats
+header
+metadata
+sniff
+types
+Type help(Sniffer) for full documentation
+</code></pre></div></td></tr></table></div>
+<h2 id="data-filtering"><strong><strong>Data Filtering</strong></strong></h2>
+<p><code>Tabbed</code> provides a powerful mechanism for value-based filtering of rows and
+columns. These filters are called <strong>Tabs</strong> in <code>Tabbed</code> and support equality,
+membership, rich comparison, regular expression, and custom filtering of data.
+The <code>reader.tab</code> method provides a simple way to construct <code>Tabs</code> with keyword
+arguments.</p>
+<h3 id="equality-tabbing">Equality Tabbing</h3>
+<div class="language-py highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Equality Tabbing Example</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-7-1">1</a></span>
+<span class="normal"><a href="#__codelineno-7-2">2</a></span>
+<span class="normal"><a href="#__codelineno-7-3">3</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1"></a><span class="hll"><span class="n">reader</span><span class="o">.</span><span class="n">tab</span><span class="p">(</span><span class="n">Annotation</span><span class="o">=</span><span class="s1">&#39;exploring&#39;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Number&#39;</span><span class="p">,</span> <span class="s1">&#39;Annotation&#39;</span><span class="p">])</span>
+</span></span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2"></a><span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span><span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">()):</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span></pre></div></td><td class="code"><div><pre><span></span><code>{&#39;Number&#39;: 2, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 4, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 6, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 8, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 10, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 12, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 14, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 16, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 18, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 20, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 22, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 24, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 26, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 28, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 30, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 32, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 34, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 36, &#39;Annotation&#39;: &#39;exploring&#39;}
+</code></pre></div></td></tr></table></div>
+<p>For now ignore the <code>chain.from_iterable(reader.read())</code> and focus on the
+highlihted line (1) where we tab the rows in the <em>Annotation</em> column whose value
+equals <em>exploring</em> and request the reader to only read the <em>Number</em> and
+<em>Annotation</em> columns. Notice the output row dictionaries consist of rows that
+match this Tabbing. For
+more details on <code>Equality</code> tabbing please see the 
+<a href="../reference/tabbing/#tabbed.tabbing.Equality">Equality Tab</a> </p>
+<h3 id="membership-tabbing">Membership Tabbing</h3>
+<div class="language-py highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Membership Tabbing Example</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-8-1">1</a></span>
+<span class="normal"><a href="#__codelineno-8-2">2</a></span>
+<span class="normal"><a href="#__codelineno-8-3">3</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1"></a><span class="hll"><span class="n">reader</span><span class="o">.</span><span class="n">tab</span><span class="p">(</span><span class="n">Annotation</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;exploring&#39;</span><span class="p">,</span> <span class="s1">&#39;resting&#39;</span><span class="p">],</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+</span></span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2"></a><span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span><span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">()):</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span></pre></div></td><td class="code"><div><pre><span></span><code>{&#39;Number&#39;: 2, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 4, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 6, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 8, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 10, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 12, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 14, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 16, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 18, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 20, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 22, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 24, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 26, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 28, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 30, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 32, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 33, &#39;Annotation&#39;: &#39;resting&#39;}
+{&#39;Number&#39;: 34, &#39;Annotation&#39;: &#39;exploring&#39;}
+{&#39;Number&#39;: 36, &#39;Annotation&#39;: &#39;exploring&#39;}
+</code></pre></div></td></tr></table></div>
+<p>Focus on the highlihted line (1) where we tab the rows in the <em>Annotation</em>
+column whose value is in <code class="language-python highlight"><span class="p">[</span><span class="s1">&#39;exploring&#39;</span><span class="p">,</span> <span class="s1">&#39;resting&#39;</span><span class="p">]</span></code> and request the
+reader to only read the <em>Number</em> and <em>Annotation</em> columns using column indexing.
+Notice the output row dictionaries consist of rows that match this Tabbing. For
+more details on <code>Membership</code> tabbing please see the
+<a href="../reference/tabbing/#tabbed.tabbing.Membership">Membership Tab</a> </p>
+<h3 id="comparison-tabbing">Comparison Tabbing</h3>
+<div class="language-py highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Rich Comparison Tabbing Example</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-9-1">1</a></span>
+<span class="normal"><a href="#__codelineno-9-2">2</a></span>
+<span class="normal"><a href="#__codelineno-9-3">3</a></span>
+<span class="normal"><a href="#__codelineno-9-4">4</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1"></a><span class="c1"># get all the annotations between 9:38:00 and 9:42:00</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2"></a><span class="hll"><span class="n">reader</span><span class="o">.</span><span class="n">tab</span><span class="p">(</span><span class="n">Start_Time</span><span class="o">=</span><span class="s1">&#39;&gt; 9/2/2022 9:38:00 and &lt; 9/2/2022 9:42:00&#39;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</span></span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3"></a><span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span><span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">()):</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code>{&#39;Number&#39;: 5, &#39;Start_Time&#39;: datetime.datetime(2022, 2, 9, 9, 38, 1, 262000)}
+{&#39;Number&#39;: 6, &#39;Start_Time&#39;: datetime.datetime(2022, 2, 9, 9, 38, 7, 909000)}
+{&#39;Number&#39;: 7, &#39;Start_Time&#39;: datetime.datetime(2022, 2, 9, 9, 38, 20, 258000)}
+{&#39;Number&#39;: 8, &#39;Start_Time&#39;: datetime.datetime(2022, 2, 9, 9, 38, 25, 435000)}
+{&#39;Number&#39;: 9, &#39;Start_Time&#39;: datetime.datetime(2022, 2, 9, 9, 40, 7, 55000)}
+{&#39;Number&#39;: 10, &#39;Start_Time&#39;: datetime.datetime(2022, 2, 9, 9, 40, 22, 334000)}
+{&#39;Number&#39;: 11, &#39;Start_Time&#39;: datetime.datetime(2022, 2, 9, 9, 41, 36, 664000)}
+{&#39;Number&#39;: 12, &#39;Start_Time&#39;: datetime.datetime(2022, 2, 9, 9, 41, 46, 326000)}
+</code></pre></div></td></tr></table></div>
+<p>Again, focus on the highlihted line (2) where we tab the rows in the
+<em>Start_Time</em> column whose value is between <code class="language-python highlight"><span class="s1">&#39;9:38:00&#39;</span></code> and <code class="language-python highlight"><span class="s1">&#39;9:42:00&#39;</span></code> and request the reader to only read the <em>Number</em> and <em>Start_Time</em>
+columns using column indexing.  Notice the output row dictionaries consist of
+rows that match this Tabbing. For more details on <code>Comparison</code> tabbing please
+see the <a href="../reference/tabbing/#tabbed.tabbing.Comparison">Comparison Tab</a> </p>
+<h3 id="regular-expression-tabbing">Regular Expression Tabbing</h3>
+<div class="language-py highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Regular Expression Tabbing Example</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-10-1">1</a></span>
+<span class="normal"><a href="#__codelineno-10-2">2</a></span>
+<span class="normal"><a href="#__codelineno-10-3">3</a></span>
+<span class="normal"><a href="#__codelineno-10-4">4</a></span>
+<span class="normal"><a href="#__codelineno-10-5">5</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2"></a><span class="c1"># get all the annotations that contain start with &#39;g&#39; or &#39;r&#39;</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3"></a><span class="hll"><span class="n">reader</span><span class="o">.</span><span class="n">tab</span><span class="p">(</span><span class="n">Annotation</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^[g|r]&#39;</span><span class="p">),</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</span></span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4"></a><span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span><span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">()):</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span></pre></div></td><td class="code"><div><pre><span></span><code>{&#39;Number&#39;: 3, &#39;Annotation&#39;: &#39;grooming&#39;}
+{&#39;Number&#39;: 5, &#39;Annotation&#39;: &#39;grooming&#39;}
+{&#39;Number&#39;: 7, &#39;Annotation&#39;: &#39;grooming&#39;}
+{&#39;Number&#39;: 9, &#39;Annotation&#39;: &#39;grooming&#39;}
+{&#39;Number&#39;: 11, &#39;Annotation&#39;: &#39;grooming&#39;}
+{&#39;Number&#39;: 13, &#39;Annotation&#39;: &#39;grooming&#39;}
+{&#39;Number&#39;: 15, &#39;Annotation&#39;: &#39;grooming&#39;}
+{&#39;Number&#39;: 17, &#39;Annotation&#39;: &#39;grooming&#39;}
+{&#39;Number&#39;: 19, &#39;Annotation&#39;: &#39;grooming&#39;}
+{&#39;Number&#39;: 21, &#39;Annotation&#39;: &#39;grooming&#39;}
+{&#39;Number&#39;: 23, &#39;Annotation&#39;: &#39;grooming&#39;}
+{&#39;Number&#39;: 25, &#39;Annotation&#39;: &#39;grooming&#39;}
+{&#39;Number&#39;: 27, &#39;Annotation&#39;: &#39;grooming&#39;}
+{&#39;Number&#39;: 29, &#39;Annotation&#39;: &#39;grooming&#39;}
+{&#39;Number&#39;: 31, &#39;Annotation&#39;: &#39;grooming&#39;}
+{&#39;Number&#39;: 33, &#39;Annotation&#39;: &#39;resting&#39;}
+{&#39;Number&#39;: 35, &#39;Annotation&#39;: &#39;grooming&#39;}
+</code></pre></div></td></tr></table></div>
+<p>Focus on the highlihted line (3) where we tab the rows in the <em>Start_Time</em>
+column whose value is between <code class="language-python highlight"><span class="s1">&#39;9:38:00&#39;</span></code> and <code class="language-python highlight"><span class="s1">&#39;9:42:00&#39;</span></code> and
+request the reader to only read the <em>Number</em> and <em>Start_Time</em> columns using
+column indexing.  Notice the output row dictionaries consist of rows that match
+this Tabbing. For more details on <code>Regex</code> tabbing please see the: <a href="../reference/tabbing/#tabbed.tabbing.Regex">Regex
+Tab</a> </p>
+<h3 id="custom-tabbing">Custom Tabbing</h3>
+<p>Tabbed also supports construction of <code>Calling</code> Tabs that allow you to provide
+your own custom logic for row filtering. For details see the <a href="../reference/tabbing/#tabbed.tabbing.Calling">Calling
+Tab</a> in the reference manual.</p>
+<h2 id="reading"><strong><strong>Reading</strong></strong></h2>
+<p>The <code>Reader.read</code> method returns an iterator of lists. Each <em>yielded</em> list
+contains row dictionaries from the data section. The values in each <code>dict</code> are
+the type casted and tab filtered rows. The <code>chunksize</code> parameter of the <code>read</code>
+method determines how many row dictionaries to yield per iteration. Let's take
+a look at the <code>read</code> method with our sample file.  </p>
+<div class="language-py highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Return Type</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-11-1">1</a></span>
+<span class="normal"><a href="#__codelineno-11-2">2</a></span>
+<span class="normal"><a href="#__codelineno-11-3">3</a></span>
+<span class="normal"><a href="#__codelineno-11-4">4</a></span>
+<span class="normal"><a href="#__codelineno-11-5">5</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1"></a><span class="c1"># for ease of reading just get the Number &amp; Annotation columns</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2"></a><span class="n">reader</span><span class="o">.</span><span class="n">tab</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Number&#39;</span><span class="p">,</span> <span class="s1">&#39;Annotation&#39;</span><span class="p">])</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3"></a><span class="c1"># calling read creates an iterator</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4"></a><span class="n">gen</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">chunksize</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5"></a><span class="nb">print</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">gen</span><span class="p">))</span>
+</span></code></pre></div></td></tr></table></div>
+<div class="admonition example">
+<p class="admonition-title">Return Type</p>
+<p><code>&lt;class 'generator'&gt;</code></p>
+</div>
+<div class="language-py highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Chunksize</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-12-1">1</a></span>
+<span class="normal"><a href="#__codelineno-12-2">2</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1"></a><span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">chunksize</span><span class="o">=</span><span class="mi">2</span><span class="p">)):</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;chunk </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">chunk</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+<details class="example">
+<summary>chunksize</summary>
+<p><strong>chunk 0:</strong> <code>[{'Number': 0, 'Annotation': 'Started Recording'}, {'Number': 1, 'Annotation': 'start'}]</code><br><strong>chunk 1:</strong> <code>[{'Number': 2, 'Annotation': 'exploring'}, {'Number': 3, 'Annotation': 'grooming'}]</code><br><strong>chunk 2:</strong> <code>[{'Number': 4, 'Annotation': 'exploring'}, {'Number': 5, 'Annotation': 'grooming'}]</code><br><strong>chunk 3:</strong> <code>[{'Number': 6, 'Annotation': 'exploring'}, {'Number': 7, 'Annotation': 'grooming'}]</code><br><strong>chunk 4:</strong> <code>[{'Number': 8, 'Annotation': 'exploring'}, {'Number': 9, 'Annotation': 'grooming'}]</code><br><strong>chunk 5:</strong> <code>[{'Number': 10, 'Annotation': 'exploring'}, {'Number': 11, 'Annotation': 'grooming'}]</code><br><strong>chunk 6:</strong> <code>[{'Number': 12, 'Annotation': 'exploring'}, {'Number': 13, 'Annotation': 'grooming'}]</code><br><strong>chunk 7:</strong> <code>[{'Number': 14, 'Annotation': 'exploring'}, {'Number': 15, 'Annotation': 'grooming'}]</code><br><strong>chunk 8:</strong> <code>[{'Number': 16, 'Annotation': 'exploring'}, {'Number': 17, 'Annotation': 'grooming'}]</code><br><strong>chunk 9:</strong> <code>[{'Number': 18, 'Annotation': 'exploring'}, {'Number': 19, 'Annotation': 'grooming'}]</code><br><strong>chunk 10:</strong> <code>[{'Number': 20, 'Annotation': 'exploring'}, {'Number': 21, 'Annotation': 'grooming'}]</code><br><strong>chunk 11:</strong> <code>[{'Number': 22, 'Annotation': 'exploring'}, {'Number': 23, 'Annotation': 'grooming'}]</code><br><strong>chunk 12:</strong> <code>[{'Number': 24, 'Annotation': 'exploring'}, {'Number': 25, 'Annotation': 'grooming'}]</code><br><strong>chunk 13:</strong> <code>[{'Number': 26, 'Annotation': 'exploring'}, {'Number': 27, 'Annotation': 'grooming'}]</code><br><strong>chunk 14:</strong> <code>[{'Number': 28, 'Annotation': 'exploring'}, {'Number': 29, 'Annotation': 'grooming'}]</code><br><strong>chunk 15:</strong> <code>[{'Number': 30, 'Annotation': 'exploring'}, {'Number': 31, 'Annotation': 'grooming'}]</code><br><strong>chunk 16:</strong> <code>[{'Number': 32, 'Annotation': 'exploring'}, {'Number': 33, 'Annotation': 'resting'}]</code><br><strong>chunk 17:</strong> <code>[{'Number': 34, 'Annotation': 'exploring'}, {'Number': 35, 'Annotation': 'grooming'}]</code><br><strong>chunk 18:</strong> <code>[{'Number': 36, 'Annotation': 'exploring'}, {'Number': 37, 'Annotation': 'stop'}]</code><br><strong>chunk 19:</strong> <code>[{'Number': 38, 'Annotation': 'Stopped Recording'}]</code><br></p>
+</details>
+<p>Each <code>yield</code> of the read iterator gave us 2 rows from the data section. You can
+set the <code>chunksize</code> to any <code class="language-python highlight"><span class="nb">int</span></code> value. The default is 200,000 rows per
+yield. Read has several parameters for controlling what rows will be yielded.
+These include;  <code>start</code>, <code>skips</code> and <code>indices</code>. Details on these parameters can
+be found using <code class="language-python highlight"><span class="n">help</span><span class="p">(</span><span class="n">Reader</span><span class="o">.</span><span class="n">read</span><span class="p">)</span></code> or
+<a href="../reference/reading/#tabbed.reading.Reader.read">read's</a> documentation. </p>
+<p>The <code>read</code> method always returns an iterator but for small files you may want to
+read the file in completely. This is simple using python's <code>itertools</code> module.
+Below is a recipe for converting read's iterator to an in-memory list. </p>
+<div class="language-py highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">As in-memory list</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-13-1">1</a></span>
+<span class="normal"><a href="#__codelineno-13-2">2</a></span>
+<span class="normal"><a href="#__codelineno-13-3">3</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">itertools</span><span class="w"> </span><span class="kn">import</span> <span class="n">chain</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2"></a><span class="n">data</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span><span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">chunksize</span><span class="o">=</span><span class="mi">2</span><span class="p">)))</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3"></a><span class="nb">print</span><span class="p">(</span><span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+<details class="example">
+<summary>Reading to an in-memory list</summary>
+<p><code>{'Number': 0, 'Annotation': 'Started Recording'}</code><br><code>{'Number': 1, 'Annotation': 'start'}</code><br><code>{'Number': 2, 'Annotation': 'exploring'}</code><br><code>{'Number': 3, 'Annotation': 'grooming'}</code><br><code>{'Number': 4, 'Annotation': 'exploring'}</code><br><code>{'Number': 5, 'Annotation': 'grooming'}</code><br><code>{'Number': 6, 'Annotation': 'exploring'}</code><br><code>{'Number': 7, 'Annotation': 'grooming'}</code><br><code>{'Number': 8, 'Annotation': 'exploring'}</code><br><code>{'Number': 9, 'Annotation': 'grooming'}</code><br><code>{'Number': 10, 'Annotation': 'exploring'}</code><br><code>{'Number': 11, 'Annotation': 'grooming'}</code><br><code>{'Number': 12, 'Annotation': 'exploring'}</code><br><code>{'Number': 13, 'Annotation': 'grooming'}</code><br><code>{'Number': 14, 'Annotation': 'exploring'}</code><br><code>{'Number': 15, 'Annotation': 'grooming'}</code><br><code>{'Number': 16, 'Annotation': 'exploring'}</code><br><code>{'Number': 17, 'Annotation': 'grooming'}</code><br><code>{'Number': 18, 'Annotation': 'exploring'}</code><br><code>{'Number': 19, 'Annotation': 'grooming'}</code><br><code>{'Number': 20, 'Annotation': 'exploring'}</code><br><code>{'Number': 21, 'Annotation': 'grooming'}</code><br><code>{'Number': 22, 'Annotation': 'exploring'}</code><br><code>{'Number': 23, 'Annotation': 'grooming'}</code><br><code>{'Number': 24, 'Annotation': 'exploring'}</code><br><code>{'Number': 25, 'Annotation': 'grooming'}</code><br><code>{'Number': 26, 'Annotation': 'exploring'}</code><br><code>{'Number': 27, 'Annotation': 'grooming'}</code><br><code>{'Number': 28, 'Annotation': 'exploring'}</code><br><code>{'Number': 29, 'Annotation': 'grooming'}</code><br><code>{'Number': 30, 'Annotation': 'exploring'}</code><br><code>{'Number': 31, 'Annotation': 'grooming'}</code><br><code>{'Number': 32, 'Annotation': 'exploring'}</code><br><code>{'Number': 33, 'Annotation': 'resting'}</code><br><code>{'Number': 34, 'Annotation': 'exploring'}</code><br><code>{'Number': 35, 'Annotation': 'grooming'}</code><br><code>{'Number': 36, 'Annotation': 'exploring'}</code><br><code>{'Number': 37, 'Annotation': 'stop'}</code><br><code>{'Number': 38, 'Annotation': 'Stopped Recording'}</code><br></p>
+</details>
+<h2 id="when-something-goes-wrong">When Something Goes Wrong</h2>
+<p>In most cases, we think <code>Tabbed</code> will work <em>out-of-the-box</em> on your text files
+but the variability in dialects and structures means we can't guarantee it.
+<code>Tabbed</code> provides several fallbacks to help you read files when something has
+gone wrong. Specifically there are two problems you may encounter:</p>
+<div class="admonition tip">
+<p class="admonition-title">Incorrect Start Row</p>
+<p>If tab fails to detect the file's structure, the start row for the read will
+be incorrect. You have 2 options to deal with this.</p>
+<ul>
+<li>Adjust the <code>start</code>, <code>amount</code>, or <code>skips</code>attributes of the sniffer or the
+  exclude parameter of the header and metadata sniffer methods.  These
+  control the sample the sniffer uses to detect the header and metadata if
+  they exist. You can use <code>Reader.peek</code> to help you determine good values
+  for these parameters.</li>
+<li>During Read, set the <code>start</code> parameter to force reading to begin at
+  a specific row.  This will also require you to manually set the reader's
+  header by setting <code>reader.header</code> to a list of header string names. This
+  method should always work when structure (metadata, header, etc) isn't
+  being detected.</li>
+</ul>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Wonky Data Values</p>
+<p>Tabbed supports reading <code class="language-python highlight"><span class="n">ints</span></code>, <code class="language-python highlight"><span class="n">floats</span></code>,
+<code class="language-python highlight"><span class="nb">complex</span></code>, <code class="language-python highlight"><span class="n">time</span></code>, <code class="language-python highlight"><span class="n">date</span></code> and <code class="language-python highlight"><span class="n">datetime</span></code>
+types.  It further assumes that these types are consistent across rows
+within a column in the data section. If Tabbed encounters a type 
+conversion error, it gracefully returns the value as a string type and 
+logs the error to the <code>Reader.errors</code> attribute. You can use this log to
+figure out what rows had problems and skip them or change the values using
+your own callable after they have been read by Tabbed.</p>
+</div>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/mscaudill" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["content.code.copy"], "search": "../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f1b6f286.min.js"></script>
+      
+    
+  </body>
+</html>
