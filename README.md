@@ -1,12 +1,15 @@
 <h1 align="center">
-    <img src="https://github.com/mscaudill/tabbed/blob/master/docs/imgs/namedlogo.png" 
+    <img src="https://github.com/mscaudill/tabbed/raw/master/docs/imgs/namedlogo.png"
     style="width:600px;height:auto;"/>
 </h1>
 
 ## A Python package for reading variably structured text files at scale.
 
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-![PyPI - License](https://img.shields.io/pypi/l/openseize?color=teal)
+![PyPI - License](https://img.shields.io/pypi/l/openseize?color=purple)
+[![pytest](https://github.com/mscaudill/tabbed/actions/workflows/testing.yml/badge.svg)](
+https://github.com/mscaudill/tabbed/actions/workflows/testing.yml)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](
+https://github.com/psf/black)
 
 **Tabbed** is a Python library for reading variably structured text files. It
 automatically deduces data start locations, data types and performs iterative
