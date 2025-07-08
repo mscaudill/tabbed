@@ -23,6 +23,7 @@ import tempfile
 import random
 from datetime import datetime, timedelta
 
+from tabbed import samples
 from tabbed.reading import Reader
 ```
 
@@ -35,16 +36,17 @@ import random
 from datetime import datetime, timedelta
 from itertools import chain
 
+from tabbed import samples
 from tabbed.reading import Reader
 ```
 
 ## **__Sample File__**
-The documentation for Tabbed comes preloaded with a sample text file. Below we
+Tabbed comes preloaded with a sample text file called *annotations.txt*. Below we
 open this file to see what it looks like and **develop a list of operations we
 would like Tabbed to handle automatically for us.**
 
 ``` py title="Preview Sample Data"
-fp = './sample/annotations.txt'
+fp = samples.paths.annotations
 with open(fp, 'r') as infile:
     for line in infile:
         print(line, end='')
@@ -52,7 +54,7 @@ with open(fp, 'r') as infile:
 
 ??? example "View Sample Data"
 ``` python tags=['hide-input']
-fp = './samples/annotations.txt'
+fp = samples.paths.annotations
 with open(fp, 'r') as infile:
     for line in infile:
         # split on tabs and join on markdown tab
@@ -122,14 +124,14 @@ datatypes are available to the reader as properties. In this section, we will
 [comment]: # (Building a reader)
 
 ``` py title="Building a Reader"
-fp = './samples/annotations.txt'
+fp = samples.paths.annotations
 infile = open(fp, 'r')
 # like Python's csv.DictReader, we pass an open file instance
 reader = Reader(infile)
 ```
 
 ``` python tags=['hide-input']
-fp = './samples/annotations.txt'
+fp = samples.paths.annotations
 infile = open(fp, 'r')
 reader = Reader(infile)
 ```
@@ -137,15 +139,16 @@ reader = Reader(infile)
 [comment]: # (Dialect)
 
 ``` py title="Accessing Dialect"
-fp = './samples/annotations.txt'
+fp = samples.paths.annotations
 infile = open(fp, 'r')
 # like Python's csv.DictReader, we pass an open file instance
 reader = Reader(infile)
 print(reader.sniffer.dialect)
 ```
+
 !!! example "Dialect"
 ``` python tags=['hide-input']
-fp = './samples/annotations.txt'
+fp = samples.paths.annotations
 infile = open(fp, 'r')
 reader = Reader(infile)
 print(reader.sniffer.dialect)
@@ -387,7 +390,7 @@ but the variability in dialects and structures means we can't guarantee it.
 gone wrong. Specifically there are two problems you may encounter:
 
 !!! tip "Incorrect Start Row"
-    If tab fails to detect the file's structure the start row for the read will
+    If tab fails to detect the file's structure, the start row for the read will
     be incorrect. You have 2 options to deal with this.
     
     - Adjust the `start`, `amount`, or `skips`attributes of the sniffer or the
