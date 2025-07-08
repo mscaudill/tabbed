@@ -5,11 +5,24 @@
 
 ## A Python package for reading variably structured text files at scale
 
-![PyPI - License](https://img.shields.io/pypi/l/openseize?color=purple)
-[![pytest](https://github.com/mscaudill/tabbed/actions/workflows/testing.yml/badge.svg)](
-https://github.com/mscaudill/tabbed/actions/workflows/testing.yml)
+[![Documentation](https://img.shields.io/badge/github.io-Documentation-seagreen)](
+https://mscaudill.github.io/tabbed/
+)
+![PyPI - License](
+https://img.shields.io/pypi/l/tabbed?color=purple
+)
+![Python Version from PEP 621 TOML](
+https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fmscaudill%2Ftabbed%2Frefs%2Fheads%2Fmaster%2Fpyproject.toml
+)
+[![pytest](
+https://github.com/mscaudill/tabbed/actions/workflows/testing.yml/badge.svg)](
+https://github.com/mscaudill/tabbed/actions/workflows/testing.yml
+)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](
-https://github.com/psf/black)
+https://github.com/psf/black
+)
+[![Pull Request](https://img.shields.io/badge/Pull_Request-Welcome-pink)](
+https://github.com/mscaudill/tabbed/blob/master/.github/CONTRIBUTING.md)
 
 **Tabbed** is a Python library for reading variably structured text files. It
 automatically deduces data start locations, data types and performs iterative
@@ -154,7 +167,7 @@ reader.close()
 ```
 
 ## Documentation
-The official documentation is hosted on [github.io](#https://mscaudill.github.io/tabbed/).
+The official documentation is hosted on [github.io](https://mscaudill.github.io/tabbed/).
 
 
 ## Dependencies
@@ -165,8 +178,8 @@ rest is pure Python >= 3.11.
 
 ## Installation
 
-Tabbed is hosted on [pypi]() and can be installed with pip into a virtual
-environment.
+Tabbed is hosted on [pypi](https://pypi.org/project/tabbed/) and can be
+installed with pip into a virtual environment.
 
 ```bash
 pip install tabbed
