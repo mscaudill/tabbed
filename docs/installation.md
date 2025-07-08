@@ -1,10 +1,10 @@
 # Installation
 
-Tabbed is available on [pypi]() and can be installed into a virtual environment
-with `pip`. If your new to python package installation and need help creating
-a virtual environment you'll want to check out python's builtin [venv](
-https://docs.python.org/3/library/venv.html) OR [miniconda](
-https://www.anaconda.com/docs/getting-started/miniconda/main).
+Tabbed is available on [pypi](https://pypi.org/project/tabbed/) and can be
+installed into a virtual environment with `pip`. If your new to python package
+installation and need help creating a virtual environment you'll want to check
+out python's builtin [venv](https://docs.python.org/3/library/venv.html) OR [
+miniconda](https://www.anaconda.com/docs/getting-started/miniconda/main).
 
 ```bash
 pip install tabbed
