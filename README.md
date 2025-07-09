@@ -8,21 +8,23 @@
 [![Documentation](https://img.shields.io/badge/github.io-Documentation-seagreen)](
 https://mscaudill.github.io/tabbed/
 )
-![PyPI - License](
-https://img.shields.io/pypi/l/tabbed?color=purple
-)
 ![Python Version from PEP 621 TOML](
 https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fmscaudill%2Ftabbed%2Frefs%2Fheads%2Fmaster%2Fpyproject.toml
+)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](
+https://github.com/psf/black
 )
 [![pytest](
 https://github.com/mscaudill/tabbed/actions/workflows/testing.yml/badge.svg)](
 https://github.com/mscaudill/tabbed/actions/workflows/testing.yml
 )
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](
-https://github.com/psf/black
+[![Pull Request](
+https://img.shields.io/badge/Pull_Request-Welcome-rgb(248, 196, 113)](
+https://github.com/mscaudill/tabbed/blob/master/.github/CONTRIBUTING.md
 )
-[![Pull Request](https://img.shields.io/badge/Pull_Request-Welcome-pink)](
-https://github.com/mscaudill/tabbed/blob/master/.github/CONTRIBUTING.md)
+![PyPI - License](
+https://img.shields.io/pypi/l/tabbed?color=darkmagenta
+)
 
 **Tabbed** is a Python library for reading variably structured text files. It
 automatically deduces data start locations, data types and performs iterative
@@ -173,7 +175,7 @@ The official documentation is hosted on [github.io](https://mscaudill.github.io/
 ## Dependencies
 Tabbed depends on the excellent [clevercsv](
 https://clevercsv.readthedocs.io/en/latest/) package for dialect detection. The
-rest is pure Python >= 3.11.
+rest is pure Python.
 
 
 ## Installation
