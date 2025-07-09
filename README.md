@@ -19,7 +19,7 @@ https://github.com/mscaudill/tabbed/actions/workflows/testing.yml/badge.svg)](
 https://github.com/mscaudill/tabbed/actions/workflows/testing.yml
 )
 [![Pull Request](
-https://img.shields.io/badge/Pull_Request-Welcomed-wheat](
+https://img.shields.io/badge/Pull_Request-Welcomed-wheat)](
 https://github.com/mscaudill/tabbed/blob/master/.github/CONTRIBUTING.md
 )
 ![PyPI - License](
