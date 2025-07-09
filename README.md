@@ -8,22 +8,17 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15847863.svg)](
 https://doi.org/10.5281/zenodo.15847863
 )
-[![Documentation](https://img.shields.io/badge/github.io-Documentation-seagreen)](
+[![Documentation](
+https://img.shields.io/badge/github.io-Documentation-seagreen)](
 https://mscaudill.github.io/tabbed/
 )
-![Python Version from PEP 621 TOML](
-https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fmscaudill%2Ftabbed%2Frefs%2Fheads%2Fmaster%2Fpyproject.toml
-)
+![Python version](https://img.shields.io/badge/Python-%3E%3D3.12-goldenrod)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](
 https://github.com/psf/black
 )
 [![pytest](
 https://github.com/mscaudill/tabbed/actions/workflows/testing.yml/badge.svg)](
 https://github.com/mscaudill/tabbed/actions/workflows/testing.yml
-)
-[![Pull Request](
-https://img.shields.io/badge/Pull_Request-Welcomed-wheat)](
-https://github.com/mscaudill/tabbed/blob/master/.github/CONTRIBUTING.md
 )
 ![PyPI - License](
 https://img.shields.io/pypi/l/tabbed?color=darkmagenta
