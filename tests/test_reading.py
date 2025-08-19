@@ -377,8 +377,9 @@ def test_priming_start_2(metadata_data_file, datastring):
     """Test that starting at line in the data section gives the correct data if
     no header is provided."""
 
+    poll = 10
     reader = Reader(metadata_data_file)
-    start = reader.sniffer.metadata(None).lines[-1] + 1 + 10
+    start = reader.sniffer.metadata(None, poll=poll).lines[-1] + 1 + 10
     row_iter, _ = reader._prime(start)
 
     rowstrings = [','.join(row.values()) for row in row_iter]

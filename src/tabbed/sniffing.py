@@ -320,10 +320,16 @@ class Sniffer(ReprMixin):
             raise TypeError(msg)
 
         result = []
+        delimiter = self.dialect.delimiter
+
+        # if no delimiter this is single column data delimited by newline char
+        if not delimiter:
+            return [[astring] for astring in self.sample.splitlines()]
+
         # split sample_str on terminators, strip & split each line on delimiter
         for line in self.sample.splitlines():
             # lines may end in delimiter leading to empty trailing cells
-            stripped = line.rstrip(self.dialect.delimiter)
+            stripped = line.rstrip(delimiter)
             row = stripped.split(self.dialect.delimiter)
             # remove any double quotes
             row = [astring.replace('"', '') for astring in row]
@@ -402,14 +408,26 @@ class Sniffer(ReprMixin):
             warnings.warn(msg1 + msg2)
             self._dialect = None
         else:
+            # empty str dialect disallowed by csv module
+            if result.delimiter == '':
+                result.delimiter = '\r'
             self.dialect = result
 
-    def types(self, poll: int = 5) -> Tuple[CellTypes, bool]:
+    # no mutation of exclude list here
+    # pylint: disable-next=dangerous-default-value
+    def types(
+        self,
+        poll: int,
+        exclude: List[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
+    ) -> Tuple[CellTypes, bool]:
         """Infer the column types from the last poll count rows.
 
         Args:
             poll:
                 The number of last sample rows to poll for type.
+            exclude:
+                A sequence of characters that indicate missing values. Rows
+                containing these strings will be ignored for type determination.
 
         Returns:
             A list of types and a boolean indicating if types are
@@ -417,6 +435,15 @@ class Sniffer(ReprMixin):
         """
 
         rows = self.rows[-poll:]
+        rows = [row for row in rows if not bool(set(exclude).intersection(row))]
+        if not rows:
+            msg = (
+                f'Types could not be determined as last {poll} polling '
+                f'rows all contained at least one exclusion {exclude}. Try '
+                'increasing the number of polling rows.'
+            )
+            raise RuntimeError(msg)
+
         cols = list(zip(*rows))
         type_cnts = [
             Counter([type(parsing.convert(el)) for el in col]) for col in cols
@@ -426,7 +453,13 @@ class Sniffer(ReprMixin):
 
         return common_types, consistent
 
-    def datetime_formats(self, poll: int = 5) -> Tuple[List[str | None], bool]:
+    # no mutation of exclude list here
+    # pylint: disable-next=dangerous-default-value
+    def datetime_formats(
+        self,
+        poll: int,
+        exclude: List[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
+    ) -> Tuple[List[str | None], bool]:
         """Infer time, date or datetime formats from last poll count rows.
 
         Args:
@@ -449,7 +482,7 @@ class Sniffer(ReprMixin):
         polled = []
         for row in self.rows[-poll:]:
             row_fmts = []
-            for astring, tp in zip(row, self.types(poll)[0]):
+            for astring, tp in zip(row, self.types(poll, exclude)[0]):
                 fmt = (
                     parsing.find_format(astring, fmts[tp])
                     if tp in fmts
@@ -490,11 +523,13 @@ class Sniffer(ReprMixin):
             An integer line number and header row or a 2-tuple of Nones
         """
 
-        types, consistent = self.types(poll)
+        types, consistent = self.types(poll, exclude)
         # if polled types are inconsistent type_diff will fail.
         if not consistent:
             return None, None
 
+        # int, float and complex mismatches are not type mismatches
+        numerics = {int, float, complex}
         for idx, row in reversed(list(zip(self.lines, self.rows))):
 
             # ignore rows that have missing values
@@ -503,7 +538,12 @@ class Sniffer(ReprMixin):
 
             row_types = [type(parsing.convert(el)) for el in row]
             # check types and completeness
-            type_mismatch = row_types != types
+            type_mismatch = False
+            for typ, expect in zip(row_types, types):
+                if typ != expect and not {typ, expect}.issubset(numerics):
+                    type_mismatch = True
+                    break
+
             len_match = len(row) == len(self.rows[-1])
 
             if len_requirement and type_mismatch and len_match:
@@ -567,7 +607,7 @@ class Sniffer(ReprMixin):
     # pylint: disable-next=dangerous-default-value
     def header(
         self,
-        poll: int = 5,
+        poll: int,
         exclude: List[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
     ) -> Header:
         """Detects the header row (if any) from this Sniffers sample rows.
@@ -607,7 +647,7 @@ class Sniffer(ReprMixin):
             A Header dataclass instance.
         """
 
-        types, _ = self.types(poll)
+        types, _ = self.types(poll, exclude)
         if all(typ == str for typ in types):
             line, row = self._string_diff(poll, exclude)
 
@@ -620,7 +660,10 @@ class Sniffer(ReprMixin):
         # type-narrow for mypy check-- row can no longer be None
         assert isinstance(row, list)
         # get original string if line
-        s = self.sample.splitlines()[self.lines.index(line)] if line else None
+        if line is not None:
+            s = self.sample.splitlines()[self.lines.index(line)]
+        else:
+            s = None
 
         return Header(line=line, names=row, string=s)
 
@@ -629,7 +672,7 @@ class Sniffer(ReprMixin):
     def metadata(
         self,
         header: Header | None,
-        poll: int = 10,
+        poll: int,
         exclude: List[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
     ) -> MetaData:
         """Detects the metadata section (if any) in this Sniffer's sample.
@@ -659,7 +702,7 @@ class Sniffer(ReprMixin):
             s = '\n'.join(self.sample.splitlines()[0:idx])
             return MetaData((0, header.line), s)
 
-        types, _ = self.types(poll)
+        types, _ = self.types(poll, exclude=exclude)
         if all(typ == str for typ in types):
             # detect metadata based on string value differences
             last_line, _ = self._string_diff(

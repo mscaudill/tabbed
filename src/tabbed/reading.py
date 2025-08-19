@@ -29,7 +29,7 @@ from typing import (
 from clevercsv.dialect import SimpleDialect
 
 from tabbed import tabbing
-from tabbed.sniffing import Header, Sniffer
+from tabbed.sniffing import Header, MetaData, Sniffer
 from tabbed.tabbing import Tabulator
 from tabbed.utils import parsing
 from tabbed.utils.mixins import ReprMixin
@@ -126,12 +126,45 @@ class Reader(ReprMixin):
         >>> os.remove(fp.name) # explicitly remove the tempfile
     """
 
-    def __init__(self, infile: IO[str], **sniffing_kwargs) -> None:
-        """Initialize this Reader."""
+    # no mutation of exclude parameter
+    # pylint: disable-next=dangerous-default-value
+    def __init__(
+        self,
+        infile: IO[str],
+        poll: int = 20,
+        exclude: List[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
+        **sniffing_kwargs,
+    ) -> None:
+        """Initialize this Reader.
+
+        Args:
+            infile:
+                An IO stream instance returned by open builtin.
+            poll:
+                The number of last sample rows to use for the Sniffer to detect
+                header, metadata and data types.
+            exclude:
+               A sequence of characters indicating missing values in the file.
+               Rows containing these values will be disqualified from use for
+               header, metadata and data type detection. However, this Reader's
+               read method will still read and return rows with this exclusion
+               values.
+            sniffing_kwargs:
+                Any valid kwarg for a tabbed Sniffer instance including: start,
+                amount, skips and delimiters. Please see Sniffer initializer.
+
+        Notes:
+            During initialization, this reader will use the poll and exclude
+            arguments to make an initial guess of the header. If this guess is
+            wrong, the header may be explicitly set via the 'header' setter
+            property.
+        """
 
         self.infile = infile
         self._sniffer = Sniffer(infile, **sniffing_kwargs)
-        self._header = self._sniffer.header()
+        self.poll = poll
+        self.exclude = exclude
+        self._header = self._sniffer.header(self.poll, self.exclude)
         self.tabulator = Tabulator(self.header, columns=None, tabs=None)
         self.errors = SimpleNamespace(casting=[], ragged=[])
 
@@ -145,7 +178,7 @@ class Reader(ReprMixin):
 
         if self._header.line is not None:
             # print('Resniffing Header and resetting metadata and Tabulator')
-            self._header = self._sniffer.header()
+            self._header = self._sniffer.header(self.poll, self.exclude)
             self.tabulator = Tabulator(self.header, columns=None, tabs=None)
 
         return self._sniffer
@@ -227,21 +260,14 @@ class Reader(ReprMixin):
 
         self.tabulator = tblr
 
-    def metadata(self, **kwargs):
+    def metadata(self) -> MetaData:
         """Returns this Reader's current metadata.
 
-        Args:
-            kwargs:
-                - poll:
-                    number of sample lines to poll in sniffer. If header is
-                    known to this Sniffer, this kwarg is ignored.
-                - exclude:
-                    list of string values indicating missing values. Rows with
-                    any exclude string will be skipped. If a header is known to
-                    this sniffer, this kwarg is ignored.
+        Returns:
+            A sniffed metadata instance.
         """
 
-        return self._sniffer.metadata(self.header, **kwargs)
+        return self._sniffer.metadata(self.header, self.poll, self.exclude)
 
     def tab(
         self,
@@ -357,7 +383,9 @@ class Reader(ReprMixin):
         if self.header.line is not None:
             autostart = self.header.line + 1
         else:
-            metalines = self._sniffer.metadata(None).lines
+            metalines = self._sniffer.metadata(
+                None, self.poll, self.exclude
+            ).lines
             autostart = metalines[1] + 1 if metalines[1] else metalines[0]
 
         astart = start if start is not None else autostart
@@ -415,7 +443,6 @@ class Reader(ReprMixin):
         indices: Optional[Sequence] = None,
         chunksize: int = int(2e5),
         skip_empty: bool = True,
-        poll: int = 5,
         raise_ragged: bool = False,
     ) -> Iterator[List[Dict[str, CellType]]]:
         """Iteratively read dictionary rows that satisfy this Reader's tabs.
@@ -441,10 +468,6 @@ class Reader(ReprMixin):
             skip_empty:
                 A boolean indicating if rows with no values between the
                 delimiters should be skipped. Default is True.
-            poll:
-                The number of lines at the end of the sniffer's sample that
-                should be used for determining data types and date formats. The
-                default is the last 5 rows of the sniffed sample.
             raise_ragged:
                 Boolean indicating if a row with more or fewer columns than
                 expected should raise an error and stop reading. The default is
@@ -465,8 +488,8 @@ class Reader(ReprMixin):
         skips = [] if not skips else skips
 
         # poll types & formats, inconsistencies will trigger casting error log
-        types, _ = self._sniffer.types(poll)
-        formats, _ = self._sniffer.datetime_formats(poll)
+        types, _ = self._sniffer.types(self.poll, self.exclude)
+        formats, _ = self._sniffer.datetime_formats(self.poll, self.exclude)
         castings = dict(zip(self.header.names, zip(types, formats)))
 
         # initialize casting and ragged row errors

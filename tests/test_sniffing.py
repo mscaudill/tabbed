@@ -772,7 +772,7 @@ def test_header_mixed_data(umeta_header_file):
         # test files with mixed types only here, only string types require
         # repeating strings see test below
         sniffer.amount = 20
-        aheader = sniffer.header()
+        aheader = sniffer.header(poll=10)
 
         assert aheader.line == head.line
 
@@ -801,7 +801,8 @@ def test_metadata_mixed_types(smeta_file):
         # test files with mixed types only here, only string types require
         # repeating strings see test below
         sniffer.amount = 20
-        ameta = sniffer.metadata(header=None)
+        ameta = sniffer.metadata(header=None, poll=10)
+        print(ameta)
         assert ameta.lines == meta.lines
 
 
