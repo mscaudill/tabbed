@@ -180,15 +180,15 @@ when the reader is created.
 [comment]: # (Type Inference)
 
 ``` py title="Type Inference"
-# request the sniffed types
+# request the sniffed types by polling the last 10 rows of the sniffed sample
 # consistent is a `bool` indicating if types are consistent across sample rows
-types, consistent = reader.sniffer.types()
+types, consistent = reader.sniffer.types(poll=10)
 print(types)
 ```
 
 !!! example "Type Inference"
 ``` python tags=['hide-input']
-types, consistent = reader.sniffer.types()
+types, consistent = reader.sniffer.types(poll=10)
 s = str(types)
 # escape all special characters
 s = f'`{s}`'
@@ -199,7 +199,10 @@ Our deep testing on randomly generated text files indicates that Tabbed's
 `Reader` will detect dialect, metadata, header, and types correctly in most
 cases. Should you encounter a problem, you can change the sample the Sniffer
 uses to measure these properties. The `Sniffer`'s `start`,`amount`, & `skips`
-alter the sniffing sample. For help understanding these parameters type `#!python
+alter the sniffing sample. You can also change what sample rows are used for
+type polling via the `poll` and `exclude` arguments of the Reader initializer.
+All these arguments can help in the auto-detection of the header and metadata
+sections of a text file.  For help understanding these parameters type `#!python
 help(reader.sniffer)` or see [Sniffer](reference/sniffing/#sniffing.md). Below,
 we show the sniffer and it's default parameters used in this example.
 
@@ -212,6 +215,15 @@ print(reader.sniffer)
 
 ``` python tags=["hide-input"]
 print(reader.sniffer)
+```
+
+```py title="Default Reader"
+#print the poll and exlude default arguments.
+print(reader.poll, reader.exclude)
+```
+
+``` python tags=["hide-input"]
+print(reader.poll, reader.exclude)
 ```
 
 ## **__Data Filtering__**
@@ -398,6 +410,9 @@ gone wrong. Specifically there are two problems you may encounter:
       control the sample the sniffer uses to detect the header and metadata if
       they exist. You can use `Reader.peek` to help you determine good values
       for these parameters.
+    - Adjust the default `poll` and `exclude` arguments of a Reader instance. In
+      particular, the `exclude` argument can be used to ignore missing values
+      for better type inference.
     - During Read, set the `start` parameter to force reading to begin at
       a specific row.  This will also require you to manually set the reader's
       header by setting `reader.header` to a list of header string names. This
