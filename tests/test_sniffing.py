@@ -798,11 +798,11 @@ def test_metadata_mixed_types(smeta_file):
     infile, delim, meta = smeta_file
     sniffer = safe_sniff(infile, delim)
     if not all(typ == str for typ in sniffer.types(poll=10)[0]):
+
         # test files with mixed types only here, only string types require
         # repeating strings see test below
         sniffer.amount = 20
         ameta = sniffer.metadata(header=None, poll=10)
-        print(ameta)
         assert ameta.lines == meta.lines
 
 

@@ -294,7 +294,7 @@ def test_metadata_no_header(metadata_data_file, metastring):
 
     reader = Reader(metadata_data_file)
     # the last metastring line contains an extra '\n' that metadata() strips
-    assert reader.metadata().string == metastring.rstrip()
+    assert reader.metadata().string == metastring
 
 
 ##################
@@ -378,8 +378,9 @@ def test_priming_start_2(metadata_data_file, datastring):
     no header is provided."""
 
     poll = 10
-    reader = Reader(metadata_data_file)
-    start = reader.sniffer.metadata(None, poll=poll).lines[-1] + 1 + 10
+    start = 10
+    reader = Reader(metadata_data_file, poll=poll, exclude=[])
+    start = reader.metadata().lines[-1] + start
     row_iter, _ = reader._prime(start)
 
     rowstrings = [','.join(row.values()) for row in row_iter]
@@ -422,7 +423,7 @@ def test_priming_indices_start_2(metadata_data_file, datastring):
     """Test that data from indices is correct if a header is not present."""
 
     reader = Reader(metadata_data_file)
-    datastart = reader.metadata().lines[-1] + 1
+    datastart = reader.metadata().lines[-1]
     row_iter, start = reader._prime(indices=range(datastart + 10, datastart + 15))
 
     rowstrings = [','.join(row.values()) for row in row_iter]

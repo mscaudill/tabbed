@@ -147,7 +147,7 @@ class Sniffer(ReprMixin):
         >>> print(sniffer.dialect)
         SimpleDialect(';', '"', None)
         >>> # ask the sniffer to return a Header
-        >>> header = sniffer.header()
+        >>> header = sniffer.header(poll=4)
         >>> print(header)
         ... #doctest: +NORMALIZE_WHITESPACE
         Header(line=3,
@@ -296,9 +296,11 @@ class Sniffer(ReprMixin):
         """
 
         if value:
-            # python 3.11 deprecated '' for escape & quotechars
+            # python 3.11 deprecated '' for delimiter, escape & quotechars
+            delimiter = '\r' if value.delimiter == '' else value.delimiter
             escapechar = None if value.escapechar == '' else value.escapechar
             quotechar = '"' if not value.quotechar else value.quotechar
+            value.delimiter = delimiter
             value.escapechar = escapechar
             value.quotechar = quotechar
 
@@ -322,9 +324,11 @@ class Sniffer(ReprMixin):
         result = []
         delimiter = self.dialect.delimiter
 
-        # if no delimiter this is single column data delimited by newline char
-        if not delimiter:
-            return [[astring] for astring in self.sample.splitlines()]
+        # single column data uses carriage return delimiter
+        if delimiter == '\r':
+            return [
+                [astr.replace('"', '')] for astr in self.sample.splitlines()
+            ]
 
         # split sample_str on terminators, strip & split each line on delimiter
         for line in self.sample.splitlines():
@@ -357,11 +361,7 @@ class Sniffer(ReprMixin):
             next(self.infile)
 
     def _resample(self) -> None:
-        """Sample from the infile using the start, amount and skip properties.
-
-        Returns:
-            A tuple with the sample string and line numbers of the sample.
-        """
+        """Sample from infile using the start, amount and skip properties."""
 
         self._move(self.start)
         result = SimpleNamespace(indices=[], linestrs=[])
@@ -408,9 +408,6 @@ class Sniffer(ReprMixin):
             warnings.warn(msg1 + msg2)
             self._dialect = None
         else:
-            # empty str dialect disallowed by csv module
-            if result.delimiter == '':
-                result.delimiter = '\r'
             self.dialect = result
 
     # no mutation of exclude list here
@@ -496,17 +493,18 @@ class Sniffer(ReprMixin):
 
         return polled[-1], consistent
 
-    def _type_diff(
+    def _length_diff(
         self,
         poll: int,
         exclude: List[str],
-        len_requirement: bool = True,
     ) -> Tuple[int | None, List[str] | None]:
-        """Locates first row from last whose types don't match last sample row.
+        """Locates metadata by identifying the first row from the end of the
+        sample whose length does not match the length of the last poll rows.
 
-        This heuristic locates the header or metadata row by looking for type
-        changes as the sample is read from the last row backwards. It assumes
-        consistent column types in the sample.
+        This method assumes that the metadata row lengths do not match the data
+        row lengths. This can obviously be untrue but detecting the difference
+        between a header row whose length must match the number of data columns
+        from a metadata row with the same number of columns is challenging.
 
         Args:
             poll:
@@ -514,13 +512,40 @@ class Sniffer(ReprMixin):
             exclude:
                 A sequence of characters that indicate missing values. Rows
                 containing these strings will be ignored.
-            len_requirement:
-                A boolean indicating if the first row from last with a type
-                mismatch must have the same length as the last row of the
-                sample. This will be True for headers and False for metadata.
 
         Returns:
-            An integer line number and header row or a 2-tuple of Nones
+            A 2-tuple of integer line number and the metadata row if found and
+            a 2-tuple of Nones otherwise.
+        """
+
+        types, _ = self.types(poll, exclude)
+        for idx, row in reversed(list(zip(self.lines, self.rows))):
+
+            if len(row) != len(types):
+                return idx, row
+
+        return None, None
+
+    def _type_diff(
+        self,
+        poll: int,
+        exclude: List[str],
+    ) -> Tuple[int | None, List[str] | None]:
+        """Locates a header row by looking for the first row from the last of
+        this Sniffer's rows whose types do not match the last polled row types.
+
+        This heuristic assumes a consistent type within a column of data. If
+        this is found to be untrue it returns a two-tuple of Nones.
+
+        Args:
+            poll:
+                The number of last sample rows to poll for common types.
+            exclude:
+                A sequence of characters that indicate missing values. Rows
+                containing these strings will be ignored.
+
+        Returns:
+            A 2-tuple integer line number and header row or a 2-tuple of Nones.
         """
 
         types, consistent = self.types(poll, exclude)
@@ -536,21 +561,15 @@ class Sniffer(ReprMixin):
             if bool(set(exclude).intersection(row)):
                 continue
 
+            if len(row) != len(types):
+                # we've encountered a metadata row without hitting a header
+                return None, None
+
             row_types = [type(parsing.convert(el)) for el in row]
-            # check types and completeness
-            type_mismatch = False
+            # check types
             for typ, expect in zip(row_types, types):
                 if typ != expect and not {typ, expect}.issubset(numerics):
-                    type_mismatch = True
-                    break
-
-            len_match = len(row) == len(self.rows[-1])
-
-            if len_requirement and type_mismatch and len_match:
-                return idx, row
-
-            if not len_requirement and type_mismatch:
-                return idx, row
+                    return idx, row
 
         return None, None
 
@@ -661,6 +680,7 @@ class Sniffer(ReprMixin):
         assert isinstance(row, list)
         # get original string if line
         if line is not None:
+            # string should include the rows we skipped so use sample not rows
             s = self.sample.splitlines()[self.lines.index(line)]
         else:
             s = None
@@ -672,7 +692,7 @@ class Sniffer(ReprMixin):
     def metadata(
         self,
         header: Header | None,
-        poll: int,
+        poll: Optional[int] = None,
         exclude: List[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
     ) -> MetaData:
         """Detects the metadata section (if any) in this Sniffer's sample.
@@ -681,19 +701,15 @@ class Sniffer(ReprMixin):
             header:
                 A Header dataclass instance.
             poll:
-                The number of last sample rows to poll for locating the header
-                using string or type differences. Poll should be large enough to
-                capture many of the string values that appear in the data
-                section.
+                The number of last sample rows to poll for locating metadata by
+                length differences if the header arg is None.
             exclude:
                 A sequence of characters that indicate missing values. Rows
-                containing these strings will be ignored.
-
-        This heuristic will make mistakes, A judicious choice for the sample
-        and skips may improve detection.
+                containing these strings will be ignored during metadata
+                detection. This is ignored if a header is given.
 
         Returns:
-            A MetaData dataclass instance or None.
+            A MetaData dataclass instance.
         """
 
         # if header provided get lines upto header line
@@ -702,22 +718,17 @@ class Sniffer(ReprMixin):
             s = '\n'.join(self.sample.splitlines()[0:idx])
             return MetaData((0, header.line), s)
 
-        types, _ = self.types(poll, exclude=exclude)
-        if all(typ == str for typ in types):
-            # detect metadata based on string value differences
-            last_line, _ = self._string_diff(
-                poll, exclude, len_requirement=False
-            )
+        if not header and poll is None:
+            msg = 'Arguments header and poll cannot both be None type'
+            raise ValueError(msg)
 
-        else:
-            # detect metadata with type differences
-            last_line, _ = self._type_diff(poll, exclude, len_requirement=False)
-
-        if last_line is not None:
-            idx = self.lines.index(last_line)  # type: ignore[index]
-            metarows = self.sample.splitlines()[0 : idx + 1]
+        # type narrow poll to int type for mypy
+        assert isinstance(poll, int)
+        line, _ = self._length_diff(poll, exclude)
+        if line is not None:
+            metarows = self.sample.splitlines()[: line + 1]
             string = '\n'.join(metarows)
-            return MetaData((0, idx + 1), string)
+            return MetaData((0, line + 1), string)
 
         return MetaData((0, None), None)
 
