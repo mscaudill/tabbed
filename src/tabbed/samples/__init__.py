@@ -4,7 +4,7 @@
 from pathlib import Path
 from types import SimpleNamespace
 
-from tabbed import samples #pylint: disable=import-self
+from tabbed import samples  # pylint: disable=import-self
 
 paths = SimpleNamespace(
     **{
