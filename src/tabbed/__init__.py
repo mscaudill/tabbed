@@ -1,6 +1,6 @@
 """Tabbed's version"""
 
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 
 from . import reading, sniffing, tabbing, utils
 
