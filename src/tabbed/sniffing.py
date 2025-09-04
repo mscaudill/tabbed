@@ -535,7 +535,8 @@ class Sniffer(ReprMixin):
         this Sniffer's rows whose types do not match the last polled row types.
 
         This heuristic assumes a consistent type within a column of data. If
-        this is found to be untrue it returns a two-tuple of Nones.
+        this is found to be untrue it returns a two-tuple of Nones. Ints, floats
+        and complex are treated as consistent by type_diff.
 
         Args:
             poll:
@@ -548,10 +549,7 @@ class Sniffer(ReprMixin):
             A 2-tuple integer line number and header row or a 2-tuple of Nones.
         """
 
-        types, consistent = self.types(poll, exclude)
-        # if polled types are inconsistent type_diff will fail.
-        if not consistent:
-            return None, None
+        types, _ = self.types(poll, exclude)
 
         # int, float and complex mismatches are not type mismatches
         numerics = {int, float, complex}
