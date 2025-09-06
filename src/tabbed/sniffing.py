@@ -428,7 +428,8 @@ class Sniffer(ReprMixin):
 
         Returns:
             A list of types and a boolean indicating if types are
-            consistent across polled rows.
+            consistent across polled rows. Ints, floats and complex within the
+            same column are defined as consistent.
         """
 
         rows = self.rows[-poll:]
@@ -445,7 +446,14 @@ class Sniffer(ReprMixin):
         type_cnts = [
             Counter([type(parsing.convert(el)) for el in col]) for col in cols
         ]
-        consistent = all(len(cnt) == 1 for cnt in type_cnts)
+
+        consistent = True
+        for s in [set(cnts) for cnts in type_cnts]:
+            # inconsistent if > 1 type per column & any non-numerics
+            if len(s) > 1 and not s.issubset({float, int, complex}):
+                consistent = False
+                break
+
         common_types = [cnt.most_common(1)[0][0] for cnt in type_cnts]
 
         return common_types, consistent
@@ -549,7 +557,12 @@ class Sniffer(ReprMixin):
             A 2-tuple integer line number and header row or a 2-tuple of Nones.
         """
 
-        types, _ = self.types(poll, exclude)
+        types, consistent = self.types(poll, exclude)
+
+        if not consistent:
+            msg = 'Detection failure due to inconsistent column data types'
+            warnings.warn(msg)
+            return None, None
 
         # int, float and complex mismatches are not type mismatches
         numerics = {int, float, complex}
