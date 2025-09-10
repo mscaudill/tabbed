@@ -98,26 +98,29 @@ a first-in-first-out (FIFO) data structure with O(1) time complexity allowing
 tabbed to linearly scale to large files. 
 
 # Comparison
-Tablib [@tablib], comma [@comma], and pandas [@pandas] are popular alternative
-packages to tabbed. \autoref{tbl: table1} compares the features of these
-packages. Pandas `read_csv` function most closely matches the available features
-in tabbed but it has two draw-backs; it does not detect where the data section
-begins, and it does not support conditional reading of data rows. The first issue
-is perhaps the most serious because it requires the user to tell pandas where to
-begin reading via the `start` parameter for each irregular DSV file. 
+Tablib [@tablib], comma [@comma], pandas [@pandas] and frictionless-py
+[@frictionless] are popular alternative packages to tabbed. \autoref{tbl:
+table1} compares their respective features. Pandas `read_csv` and Frictionless'
+`extract` functions most closely match the available features in tabbed. Both
+support broad type casting and iterative reading of large files. However, both
+require specifying the header row if metadata is written to the file. This per
+file specification of the header location makes batch reading of text files with
+varying structure difficult. Additionally, neither package stores the skipped
+metadata section for later use.
 
-| **Software** | **Structural Detection** | **Type Casting** | **Filtereable** | **Iterative** |
-|:------------:|:------------------------:|:----------------:|:---------------:|:-------------:|
-|  **tablib**  |           -              |    +             |     limited     |        -      |
-|   **comma**  |           -              |   limited        |           -     |        -      |
-|  **pandas**  |           -              |    +             |    columns only |        +      |
-|  **tabbed**  |           +              |    +             |           +     |        +      |
+|   **Software**   | **Structural Detection** | **Casting** | **Value-based Filtering** | **Iterative** |
+|:----------------:|:------------------------:|:-----------:|:-------------------------:|:-------------:|
+|    **tablib**    |             -            |      +      |     Row Equality Only     |       -       |
+|     **comma**    |             -            |   limited   |             -             |       -       |
+|    **pandas**    |             -            |      +      |        Columns Only       |       +       |
+| **frictionless** |             -            |      +      |             +             |       +       |
+|    **tabbed**    |             +            |      +      |             +             |       +       |
 
 Table: Comparison of features for four common open-source software packages for
 reading DSV files. Plus (+) and minus (-) indicates package support or lack of
 support for each feature respectively. \label{tbl: table1}
 
-Given that pandas `read_csv` most closely matches with tabbed's capabilities, we
+Given that pandas `read_csv` closely matches tabbed's capabilities, we
 tested tabbed's read speeds against pandas in \autoref{fig: figure2}. For this
 test, we selected the `python` engine in pandas rather than the `c` or `pyarrow`
 engine for parsing files. This is important because these alternative engines
