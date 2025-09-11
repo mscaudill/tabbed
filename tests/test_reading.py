@@ -339,10 +339,10 @@ def test_priming_autostart_1(metadata_data_file):
 
     reader = Reader(metadata_data_file)
     _, start = reader._prime()
-    assert start == reader.sniffer.metadata(None).lines[-1] + 1
+    assert start == reader.sniffer.metadata(None, poll=20).lines[-1] + 1
 
 
-def test_priming_autostart_1(data_file):
+def test_priming_autostart_2(data_file):
     """Test autostart when no header and no metadata is present"""
 
     reader = Reader(data_file)

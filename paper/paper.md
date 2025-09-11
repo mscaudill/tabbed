@@ -98,7 +98,7 @@ a first-in-first-out (FIFO) data structure with O(1) time complexity allowing
 tabbed to linearly scale to large files. 
 
 # Comparison
-Tablib [@tablib], comma [@comma], pandas [@pandas] and frictionless-py
+Tablib [@tablib], comma [@comma], pandas [@pandas, @mckinney2010] and frictionless-py
 [@frictionless] are popular alternative packages to tabbed. \autoref{tbl:
 table1} compares their respective features. Pandas `read_csv` and Frictionless'
 `extract` functions most closely match the available features in tabbed. Both
