@@ -27,13 +27,13 @@ tabular data. For example, a search of Github.com for comma separated value
 files, a subset of the DSV format, returns 75 million matches. They are simple
 to create, easy to share, and can encode a variety of data types. Despite
 their broad use, variability in the formatting and structure of DSV files has
-frustrated their automated parsing for decades. The *clevercsv* package
+hindered attempts to automate their parsing for decades. The clevercsv package
 [@vandenBurg2019] made significant progress on this problem with consistency
 measures that accurately detect a file's dialect: delimiter, quote character,
 and escape character. The structure of a DSV file introduces another source of
 variability. DSVs may contain a metadata section that offsets the header and
 start row. Tabbed uses row length and type consistency measures to automatically
-detect metadata, header and data sections of a DSV file. Furthermore, Tabbed
+detect metadata, header and data sections of a DSV file. Furthermore, tabbed
 provides a value-based conditional reader for reading these irregular DSV files
 at scale.
 
@@ -85,7 +85,7 @@ from tabbed.reading import Reader
 
 with open('sample.txt', 'r') as infile:
     reader = Reader(infile)
-    # Tell the reader to only read these Tabbed rows
+    # Tell the reader to only read these tabbed rows
     reader.tab(Start_Time ='>=2/09/2022 9:37:00', Annotation = 'exploring')
     result = reader.read()
 ```
@@ -144,7 +144,7 @@ figure2}](figure2.png)
 To further understand tabbed's performance, we tested how row filtering impacts
 read speeds.  The right panel of \autoref{fig: figure2} shows the read speed
 as a function of the number of filters applied to each data row. The left-most
-point is the baseline with no filters. We measure an approximately 2% reduction
+point is the baseline with no filters. We measure an approximate 2% reduction
 in speed for each new filter added.
 
 # Conclusion
@@ -162,6 +162,6 @@ Sheppard for useful discussions about testing tabbed.
 
 We are grateful for the support of the Ting Tsung and Wei Fong Chao Foundation
 and the Jan and Dan Duncan Neurological Research Institute at Texas Children's
-that generously supports Tabbed.
+that generously supports tabbed.
 
 # References
