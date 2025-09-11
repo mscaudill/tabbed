@@ -120,17 +120,16 @@ Table: Comparison of features for four common open-source software packages for
 reading DSV files. Plus (+) and minus (-) indicates package support or lack of
 support for each feature respectively. \label{tbl: table1}
 
-Given that pandas `read_csv` closely matches tabbed's capabilities, we
-tested tabbed's read speeds against pandas in \autoref{fig: figure2}. For this
-test, we selected the `python` engine in pandas rather than the `c` or `pyarrow`
-engine for parsing files. This is important because these alternative engines
-achieve an order of magnitude greater read speed over the python engine.  The
-speed test was conducted on a DSV file with all floats and a DSV file with
-floats and datetime instances. The file size in each case was 10 columns by
-100,000 rows. The left panel of \autoref{fig: figure2} shows that tabbed is
-slower on both the float and mixed type files by approximately 30%.
-Nevertheless, users can expect to read millions of cells from a DSV file in just
-a few seconds with tabbed.
+Given that pandas `read_csv` closely matches tabbed's capabilities, we tested
+tabbed's read speeds against pandas in \autoref{fig: figure2}. For this test, we
+selected the `python` engine in pandas rather than the `c` or `pyarrow` engines
+which are an order of magnitude faster but do not support dialect inference
+like pandas `python` engine or tabbed's `Reader` class.  The speed test was
+conducted on a DSV file with all floats and a DSV file with floats and datetime
+instances. The file size in each case was 10 columns by 100,000 rows. The left
+panel of \autoref{fig: figure2} shows that tabbed is slower on both the float
+and mixed type files by approximately 30%.  Nevertheless, users can expect to
+read millions of cells from a DSV file in just a few seconds with tabbed.
 
 ![Tabbed and pandas read speed comparison. Left: Comparison of number of cells
 casted per second between tabbed and pandas for DSV files composed of floats
