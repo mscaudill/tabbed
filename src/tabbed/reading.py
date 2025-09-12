@@ -376,6 +376,10 @@ class Reader(ReprMixin):
 
         Returns:
             A row iterator & row index the iterator starts from.
+
+        Raises:
+            A ValueError is issued if start and indices are provided and the
+            first index is less than start.
         """
 
         # locate the start of the datasection
@@ -399,7 +403,13 @@ class Reader(ReprMixin):
                 astart, stop, step = indices.start, indices.stop, indices.step
 
             elif isinstance(indices, Sequence):
-                astart, stop = indices[0], indices[-1]
+                astart, stop = indices[0], indices[-1] + 1
+
+                if start and astart < start:
+                    msg = (f'The first indexed line to read = {astart} is < '
+                           f'the start line = {start}!')
+                    raise ValueError(msg)
+
 
             else:
                 msg = f'indices must be a Sequence type not {type(indices)}.'
@@ -407,7 +417,7 @@ class Reader(ReprMixin):
 
         # warn if start is < computed autostart
         if astart < autostart:
-            msg = f'start = {start} is < than detected data start = {autostart}'
+            msg = f'start = {astart} is < than detected data start = {autostart}'
             warnings.warn(msg)
 
         # advance reader's infile to account for blank metalines & get dialect
@@ -479,10 +489,13 @@ class Reader(ReprMixin):
             Chunksize number of dictionary rows with header names as keys.
 
         Raises:
-            csv.Error:
-                A csv.Error is issued if a ragged row is encountered and
-                raise_ragged is True. Casting problems do not raise errors but
-                gracefully return strings when encountered.
+            A csv.Error is issued if a ragged row is encountered and
+            raise_ragged is True. Casting problems do not raise errors but
+            gracefully return strings when encountered.
+
+            A ValueError is issued if start and indices are provided and the
+            first indexed line to read in indices is less than the line to start
+            reading from.
         """
 
         skips = [] if not skips else skips
