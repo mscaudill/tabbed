@@ -96,7 +96,7 @@ from tabbed.reading import Reader
 
 infile = open('annotations.txt', 'r')
 reader = Reader(infile)
-dialect = reader.dialect
+dialect = reader.sniffer.dialect
 types, _ = reader.sniffer.types()
     
 print(dialect) # a clevercsv SimpleDialect
