@@ -1,4 +1,4 @@
-name: Test & Coveralls
+name: Test and Coveralls
 
 on:
   push:
@@ -33,6 +33,6 @@ jobs:
         run: pytest -rP -x --cov=tabbed tests/
 
       - name: Coveralls Upload
-      uses: coverallsapp/github-action@v2
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
