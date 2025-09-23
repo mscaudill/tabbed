@@ -1,4 +1,4 @@
-name: Test
+name: Test & Coveralls
 
 on:
   push:
@@ -29,5 +29,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .['testing']
 
-      - name: run pytest
-        run: pytest -rP -x ./tests
+      - name: run pytest with coverage
+        run: pytest -rP -x --cov=tabbed tests/
+
+      - name: Coveralls Upload
+      uses: coverallsapp/github-action@v2
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
