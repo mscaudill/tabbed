@@ -93,11 +93,12 @@ https://clevercsv.readthedocs.io/en/latest/)  and infer the data types.
 
 ```python
 from tabbed.reading import Reader
+from tabbed.samples import paths
 
-infile = open('annotations.txt', 'r')
+infile = open(paths.annotations, 'r')
 reader = Reader(infile)
 dialect = reader.sniffer.dialect
-types, _ = reader.sniffer.types()
+types, _ = reader.sniffer.types(poll=10)
     
 print(dialect) # a clevercsv SimpleDialect
 print('---')
@@ -118,7 +119,7 @@ Tabbed can automatically locate the metadata, header and data rows.
 ```python
 print(reader.header)
 print('---')
-print(reader.metadata)
+print(reader.metadata())
 ```
 
 *Output*
@@ -144,14 +145,14 @@ from itertools import chain
 # only the Number and Start_Time columns
 reader.tab(
     Start_Time='>= 2/09/2022 9:38:00 and <2/09/2022 9:40:00',
-    columns=['Number', 'Start_Time'
+    columns=['Number', 'Start_Time']
 )
 
 # read the data to an iterator reading only 2 rows at a time
 gen = reader.read(chunksize=2)
 
 # convert to an in-memory list
-data = chain.from_iterable(gen)
+data = list(chain.from_iterable(gen))
 print(data)
 
 # close the reader when done or open under context-management
