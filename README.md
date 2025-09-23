@@ -20,6 +20,10 @@ https://github.com/psf/black
 https://github.com/mscaudill/tabbed/actions/workflows/testing.yml/badge.svg)](
 https://github.com/mscaudill/tabbed/actions/workflows/testing.yml
 )
+[![Coverage](
+https://coveralls.io/repos/github/mscaudill/tabbed/badge.svg?branch=master)](
+https://coveralls.io/github/mscaudill/tabbed?branch=master
+)
 ![PyPI - License](
 https://img.shields.io/pypi/l/tabbed?color=darkmagenta
 )
