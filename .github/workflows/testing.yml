@@ -1,4 +1,4 @@
-name: Test and Coveralls
+name: Tests
 
 on:
   push:
@@ -36,3 +36,4 @@ jobs:
         uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-error: false
