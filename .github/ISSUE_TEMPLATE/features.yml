@@ -27,7 +27,7 @@ body:
       label: Describe the Use Case
       description: A concise use case for what problem this feature would solve.
     validations:
-      required: true
+      required: false
 
   # Preferred solution
   - type: textarea
