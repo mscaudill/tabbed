@@ -125,3 +125,9 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "serial",
 ]
+
+[tool.coverage.run]
+omit = [
+    "__init__.py",
+    "./src/tabbed/utils/mixins.py"
+]
