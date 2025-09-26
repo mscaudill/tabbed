@@ -9,8 +9,9 @@ import abc
 import operator as op
 import re
 import warnings
+from collections.abc import Sequence
 from datetime import date, datetime, time
-from typing import Callable, Dict, List, Literal, Optional, Self, Sequence, cast
+from typing import Callable, Literal, Optional, Self, cast
 
 from tabbed.sniffing import Header
 from tabbed.utils import parsing
@@ -34,7 +35,7 @@ class Tab(abc.ABC, ReprMixin):
     """
 
     @abc.abstractmethod
-    def __call__(self, row: Dict[str, CellType]) -> bool:
+    def __call__(self, row: dict[str, CellType]) -> bool:
         """All Tabs implement a call method accepting a row dictionary."""
 
 
@@ -69,7 +70,7 @@ class Equality(Tab):
         self.name = name
         self.matching = matching
 
-    def __call__(self, row: Dict[str, CellType]) -> bool:
+    def __call__(self, row: dict[str, CellType]) -> bool:
         """Apply this tab to a row dictionary.
 
         Args:
@@ -114,7 +115,7 @@ class Membership(Tab):
         self.name = name
         self.collection = set(collection)
 
-    def __call__(self, row: Dict[str, CellType]) -> bool:
+    def __call__(self, row: dict[str, CellType]) -> bool:
         """Apply this tab to a row dictionary.
 
         Args:
@@ -159,7 +160,7 @@ class Regex(Tab):
         self.name = name
         self.pattern = pattern
 
-    def __call__(self, row: Dict[str, CellType]) -> bool:
+    def __call__(self, row: dict[str, CellType]) -> bool:
         """Apply this tab to a row dictionary.
 
         Args:
@@ -256,7 +257,7 @@ class Comparison(Tab):
         idx = match.span()[0]
         name, value_str = compare_str[:idx], compare_str[idx:]
         comparator = self.comparators[name.strip()]
-        value = parsing.convert(value_str)
+        value = parsing.convert(value_str, decimal='.')
 
         return comparator, value
 
@@ -298,7 +299,7 @@ class Comparison(Tab):
 
         return funcs, values, logical
 
-    def __call__(self, row: Dict[str, CellType]) -> bool:
+    def __call__(self, row: dict[str, CellType]) -> bool:
         """Apply this tab to a row dictionary.
 
         Args:
@@ -360,7 +361,7 @@ class Calling(Tab):
     def __init__(
         self,
         name: str,
-        func: Callable[[Dict[str, CellType], str], bool],
+        func: Callable[[dict[str, CellType], str], bool],
         **kwargs,
     ) -> None:
         """Initialize this tab instance."""
@@ -369,7 +370,7 @@ class Calling(Tab):
         self.func = func
         self.kwargs = kwargs
 
-    def __call__(self, row: Dict[str, CellType]) -> bool:
+    def __call__(self, row: dict[str, CellType]) -> bool:
         """Apply this tab to a row dictionary.
 
         Args:
@@ -409,7 +410,7 @@ class Accepting(Tab):
 
         self.__dict__.update(kwargs)
 
-    def __call__(self, row: Dict[str, CellType]) -> Literal[True]:
+    def __call__(self, row: dict[str, CellType]) -> Literal[True]:
         """Returns True for a row dictionary always."""
 
         return True
@@ -469,8 +470,8 @@ class Tabulator(ReprMixin):
     def __init__(
         self,
         header: Header,
-        tabs: Optional[List[Tab]] = None,
-        columns: Optional[List[str] | List[int] | re.Pattern] = None,
+        tabs: Optional[list[Tab]] = None,
+        columns: Optional[list[str] | list[int] | re.Pattern] = None,
     ) -> None:
         """Initialize with tabs, columns to extract & Header instance."""
 
@@ -478,7 +479,7 @@ class Tabulator(ReprMixin):
         self.tabs = tabs if tabs else [Accepting()]
         self.columns = self._assign(columns) if columns else self.header.names
 
-    def _assign(self, value: List[str] | List[int] | re.Pattern):
+    def _assign(self, value: list[str] | list[int] | re.Pattern):
         """Assigns the passed column value(s) to valid column names.
 
         Args:
@@ -499,12 +500,12 @@ class Tabulator(ReprMixin):
 
         if all(isinstance(val, int) for val in value):
             # cast for mypy to know value is list of ints
-            value = cast(List[int], value)
+            value = cast(list[int], value)
             result = [self.header.names[val] for val in value]
 
         elif all(isinstance(val, str) for val in value):
             # cast for mypy to know value is list of strs
-            value = cast(List[str], value)
+            value = cast(list[str], value)
             result = value
 
         else:
@@ -531,7 +532,7 @@ class Tabulator(ReprMixin):
             | CellType
             | Sequence[CellType]
             | re.Pattern
-            | Callable[[Dict[str, CellType], str], bool]
+            | Callable[[dict[str, CellType], str], bool]
         ),
     ) -> Tab:
         """Returns a Tab instance from the name, value kwarg pair.
@@ -577,12 +578,12 @@ class Tabulator(ReprMixin):
     def from_keywords(
         cls,
         header: Header,
-        columns: Optional[List[str] | List[int] | re.Pattern] = None,
+        columns: Optional[list[str] | list[int] | re.Pattern] = None,
         **kwargs: (
             CellType
             | Sequence[CellType]
             | re.Pattern
-            | Callable[[Dict[str, CellType], str], bool]
+            | Callable[[dict[str, CellType], str], bool]
         ),
     ) -> Self:
         """Alternative instance constructor using keyword args to define Tabs.
@@ -605,7 +606,7 @@ class Tabulator(ReprMixin):
         tabs = [cls._from_keyword(*item) for item in kwargs.items()]
         return cls(header, tabs, columns)
 
-    def __call__(self, row: Dict[str, CellType]) -> Dict[str, CellType] | None:
+    def __call__(self, row: dict[str, CellType]) -> dict[str, CellType] | None:
         """Apply Tab instances and column filter to this row.
 
         Args:

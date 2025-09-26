@@ -71,7 +71,7 @@ def rdates(rng):
     def make_list(length):
         """Returns a list of datetime instances that cover upto 1 year"""
 
-        start = parsing.convert('1/1/2025')
+        start = parsing.convert('1/1/2025', decimal='.')
         deltas = ([datetime.timedelta(days=x) for x in range(364)]*length)[:length]
         return [start + delta for delta in deltas]
 

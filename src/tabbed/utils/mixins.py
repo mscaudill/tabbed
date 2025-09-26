@@ -2,7 +2,6 @@
 
 import inspect
 import reprlib
-from typing import List
 
 
 class ReprMixin:
@@ -11,13 +10,13 @@ class ReprMixin:
     This Mixin's representations exclude protected and private attributes.
     """
 
-    def _attributes(self) -> List[str]:
+    def _attributes(self) -> list[str]:
         """Returns a list of 'name: value' strings for each attribute."""
 
         attrs = {k: v for k, v in vars(self).items() if not k.startswith('_')}
         return [f'{k}: {reprlib.repr(v)}' for k, v in attrs.items()]
 
-    def _properties(self) -> List[str]:
+    def _properties(self) -> list[str]:
         """Returns a list of 'name: value' strings for each property."""
 
         def isprop(p):
@@ -27,7 +26,7 @@ class ReprMixin:
         props = {k: getattr(self, k) for k in props}
         return [f'{k}: {reprlib.repr(v)}' for k, v in props.items()]
 
-    def _methods(self) -> List[str]:
+    def _methods(self) -> list[str]:
         """Returns a list of method string names."""
 
         methods = inspect.getmembers(self, inspect.ismethod)

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time
 from itertools import chain
 from types import SimpleNamespace
-from typing import IO, List, Optional, Tuple
+from typing import IO, Optional
 
 import clevercsv
 from clevercsv.dialect import SimpleDialect
@@ -36,7 +36,7 @@ class Header:
     """
 
     line: int | None
-    names: List[str]
+    names: list[str]
     string: str | None
 
     def __post_init__(self) -> None:
@@ -83,7 +83,7 @@ class MetaData:
             If None, the file does not contain a metadata section.
     """
 
-    lines: Tuple[int, int | None]
+    lines: tuple[int, int | None]
     string: str | None
 
 
@@ -176,8 +176,9 @@ class Sniffer(ReprMixin):
         infile: IO[str],
         start: int = 0,
         amount: int = 100,
-        skips: Optional[List[int]] = None,
-        delimiters: List[str] | None = [',', ';', '|', '\t'],
+        skips: Optional[list[int]] = None,
+        delimiters: list[str] = [',', ';', '|', '\t'],
+        decimal='.',
     ) -> None:
         """Initialize this sniffer.
 
@@ -196,6 +197,8 @@ class Sniffer(ReprMixin):
                 A restricted list of delimiter strings for improving dialect
                 detection. If None, any character will be considered a valid
                 delimiter.
+            decimal:
+                The format of the decimal notation. Defaults to '.'.
 
         Raises:
             SoptIteration: is raised if start is greater than infile's size.
@@ -211,9 +214,12 @@ class Sniffer(ReprMixin):
         self._start = start
         self._amount = amount
         self._skips = skips if skips else []
+        # remove decimal from delimiter consideration
+        delims = [d for d in delimiters if d != decimal]
+        self.decimal = decimal
         # get sample for infile and sniff
         self._resample()
-        self.sniff(delimiters)
+        self.sniff(delims)
 
     @property
     def start(self) -> int:
@@ -252,13 +258,13 @@ class Sniffer(ReprMixin):
         self._resample()
 
     @property
-    def skips(self) -> List[int]:
+    def skips(self) -> list[int]:
         """Returns the skipped lines excluded from this Sniffer's sample."""
 
         return self._skips
 
     @skips.setter
-    def skips(self, other: List[int]) -> None:
+    def skips(self, other: list[int]) -> None:
         """Sets the lines to exclude from this Sniffer's sample."""
 
         self._skips = other
@@ -271,7 +277,7 @@ class Sniffer(ReprMixin):
         return self._sample
 
     @property
-    def lines(self) -> List[int]:
+    def lines(self) -> list[int]:
         """Returns a list of integer line numbers comprising the sample."""
 
         return self._lines
@@ -307,7 +313,7 @@ class Sniffer(ReprMixin):
         self._dialect = value
 
     @property
-    def rows(self) -> List[List[str]]:
+    def rows(self) -> list[list[str]]:
         """Returns list of sample rows from this Sniffer's sample string.
 
         This method splits the sample string on new line chars, strips white
@@ -378,9 +384,9 @@ class Sniffer(ReprMixin):
         self._move(0)
         sampled = ''.join(result.linestrs)
         self._sample: str = sampled
-        self._lines: List[int] = result.indices
+        self._lines: list[int] = result.indices
 
-    def sniff(self, delimiters: Optional[List[str]] = None) -> None:
+    def sniff(self, delimiters: Optional[list[str]] = None) -> None:
         """Returns a clevercsv SimpleDialect from this instances sample.
 
         Dialect is detected using clevercsv's sniffer as it has shown improved
@@ -401,7 +407,7 @@ class Sniffer(ReprMixin):
         """
 
         # result is None if clevercsv's sniff is indeterminant
-        result = clevercsv.Sniffer().sniff(self.sample, delimiters=delimiters)
+        result = clevercsv.Sniffer().detect(self.sample, delimiters=delimiters)
         if result is None:
             msg1 = "Dialect could not be determined from Sniffer's sample.  "
             msg2 = "Please set this Sniffer's dialect attribute."
@@ -415,8 +421,8 @@ class Sniffer(ReprMixin):
     def types(
         self,
         poll: int,
-        exclude: List[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
-    ) -> Tuple[CellTypes, bool]:
+        exclude: list[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
+    ) -> tuple[CellTypes, bool]:
         """Infer the column types from the last poll count rows.
 
         Args:
@@ -444,7 +450,8 @@ class Sniffer(ReprMixin):
 
         cols = list(zip(*rows))
         type_cnts = [
-            Counter([type(parsing.convert(el)) for el in col]) for col in cols
+            Counter([type(parsing.convert(el, self.decimal)) for el in col])
+            for col in cols
         ]
 
         consistent = True
@@ -463,8 +470,8 @@ class Sniffer(ReprMixin):
     def datetime_formats(
         self,
         poll: int,
-        exclude: List[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
-    ) -> Tuple[List[str | None], bool]:
+        exclude: list[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
+    ) -> tuple[list[str | None], bool]:
         """Infer time, date or datetime formats from last poll count rows.
 
         Args:
@@ -504,8 +511,8 @@ class Sniffer(ReprMixin):
     def _length_diff(
         self,
         poll: int,
-        exclude: List[str],
-    ) -> Tuple[int | None, List[str] | None]:
+        exclude: list[str],
+    ) -> tuple[int | None, list[str] | None]:
         """Locates metadata by identifying the first row from the end of the
         sample whose length does not match the length of the last poll rows.
 
@@ -537,8 +544,8 @@ class Sniffer(ReprMixin):
     def _type_diff(
         self,
         poll: int,
-        exclude: List[str],
-    ) -> Tuple[int | None, List[str] | None]:
+        exclude: list[str],
+    ) -> tuple[int | None, list[str] | None]:
         """Locates a header row by looking for the first row from the last of
         this Sniffer's rows whose types do not match the last polled row types.
 
@@ -568,6 +575,10 @@ class Sniffer(ReprMixin):
         numerics = {int, float, complex}
         for idx, row in reversed(list(zip(self.lines, self.rows))):
 
+            # ignore blank rows
+            if set(row) == {''}:
+                continue
+
             # ignore rows that have missing values
             if bool(set(exclude).intersection(row)):
                 continue
@@ -576,7 +587,7 @@ class Sniffer(ReprMixin):
                 # we've encountered a metadata row without hitting a header
                 return None, None
 
-            row_types = [type(parsing.convert(el)) for el in row]
+            row_types = [type(parsing.convert(el, self.decimal)) for el in row]
             # check types
             for typ, expect in zip(row_types, types):
                 if typ != expect and not {typ, expect}.issubset(numerics):
@@ -587,9 +598,9 @@ class Sniffer(ReprMixin):
     def _string_diff(
         self,
         poll: int,
-        exclude: List[str],
+        exclude: list[str],
         len_requirement: bool = True,
-    ) -> Tuple[int | None, List[str] | None]:
+    ) -> tuple[int | None, list[str] | None]:
         """Locates first row from last whose strings have no overlap with
         strings in the last poll rows.
 
@@ -638,7 +649,7 @@ class Sniffer(ReprMixin):
     def header(
         self,
         poll: int,
-        exclude: List[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
+        exclude: list[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
     ) -> Header:
         """Detects the header row (if any) from this Sniffers sample rows.
 
@@ -704,7 +715,7 @@ class Sniffer(ReprMixin):
         self,
         header: Header | None,
         poll: Optional[int] = None,
-        exclude: List[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
+        exclude: list[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
     ) -> MetaData:
         """Detects the metadata section (if any) in this Sniffer's sample.
 

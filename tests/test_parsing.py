@@ -202,6 +202,13 @@ def float_numeric(rng):
 
 
 @pytest.fixture
+def float_comma_numeric(rng):
+    """Returns a random float string with a comma decimal."""
+
+    return str(rng.uniform(-1e4, 1e4)).replace('.', ',')
+
+
+@pytest.fixture
 def scientific_numeric(rng):
     """Returns a stringed random scientific notation float."""
 
@@ -209,9 +216,19 @@ def scientific_numeric(rng):
     mantissa = round(rng.uniform(-1, 1), 6)
     exponent = rng.randrange(-10, 10)
     form = rng.choice(['e', 'E'])
-
     return str(mantissa) + form + str(exponent)
 
+
+@pytest.fixture
+def scientific_comma_numeric(rng):
+    """Returns a stringed random scientific notation float."""
+
+    # rounding not nessary but enotation usually is short
+    mantissa = round(rng.uniform(-1, 1), 6)
+    exponent = rng.randrange(-10, 10)
+    form = rng.choice(['e', 'E'])
+    r = str(mantissa).replace('.', ',') + form + str(exponent).replace('.',',')
+    return r
 
 @pytest.fixture
 def complex_numeric(rng):
@@ -220,6 +237,15 @@ def complex_numeric(rng):
     real = rng.uniform(-1e4, 1e4)
     imag = rng.uniform(-1e4, 1e4)
     return str(complex(real, imag))
+
+
+@pytest.fixture
+def complex_comma_numeric(rng):
+    """Returns a stringed complex number using a comma decimal."""
+
+    real = rng.uniform(-1e4, 1e4)
+    imag = rng.uniform(-1e4, 1e4)
+    return str(complex(real, imag)).replace('.', ',')
 
 
 # Tests
@@ -234,7 +260,7 @@ def test_convert_of_date(valid_date):
     """
 
     _, date = valid_date
-    assert isinstance(parsing.convert(date), datetime.date)
+    assert isinstance(parsing.convert(date, decimal='.'), datetime.date)
 
 
 def test_convert_of_time(valid_time):
@@ -248,7 +274,7 @@ def test_convert_of_time(valid_time):
     """
 
     _, time = valid_time
-    assert isinstance(parsing.convert(time), datetime.time)
+    assert isinstance(parsing.convert(time, decimal='.'), datetime.time)
 
 
 def test_convert_of_datetime(valid_datetime):
@@ -263,7 +289,7 @@ def test_convert_of_datetime(valid_datetime):
     """
 
     _, dtime = valid_datetime
-    assert isinstance(parsing.convert(dtime), datetime.datetime)
+    assert isinstance(parsing.convert(dtime, decimal='.'), datetime.datetime)
 
 
 def test_numeric(
@@ -280,5 +306,23 @@ def test_numeric(
     and datetime conversions.
     """
 
-    assert all(parsing.convert(x) for x in locals().values())
+    assert all(parsing.convert(x, decimal='.') for x in locals().values())
+
+
+def test_numeric_comma(
+    integer_numeric,
+    float_comma_numeric,
+    scientific_comma_numeric,
+    complex_comma_numeric):
+    """Validates that conversion returns a numeric instance for a stringed
+    numeric type with a comma decimal.
+
+    This is a catch-all test because if conversion fails then convert returns
+    a string. Success of all subfunctions in parsing is required to return
+    a numeric and therefore this is the only test needed to validate date, time
+    and datetime conversions.
+    """
+
+    assert all(parsing.convert(x, decimal=',') for x in locals().values())
+
 

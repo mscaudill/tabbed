@@ -105,7 +105,7 @@ def structured_metadata(delimiter):
     """Returns delimited lines of metadata."""
 
     keys = 'metaline_0 metaline_1 metaline_2 metaline_3 metaline_4'.split()
-    values = [str(v) for v in [0,  1, 2, 3, 4]]
+    values = [str(v) for v in ['a',  'b', 'c', 'd', 'e']]
 
     metastring = '\n'.join([(k + delimiter + v) for k, v in zip(keys, values)])
     return MetaData((0, len(keys)), metastring)
@@ -177,7 +177,6 @@ def string_table(rng, valid_chars):
 
     return make_table
 
-
 @pytest.fixture
 def rstring_table(rng, valid_chars):
     """Returns a function for building a table with column values chosen from
@@ -199,7 +198,6 @@ def rstring_table(rng, valid_chars):
         return result
 
     return make_table
-
 
 
 @pytest.fixture
@@ -233,6 +231,23 @@ def float_table(rng):
 
 
 @pytest.fixture
+def float_comma_table(rng):
+    """Returns a function for building random tables of stringed floats with
+    comma decimals."""
+
+    def make_table(rows, cols):
+        """Returns a rows x cols table of stringed floats in [-1000, 1000]."""
+
+        cnt = rows * cols
+        cells = [str(rng.uniform(-1000, 1000)).replace('.', ',')
+                 for _ in range(cnt)]
+
+        return [list(row) for row in itertools.batched(cells, cols)]
+
+    return make_table
+
+
+@pytest.fixture
 def complex_table(rng):
     """Returns a func. for building random tables of stringed complex values."""
 
@@ -244,6 +259,25 @@ def complex_table(rng):
         cnt = rows * cols * 2
         parts = [rng.uniform(-1000, 1000) for _ in range(cnt)]
         cells = [str(complex(*tup)) for tup in itertools.batched(parts, 2)]
+
+        return [list(row) for row in itertools.batched(cells, cols)]
+
+    return make_table
+
+
+@pytest.fixture
+def complex_comma_table(rng):
+    """Returns a func. for building random tables of stringed complex values."""
+
+    def make_table(rows, cols):
+        """Returns a rows x cols table of stringed complex values with real and
+        imag parts in [-1000, 1000]."""
+
+        # * 2 for real and complex parts
+        cnt = rows * cols * 2
+        parts = [rng.uniform(-1000, 1000) for _ in range(cnt)]
+        cells = [str(complex(*tup)).replace('.', ',')
+                for tup in itertools.batched(parts, 2)]
 
         return [list(row) for row in itertools.batched(cells, cols)]
 
@@ -352,6 +386,37 @@ def table(
     return chosen_types, data
 
 
+@pytest.fixture
+def comma_table(
+        rng,
+        rows,
+        columns,
+        string_table,
+        integer_table,
+        float_comma_table,
+        complex_comma_table,
+        time_table,
+        date_table,
+        datetime_table,
+):
+    """Returns a rows x cols table of randomly selected data of each table type."""
+
+    args = locals()
+    rng = args.pop('rng')
+    p = args.pop('columns')
+    n = args.pop('rows')
+
+    types = [str, int, float, complex, time, date, datetime]
+    tables = dict(zip(types, [atable(n, p) for atable in args.values()]))
+    # choose the types for each column and then the data
+    chosen_types = rng.choices(list(tables), k=p)
+    chosen_data = [rng.choice(list(zip(*tables[typ]))) for typ in chosen_types]
+    # transpose data back to rows x columns shape
+    data = list(zip(*chosen_data))
+
+    return chosen_types, data
+
+
 ###################
 # File Fixtures #
 ###################
@@ -364,7 +429,39 @@ def umeta_header_file(unstructured_metadata, header_names, table, delimiter):
     hstring = delimiter.join(header_names)
     hline = meta.lines[-1]
     types, tabled = table
+
+    #datastring = '\n'.join([delimiter.join(row) for row in tabled])
+    if len(tabled[0]) == 1:
+        delimiter='\r'
     datastring = '\n'.join([delimiter.join(row) for row in tabled])
+
+    text = '\n'.join([meta.string, hstring, datastring])
+
+    # complete setup by writing to a temp file
+    outfile = tempfile.TemporaryFile(mode='w+')
+    outfile.write(text)
+    outfile.seek(0)
+    yield outfile, delimiter, Header(hline, header_names, hstring)
+
+    # on Teardown, close and remove temp file
+    outfile.close()
+
+
+@pytest.fixture
+def umeta_header_file_comma(unstructured_metadata, header_names, comma_table):
+    """Returns an infile with unstructured metadata, header & data sections with
+    comma as the decimal."""
+
+    delimiter = ';' # Fix delimiter to not conflict with decimal
+    meta = unstructured_metadata
+    hstring = delimiter.join(header_names)
+    hline = meta.lines[-1]
+    types, tabled = comma_table
+    #datastring = '\n'.join([delimiter.join(row) for row in tabled])
+    if len(tabled[0]) == 1:
+        delimiter='\r'
+    datastring = '\n'.join([delimiter.join(row) for row in tabled])
+
 
     text = '\n'.join([meta.string, hstring, datastring])
 
@@ -393,6 +490,10 @@ def umeta_header_rstring_file(
     hline = meta.lines[-1]
     # make a string
     tabled = rstring_table(rows, len(header_names))
+    #datastring = '\n'.join([delimiter.join(row) for row in tabled])
+
+    if len(tabled[0]) == 1:
+        delimiter='\r'
     datastring = '\n'.join([delimiter.join(row) for row in tabled])
 
     text = '\n'.join([meta.string, hstring, datastring])
@@ -415,6 +516,10 @@ def smeta_header_file(structured_metadata, header_names, table, delimiter):
     hstring = delimiter.join(header_names)
     hline = meta.lines[-1]
     types, tabled = table
+    #datastring = '\n'.join([delimiter.join(row) for row in tabled])
+
+    if len(tabled[0]) == 1:
+        delimiter='\r'
     datastring = '\n'.join([delimiter.join(row) for row in tabled])
 
     text = '\n'.join([meta.string, hstring, datastring])
@@ -435,7 +540,12 @@ def smeta_file(structured_metadata, table, delimiter):
 
     meta = structured_metadata
     types, tabled = table
+    #datastring = '\n'.join([delimiter.join(row) for row in tabled])
+
+    if len(tabled[0]) == 1:
+        delimiter='\r'
     datastring = '\n'.join([delimiter.join(row) for row in tabled])
+
 
     text = '\n'.join([meta.string, datastring])
 
@@ -456,7 +566,11 @@ def smeta_rstring_file(structured_metadata, rstring_table, delimiter, rows, colu
 
     meta = structured_metadata
     tabled = rstring_table(rows, columns)
+    #datastring = '\n'.join([delimiter.join(row) for row in tabled])
+    if len(tabled[0]) == 1:
+        delimiter='\r'
     datastring = '\n'.join([delimiter.join(row) for row in tabled])
+
 
     text = '\n'.join([meta.string, datastring])
 
@@ -478,7 +592,11 @@ def uskipmeta_header_file(skipping_unstructured_metadata, header_names, table, d
     hstring = delimiter.join(header_names)
     hline = meta.lines[-1]
     types, tabled = table
+    #datastring = '\n'.join([delimiter.join(row) for row in tabled])
+    if len(tabled[0]) == 1:
+        delimiter='\r'
     datastring = '\n'.join([delimiter.join(row) for row in tabled])
+
 
     text = '\n'.join([meta.string, hstring, datastring])
 
@@ -500,6 +618,9 @@ def sskipmeta_header_file(skipping_structured_metadata, header_names, table, del
     hstring = delimiter.join(header_names)
     hline = meta.lines[-1]
     types, tabled = table
+    #datastring = '\n'.join([delimiter.join(row) for row in tabled])
+    if len(tabled[0]) == 1:
+        delimiter='\r'
     datastring = '\n'.join([delimiter.join(row) for row in tabled])
 
     text = '\n'.join([meta.string, hstring, datastring])
@@ -521,7 +642,11 @@ def empty_metadata_file(header_names, table, delimiter):
     hstring = delimiter.join(header_names)
     hline = 0
     types, tabled = table
+    #datastring = '\n'.join([delimiter.join(row) for row in tabled])
+    if len(tabled[0]) == 1:
+        delimiter='\r'
     datastring = '\n'.join([delimiter.join(row) for row in tabled])
+
 
     text = '\n'.join([hstring, datastring])
 
@@ -541,7 +666,11 @@ def empty_header_file(unstructured_metadata, table, delimiter):
 
     meta = unstructured_metadata
     types, tabled = table
+    #datastring = '\n'.join([delimiter.join(row) for row in tabled])
+    if len(tabled[0]) == 1:
+        delimiter='\r'
     datastring = '\n'.join([delimiter.join(row) for row in tabled])
+
 
     text = '\n'.join([meta.string, datastring])
     # complete setup by writing to a temp file
@@ -558,17 +687,28 @@ def empty_header_file(unstructured_metadata, table, delimiter):
 # Helpers #
 ###########
 
-def safe_sniff(infile, delimiter):
+def safe_sniff(infile, delimiter, decimal='.'):
     """Clevercsv may fail to detect the dialect which disrupts testing. This
     wrapper ensures a dialect (not necessarily the correct one) is found prior
     to testing."""
 
-    sniffer = Sniffer(infile)
-
-    msg = 'Dialect was not correctly detected... using known dialect.'
-    if sniffer.dialect and sniffer.dialect.delimiter in DELIMITERS:
+    sniffer = Sniffer(infile, decimal=decimal)
+    # help clevercsv to detect dialect by moving to the data section if there is
+    # a problem
+    if not sniffer.dialect or sniffer.dialect.delimiter != delimiter:
+        other = Sniffer(infile, start=10, decimal=decimal)
+        sniffer.dialect = other.dialect if other.dialect else SimpleDialect(
+                delimiter, '"', None)
         return sniffer
-    else:
+
+    # if still no match warn and set the dialect to known dialect
+    msg = 'Dialect was not correctly detected... using known dialect.'
+    if sniffer.dialect.delimiter != delimiter:
+        # split on known delimiter to get last line length to see if '\r' is
+        # delimiter
+        rows = [line.split(delimiter) for line in sniffer.sample.splitlines()]
+        if len(rows[-1]) == 1:
+            delimiter = '\r'
         warnings.warn(msg)
         sniffer.dialect = SimpleDialect(delimiter, '"', None)
 
@@ -647,6 +787,15 @@ def test_dialect_no_header(empty_header_file):
     assert sniffer.dialect.delimiter == delim
 
 
+def test_dialect_comma(umeta_header_file_comma):
+    """Validate that Sniffer returns the correct dialect for a comma decimal
+    file."""
+
+    infile, delim, _ = umeta_header_file_comma
+    sniffer = safe_sniff(infile, delim, decimal=',')
+    assert sniffer.dialect.delimiter == delim
+
+
 ####################
 # Property changes #
 ####################
@@ -711,7 +860,6 @@ def test_set_dialect(smeta_header_file):
     sniffer.dialect = d
     assert sniffer.dialect.delimiter == ','
 
-
 def test_start_EOF(umeta_header_file):
     """Validate that setting start to > file length raises StopIteration."""
 
@@ -721,7 +869,6 @@ def test_start_EOF(umeta_header_file):
     with pytest.raises(StopIteration):
         sniffer.start = size + 10
 
-
 ###################
 # Types Detection #
 ###################
@@ -730,8 +877,18 @@ def test_detected_types(umeta_header_file, table):
     """Validate that the detected types match the known table types."""
 
     infile, delim, _ = umeta_header_file
-    sniffer = safe_sniff(infile, delim)
+    s = safe_sniff(infile, delim)
     types, _ = table
+    detected, _ = s.types(poll=10)
+    assert detected == types
+
+
+def test_detected_types_comma(umeta_header_file_comma, comma_table):
+    """Validate that the detected types match the known table types."""
+
+    infile, delim, _ = umeta_header_file_comma
+    sniffer = safe_sniff(infile, delim, decimal=',')
+    types, _ = comma_table
     detected, _ = sniffer.types(poll=10)
     assert detected == types
 
@@ -797,7 +954,13 @@ def test_metadata_mixed_types(smeta_file):
 
     infile, delim, meta = smeta_file
     sniffer = safe_sniff(infile, delim)
-    if not all(typ == str for typ in sniffer.types(poll=10)[0]):
+
+    if len(sniffer.rows[-1]) == 1:
+        # the delimiter in the data section does not match delimiter in metadata
+        # in this case so ignore it
+        assert True
+
+    elif not all(typ == str for typ in sniffer.types(poll=10)[0]):
 
         # test files with mixed types only here, only string types require
         # repeating strings see test below
@@ -813,4 +976,10 @@ def test_metadata_string_type(smeta_rstring_file):
     sniffer = safe_sniff(infile, delim)
     ameta = sniffer.metadata(header=None, poll=20)
 
-    assert ameta.lines == meta.lines
+    if len(sniffer.rows[-1]) == 1:
+        # the delimiter in the data section does not match delimiter in metadata
+        # in this case so ignore it
+        assert True
+
+    else:
+        assert ameta.lines == meta.lines

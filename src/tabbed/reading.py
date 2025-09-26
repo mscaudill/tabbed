@@ -13,17 +13,12 @@ import itertools
 import re
 import warnings
 from collections import deque
+from collections.abc import Iterator, Sequence
 from types import SimpleNamespace
 from typing import (
     IO,
     Callable,
-    Deque,
-    Dict,
-    Iterator,
-    List,
     Optional,
-    Sequence,
-    Tuple,
 )
 
 from clevercsv.dialect import SimpleDialect
@@ -132,7 +127,8 @@ class Reader(ReprMixin):
         self,
         infile: IO[str],
         poll: int = 20,
-        exclude: List[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
+        exclude: list[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
+        decimal: str = '.',
         **sniffing_kwargs,
     ) -> None:
         """Initialize this Reader.
@@ -161,7 +157,8 @@ class Reader(ReprMixin):
         """
 
         self.infile = infile
-        self._sniffer = Sniffer(infile, **sniffing_kwargs)
+        self.decimal = decimal
+        self._sniffer = Sniffer(infile, decimal=decimal, **sniffing_kwargs)
         self.poll = poll
         self.exclude = exclude
         self._header = self._sniffer.header(self.poll, self.exclude)
@@ -190,7 +187,7 @@ class Reader(ReprMixin):
         return self._header
 
     @header.setter
-    def header(self, value: int | List[str] | Dict) -> None:
+    def header(self, value: int | list[str] | dict) -> None:
         """Sets this Reader's header and resets the metadata and Tabulator.
 
         Args:
@@ -271,12 +268,12 @@ class Reader(ReprMixin):
 
     def tab(
         self,
-        columns: Optional[List[str] | List[int] | re.Pattern] = None,
+        columns: Optional[list[str] | list[int] | re.Pattern] = None,
         **tabs: (
             CellType
             | Sequence[CellType]
             | re.Pattern
-            | Callable[[Dict[str, CellType], str], bool]
+            | Callable[[dict[str, CellType], str], bool]
         ),
     ) -> None:
         """Set the Tabulator instance that will filter infile's rows & columns.
@@ -304,6 +301,11 @@ class Reader(ReprMixin):
                 - If a sequence is provided, a membership tab is constructed.
                 - If a compiled re pattern, a Regex tab is constructed. See
                   class docs for example.
+
+        Notes:
+            If the value in a tab is a numeric or is a string representation of
+            a numeric it must use a '.' decimal as Tabbed converts ',' decimal
+            notation to '.' notation for consistency.
 
         Returns:
             None
@@ -351,7 +353,7 @@ class Reader(ReprMixin):
         self,
         start: Optional[int] = None,
         indices: Optional[Sequence] = None,
-    ) -> Tuple[Iterator, int]:
+    ) -> tuple[Iterator, int]:
         """Prime this Reader for reading by constructing a row iterator.
 
         Args:
@@ -406,10 +408,11 @@ class Reader(ReprMixin):
                 astart, stop = indices[0], indices[-1] + 1
 
                 if start and astart < start:
-                    msg = (f'The first indexed line to read = {astart} is < '
-                           f'the start line = {start}!')
+                    msg = (
+                        f'The first indexed line to read = {astart} is < '
+                        f'the start line = {start}!'
+                    )
                     raise ValueError(msg)
-
 
             else:
                 msg = f'indices must be a Sequence type not {type(indices)}.'
@@ -417,7 +420,9 @@ class Reader(ReprMixin):
 
         # warn if start is < computed autostart
         if astart < autostart:
-            msg = f'start = {astart} is < than detected data start = {autostart}'
+            msg = (
+                f'start = {astart} is < than detected data start = {autostart}'
+            )
             warnings.warn(msg)
 
         # advance reader's infile to account for blank metalines & get dialect
@@ -454,7 +459,7 @@ class Reader(ReprMixin):
         chunksize: int = int(2e5),
         skip_empty: bool = True,
         raise_ragged: bool = False,
-    ) -> Iterator[List[Dict[str, CellType]]]:
+    ) -> Iterator[list[dict[str, CellType]]]:
         """Iteratively read dictionary rows that satisfy this Reader's tabs.
 
         Args:
@@ -512,7 +517,7 @@ class Reader(ReprMixin):
         # construct a row iterator
         row_iter, row_start = self._prime(start, indices)
 
-        fifo: Deque[Dict[str, CellType]] = deque()
+        fifo: deque[dict[str, CellType]] = deque()
         for line, dic in enumerate(row_iter, row_start):
 
             if line in skips:
@@ -533,7 +538,9 @@ class Reader(ReprMixin):
 
                 casting, fmt = castings[name]
                 try:
-                    arow[name] = parsing.convert(astr, casting, fmt)
+                    arow[name] = parsing.convert(
+                        astr, self.decimal, casting, fmt
+                    )
                 except (ValueError, OverflowError, TypeError):
                     # on exception leave astr unconverted & log casting error
                     msg = f"line = {line}, column = '{name}'"

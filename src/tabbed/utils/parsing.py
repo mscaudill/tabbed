@@ -8,14 +8,14 @@ import re
 import string
 from collections import Counter
 from datetime import date, datetime, time
-from typing import List, Optional, Type
+from typing import Optional, Type
 
 # define the supported intrinsic types for each list element read by Tabbed
 CellType = int | float | complex | time | date | datetime | str
-CellTypes = List[Type[CellType]]
+CellTypes = list[Type[CellType]]
 
 
-def time_formats() -> List[str]:
+def time_formats() -> list[str]:
     """Creates commonly used time format specifiers.
 
     This function returns many common time formats but not all. As new formats
@@ -39,7 +39,7 @@ def time_formats() -> List[str]:
     return fmts
 
 
-def date_formats() -> List[str]:
+def date_formats() -> list[str]:
     """Creates commonly used date format specifiers.
 
     This function returns many common date formats but not all. As new formats
@@ -59,7 +59,7 @@ def date_formats() -> List[str]:
     return fmts
 
 
-def datetime_formats() -> List[str]:
+def datetime_formats() -> list[str]:
     """Creates commonly used datetime format specifiers.
 
     This function returns many common datetime formats but not all. As new
@@ -78,7 +78,7 @@ def datetime_formats() -> List[str]:
     return fmts
 
 
-def find_format(astring: str, formats: List[str]) -> str | None:
+def find_format(astring: str, formats: list[str]) -> str | None:
     """Returns the date, time, or datetime format of astring.
 
     Args:
@@ -103,15 +103,21 @@ def find_format(astring: str, formats: List[str]) -> str | None:
     return None
 
 
-def is_numeric(astring: str) -> bool:
+def is_numeric(astring: str, decimal: str) -> bool:
     """Test if astring is a stringed numeric.
 
     Args:
-        A string that possibly represents a numeric type.
+        astring:
+            A string that possibly represents a numeric type.
+        decimal:
+            A string representing the decimal notation.
 
     Returns:
         True if astring can be converted to any type in {int, float, complex}.
     """
+
+    if decimal != '.':
+        astring = astring.replace(decimal, '.')
 
     try:
         complex(astring)
@@ -172,16 +178,21 @@ def is_datetime(astring: str) -> bool:
     return bool(fmt)
 
 
-def as_numeric(astring: str) -> int | float | complex | str:
+def as_numeric(astring: str, decimal: str) -> int | float | complex | str:
     """Converts astring representing a numeric into an int, float or complex.
 
     Args:
         astring:
             A string that represents a numeric type.
+        decimal:
+            A string representing the decimal notation.
 
     Returns:
         A numeric type but on conversion failure returns input string.
     """
+
+    if decimal != '.':
+        astring = astring.replace(decimal, '.')
 
     # look for imag part for complex
     if re.findall(r'[ij]', astring):
@@ -252,6 +263,7 @@ def as_datetime(astring: str, fmt: str) -> datetime | str:
 # pylint: disable-next=too-many-return-statements
 def convert(
     astring: str,
+    decimal: str = '.',
     celltype: Optional[Type[CellType]] = None,
     fmt: Optional[str] = None,
 ) -> CellType:
@@ -271,6 +283,8 @@ def convert(
         astring:
             A string that possibly represents a CellType, one of int, float,
             complex, datetime or string.
+        decimal:
+            A string that represents the decimal notation for numeric types.
         celltype:
             A CellType callable class, one of int, float, complex, str, time,
             date or datetime. If None, automatic and slower conversion of
@@ -296,13 +310,20 @@ def convert(
             adatetime, celltype.__name__
         )()
 
-    if celltype and not fmt:
-        # avoid instance assertions - we know this is numeric or string
-        return celltype(astring)  # type: ignore[call-arg, arg-type]
+    # replace decimal notation with dot notation
+    if celltype in {float, complex, int}:
+        try:
+            return celltype(astring) # type: ignore[call-arg, arg-type]
+        except ValueError:
+            astring = astring.replace(decimal, '.')
+            return celltype(astring) # type: ignore[call-arg, arg-type]
+
+    if celltype == str:
+        return astring
 
     # numeric
-    if is_numeric(astring):
-        return as_numeric(astring)
+    if is_numeric(astring, decimal):
+        return as_numeric(astring, decimal)
 
     # simple string a subset of ascii
     if set(astring.lower()).issubset(string.ascii_letters):

@@ -17,7 +17,7 @@ from tabbed.reading import Reader
 
 
 # testing of other delimiters is carried out in test_sniffing
-@pytest.fixture(params = [','])
+@pytest.fixture(params = [';'])
 def delimiter(request):
     """Returns a delimiter."""
 
@@ -75,6 +75,32 @@ def datastring(delimiter):
     return '\n'.join(row_strings)
 
 
+@pytest.fixture()
+def comma_datastring(delimiter):
+    """Returns a 100 line data string encoding each of Tabbed's supported
+    data types using comma decimal marks"""
+
+    cnt = 100
+    random.seed(0)
+
+    ints = [str(x) for x in range(cnt)]
+    floats = [str(x + 0.1).replace('.', ',') for x in range(cnt)]
+    complexes = [str(complex(x, x+1)).replace('.',' ,') for x in range(cnt)]
+    strings = [''.join(random.choices(ascii_letters, k=4)) for _ in range(cnt)]
+    start_time = datetime.combine(date.today(), time(0,0))
+    times = [(start_time + timedelta(seconds=x)).time() for x in range(cnt)]
+    dates = [date(2000, 1, 1) + timedelta(hours=x*24) for x in range(cnt)]
+    datetimes = [str(datetime.combine(d, t)) for d, t in zip(dates, times)]
+    # convert times and dates to strings now
+    times = [str(v) for v in times]
+    dates = [str(v) for v in dates]
+
+    data = list(zip(ints, floats, complexes, strings, times, dates, datetimes))
+    row_strings = [delimiter.join(row) for row in data]
+
+    return '\n'.join(row_strings)
+
+
 @pytest.fixture
 def metadata_header_data_file(metastring, headerstring, datastring):
     """Returns a temporary file withe metadata, header and data sections."""
@@ -89,10 +115,37 @@ def metadata_header_data_file(metastring, headerstring, datastring):
 
 
 @pytest.fixture
+def metadata_header_data_file_comma(metastring, headerstring, comma_datastring):
+    """Returns a temporary file withe metadata, header and data sections using
+    comma for the decimal mark."""
+
+    text = '\n'.join([metastring, headerstring, comma_datastring])
+    outfile = TemporaryFile(mode='w+')
+    outfile.write(text)
+    outfile.seek(0)
+
+    yield outfile
+    outfile.close()
+
+
+@pytest.fixture
 def metadata_data_file(metastring, datastring):
     """Returns a temporary file with metadata and data sections."""
 
     text = '\n'.join([metastring, datastring])
+    outfile = TemporaryFile(mode='w+')
+    outfile.write(text)
+    outfile.seek(0)
+
+    yield outfile
+    outfile.close()
+
+@pytest.fixture
+def metadata_data_file_comma(metastring, comma_datastring):
+    """Returns a temporary file with metadata and data sections using comma for
+    the decimal mark"""
+
+    text = '\n'.join([metastring, comma_datastring])
     outfile = TemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
@@ -115,6 +168,19 @@ def header_data_file(headerstring, datastring):
 
 
 @pytest.fixture
+def header_data_file_comma(headerstring, comma_datastring):
+    """Returns a temporary file with header and data sections using comma as the
+    decimal mark."""
+
+    text = '\n'.join([headerstring, comma_datastring])
+    outfile = TemporaryFile(mode='w+')
+    outfile.write(text)
+    outfile.seek(0)
+
+    yield outfile
+    outfile.close()
+
+@pytest.fixture
 def data_file(datastring):
     """Returns a temporary file with only a data section."""
 
@@ -126,6 +192,17 @@ def data_file(datastring):
     yield outfile
     outfile.close()
 
+@pytest.fixture
+def data_file_comma(comma_datastring):
+    """Returns a temporary file with only a data section."""
+
+    text = comma_datastring
+    outfile = TemporaryFile(mode='w+')
+    outfile.write(text)
+    outfile.seek(0)
+
+    yield outfile
+    outfile.close()
 
 @pytest.fixture
 def header_data_file_with_empty(headerstring, datastring):
@@ -190,6 +267,47 @@ def test_init_tabulator(metadata_header_data_file, headerstring):
     delimiter = reader.sniffer.dialect.delimiter
     assert reader.header.names == headerstring.split(delimiter)
 
+ # with comma decimal marks
+def test_init_header_0_comma(metadata_header_data_file_comma, headerstring):
+    """Test reader's init correctly identifies the header and a comma is used as
+    the decimal mark."""
+
+    reader = Reader(metadata_header_data_file_comma, decimal=',')
+    delimiter = reader.sniffer.dialect.delimiter
+    assert reader.header.names == headerstring.split(delimiter)
+
+
+def test_init_header_1_comma(header_data_file_comma, headerstring):
+    """Test reader init correctly identifies the header when no metadata and
+    a comma is used as the decimal mark."""
+
+    reader = Reader(header_data_file_comma, decimal=',')
+    delimiter = reader.sniffer.dialect.delimiter
+    assert reader.header.names == headerstring.split(delimiter)
+
+
+def test_init_header_2_comma(data_file_comma):
+    """Test reader init correctly identifies no header when no header and no
+    metadata and a comma is used as the decimal mark"""
+
+    reader = Reader(data_file_comma, decimal=',')
+    assert reader.header.names == [f'Column_{i}' for i in range(7)]
+
+
+def test_init_header_3_comma(metadata_data_file_comma):
+    """Test reader init correctly identifies header when metadata and no header
+    is present and a comma is used as the decimal mark"""
+
+    reader = Reader(metadata_data_file_comma, decimal=',')
+    assert reader.header.names == [f'Column_{i}' for i in range(7)]
+
+
+def test_init_tabulator_comma(metadata_header_data_file_comma, headerstring):
+    """Ensure tabulator instance is correctly initialized."""
+
+    reader = Reader(metadata_header_data_file_comma, decimal=',')
+    delimiter = reader.sniffer.dialect.delimiter
+    assert reader.header.names == headerstring.split(delimiter)
 
 ###########################
 # Sniffer property change #
@@ -296,6 +414,23 @@ def test_metadata_no_header(metadata_data_file, metastring):
     # the last metastring line contains an extra '\n' that metadata() strips
     assert reader.metadata().string == metastring
 
+# with comma decimal mark
+
+def test_metadata_header_comma(metadata_header_data_file_comma, metastring):
+    """Test that the returned metadata is correct when a header is present."""
+
+    reader = Reader(metadata_header_data_file_comma, decimal=',')
+    assert reader.metadata().string == metastring
+
+
+def test_metadata_no_header_comma(metadata_data_file_comma, metastring):
+    """Test that the returned metadata is correct when no header is present."""
+
+    reader = Reader(metadata_data_file_comma, decimal=',')
+    # the last metastring line contains an extra '\n' that metadata() strips
+    assert reader.metadata().string == metastring
+
+
 
 ##################
 # ragged logging #
@@ -361,7 +496,7 @@ def test_priming_start_0(metadata_header_data_file):
     assert start == line
 
 
-def test_priming_start_1(metadata_header_data_file, datastring):
+def test_priming_start_1(metadata_header_data_file, datastring, delimiter):
     """Test that starting at line in the data section gives the correct data if
     a header is provided."""
 
@@ -369,11 +504,11 @@ def test_priming_start_1(metadata_header_data_file, datastring):
     start = reader.header.line + 1 + 10
     row_iter, _ = reader._prime(start)
 
-    rowstrings = [','.join(row.values()) for row in row_iter]
+    rowstrings = [delimiter.join(row.values()) for row in row_iter]
     assert rowstrings == datastring.splitlines()[10:]
 
 
-def test_priming_start_2(metadata_data_file, datastring):
+def test_priming_start_2(metadata_data_file, datastring, delimiter):
     """Test that starting at line in the data section gives the correct data if
     no header is provided."""
 
@@ -383,11 +518,11 @@ def test_priming_start_2(metadata_data_file, datastring):
     start = reader.metadata().lines[-1] + start
     row_iter, _ = reader._prime(start)
 
-    rowstrings = [','.join(row.values()) for row in row_iter]
+    rowstrings = [delimiter.join(row.values()) for row in row_iter]
     assert rowstrings == datastring.splitlines()[10:]
 
 
-def test_priming_start_3(data_file, datastring):
+def test_priming_start_3(data_file, datastring, delimiter):
     """Test that starting at line in the data section gives the correct data if
     no header and no metadata is provided."""
 
@@ -395,7 +530,7 @@ def test_priming_start_3(data_file, datastring):
     start = 10
     row_iter, _ = reader._prime(start)
 
-    rowstrings = [','.join(row.values()) for row in row_iter]
+    rowstrings = [delimiter.join(row.values()) for row in row_iter]
     assert rowstrings == datastring.splitlines()[10:]
 
 
@@ -408,29 +543,30 @@ def test_priming_indices_start_0(metadata_header_data_file):
     assert start == 10
 
 
-def test_priming_indices_start_1(metadata_header_data_file, datastring):
+def test_priming_indices_start_1(metadata_header_data_file, datastring,
+        delimiter):
     """Test that data from indices is correct if a header is present."""
 
     reader = Reader(metadata_header_data_file)
     datastart = reader.header.line + 1
     row_iter, start = reader._prime(indices=range(datastart + 10, datastart + 15))
 
-    rowstrings = [','.join(row.values()) for row in row_iter]
+    rowstrings = [delimiter.join(row.values()) for row in row_iter]
     assert rowstrings == datastring.splitlines()[10:15]
 
 
-def test_priming_indices_start_2(metadata_data_file, datastring):
+def test_priming_indices_start_2(metadata_data_file, datastring, delimiter):
     """Test that data from indices is correct if a header is not present."""
 
     reader = Reader(metadata_data_file)
     datastart = reader.metadata().lines[-1]
     row_iter, start = reader._prime(indices=range(datastart + 10, datastart + 15))
 
-    rowstrings = [','.join(row.values()) for row in row_iter]
+    rowstrings = [delimiter.join(row.values()) for row in row_iter]
     assert rowstrings == datastring.splitlines()[10:15]
 
 
-def test_priming_indices_start_3(data_file, datastring):
+def test_priming_indices_start_3(data_file, datastring, delimiter):
     """Test that data from indices is correct if no header or metadata is
     present."""
 
@@ -438,7 +574,7 @@ def test_priming_indices_start_3(data_file, datastring):
     datastart = 0
     row_iter, start = reader._prime(indices=range(datastart + 10, datastart + 15))
 
-    rowstrings = [','.join(row.values()) for row in row_iter]
+    rowstrings = [delimiter.join(row.values()) for row in row_iter]
     assert rowstrings == datastring.splitlines()[10:15]
 
 
@@ -488,5 +624,15 @@ def test_tab_call(metadata_header_data_file):
     reader.tab(integers='<=10')
     data = list(reader.read())[0]
     assert all(row['integers'] <= 10 for row in data)
+
+
+def test_tab_call_comma(metadata_header_data_file_comma):
+    """Test that tabulator is called by reader. More in-depth testing of tabbing
+    in test_tabbing module."""
+
+    reader = Reader(metadata_header_data_file_comma, decimal=',')
+    reader.tab(floats='<=10.8')
+    data = list(reader.read())[0]
+    assert all(row['floats'] <= 10.8 for row in data)
 
 
