@@ -21,6 +21,9 @@ dist/
 #paper files
 *.bak
 
+#coveralls
+*.coverage
+
 #ignore builds of websites
 site/
 
