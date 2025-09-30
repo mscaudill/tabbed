@@ -138,7 +138,9 @@ class Reader(ReprMixin):
                 An IO stream instance returned by open builtin.
             poll:
                 The number of last sample rows to use for the Sniffer to detect
-                header, metadata and data types.
+                header, metadata and data types. For optimal detection of the
+                header and metadata file components, the poll should be not
+                include rows that could be header or metadata.
             exclude:
                A sequence of characters indicating missing values in the file.
                Rows containing these values will be disqualified from use for
