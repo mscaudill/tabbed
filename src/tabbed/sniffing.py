@@ -178,7 +178,7 @@ class Sniffer(ReprMixin):
         amount: int = 100,
         skips: list[int] | None = None,
         delimiters: list[str] = [',', ';', '|', '\t'],
-        decimal='.',
+        decimal: str = '.',
     ) -> None:
         """Initialize this sniffer.
 
