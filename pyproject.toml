@@ -103,6 +103,9 @@ argument-naming-style = "any"
 variable-naming-style = "any"
 attr-naming-style = "any"
 
+[tool.pylint.main]
+load-plugins = "pylint.extensions.typing"
+
 [tool.pylint.messages_control]
 disable = ["ungrouped-imports"]
 

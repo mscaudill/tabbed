@@ -13,13 +13,9 @@ import itertools
 import re
 import warnings
 from collections import deque
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from types import SimpleNamespace
-from typing import (
-    IO,
-    Callable,
-    Optional,
-)
+from typing import IO
 
 from clevercsv.dialect import SimpleDialect
 
@@ -270,7 +266,7 @@ class Reader(ReprMixin):
 
     def tab(
         self,
-        columns: Optional[list[str] | list[int] | re.Pattern] = None,
+        columns: list[str] | list[int] | re.Pattern | None = None,
         **tabs: (
             CellType
             | Sequence[CellType]
@@ -353,8 +349,8 @@ class Reader(ReprMixin):
 
     def _prime(
         self,
-        start: Optional[int] = None,
-        indices: Optional[Sequence] = None,
+        start: int | None = None,
+        indices: Sequence | None = None,
     ) -> tuple[Iterator, int]:
         """Prime this Reader for reading by constructing a row iterator.
 
@@ -455,9 +451,9 @@ class Reader(ReprMixin):
     # pylint: disable-next=too-many-positional-arguments
     def read(
         self,
-        start: Optional[int] = None,
-        skips: Optional[Sequence[int]] = None,
-        indices: Optional[Sequence] = None,
+        start: int | None = None,
+        skips: Sequence[int] | None = None,
+        indices: Sequence | None = None,
         chunksize: int = int(2e5),
         skip_empty: bool = True,
         raise_ragged: bool = False,

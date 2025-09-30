@@ -8,11 +8,10 @@ import re
 import string
 from collections import Counter
 from datetime import date, datetime, time
-from typing import Optional, Type
 
 # define the supported intrinsic types for each list element read by Tabbed
 CellType = int | float | complex | time | date | datetime | str
-CellTypes = list[Type[CellType]]
+CellTypes = list[type[CellType]]
 
 
 def time_formats() -> list[str]:
@@ -264,8 +263,8 @@ def as_datetime(astring: str, fmt: str) -> datetime | str:
 def convert(
     astring: str,
     decimal: str = '.',
-    celltype: Optional[Type[CellType]] = None,
-    fmt: Optional[str] = None,
+    celltype: type[CellType] | None = None,
+    fmt: str | None = None,
 ) -> CellType:
     """Attempts to convert a string to a valid Cell type.
 
@@ -313,10 +312,10 @@ def convert(
     # replace decimal notation with dot notation
     if celltype in {float, complex, int}:
         try:
-            return celltype(astring) # type: ignore[call-arg, arg-type]
+            return celltype(astring)  # type: ignore[call-arg, arg-type]
         except ValueError:
             astring = astring.replace(decimal, '.')
-            return celltype(astring) # type: ignore[call-arg, arg-type]
+            return celltype(astring)  # type: ignore[call-arg, arg-type]
 
     if celltype == str:
         return astring

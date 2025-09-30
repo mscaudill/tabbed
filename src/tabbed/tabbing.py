@@ -9,9 +9,9 @@ import abc
 import operator as op
 import re
 import warnings
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import date, datetime, time
-from typing import Callable, Literal, Optional, Self, cast
+from typing import Literal, Self, cast
 
 from tabbed.sniffing import Header
 from tabbed.utils import parsing
@@ -470,8 +470,8 @@ class Tabulator(ReprMixin):
     def __init__(
         self,
         header: Header,
-        tabs: Optional[list[Tab]] = None,
-        columns: Optional[list[str] | list[int] | re.Pattern] = None,
+        tabs: list[Tab] | None = None,
+        columns: list[str] | list[int] | re.Pattern | None = None,
     ) -> None:
         """Initialize with tabs, columns to extract & Header instance."""
 
@@ -578,7 +578,7 @@ class Tabulator(ReprMixin):
     def from_keywords(
         cls,
         header: Header,
-        columns: Optional[list[str] | list[int] | re.Pattern] = None,
+        columns: list[str] | list[int] | re.Pattern | None = None,
         **kwargs: (
             CellType
             | Sequence[CellType]

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time
 from itertools import chain
 from types import SimpleNamespace
-from typing import IO, Optional
+from typing import IO
 
 import clevercsv
 from clevercsv.dialect import SimpleDialect
@@ -176,7 +176,7 @@ class Sniffer(ReprMixin):
         infile: IO[str],
         start: int = 0,
         amount: int = 100,
-        skips: Optional[list[int]] = None,
+        skips: list[int] | None = None,
         delimiters: list[str] = [',', ';', '|', '\t'],
         decimal='.',
     ) -> None:
@@ -386,7 +386,7 @@ class Sniffer(ReprMixin):
         self._sample: str = sampled
         self._lines: list[int] = result.indices
 
-    def sniff(self, delimiters: Optional[list[str]] = None) -> None:
+    def sniff(self, delimiters: list[str] | None = None) -> None:
         """Returns a clevercsv SimpleDialect from this instances sample.
 
         Dialect is detected using clevercsv's sniffer as it has shown improved
@@ -714,7 +714,7 @@ class Sniffer(ReprMixin):
     def metadata(
         self,
         header: Header | None,
-        poll: Optional[int] = None,
+        poll: int | None = None,
         exclude: list[str] = ['', ' ', '-', 'nan', 'NaN', 'NAN'],
     ) -> MetaData:
         """Detects the metadata section (if any) in this Sniffer's sample.
