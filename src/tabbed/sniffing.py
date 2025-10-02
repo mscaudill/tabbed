@@ -345,6 +345,13 @@ class Sniffer(ReprMixin):
             row = [astring.replace('"', '') for astring in row]
             result.append(row)
 
+        # if some lines end in delimiters and others do not
+        # we need to normalize after rstripping
+        expected = len(max(result, key=len))
+        for row in result:
+            if len(row) < expected:
+                row.append('')
+
         return result
 
     def _move(self, line: int) -> None:
