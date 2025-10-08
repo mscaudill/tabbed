@@ -9,7 +9,7 @@ from datetime import time
 from datetime import timedelta
 import random
 from string import ascii_letters
-from tempfile import TemporaryFile
+from tempfile import NamedTemporaryFile
 
 import pytest
 
@@ -106,7 +106,7 @@ def metadata_header_data_file(metastring, headerstring, datastring):
     """Returns a temporary file withe metadata, header and data sections."""
 
     text = '\n'.join([metastring, headerstring, datastring])
-    outfile = TemporaryFile(mode='w+')
+    outfile = NamedTemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
 
@@ -120,7 +120,7 @@ def metadata_header_data_file_comma(metastring, headerstring, comma_datastring):
     comma for the decimal mark."""
 
     text = '\n'.join([metastring, headerstring, comma_datastring])
-    outfile = TemporaryFile(mode='w+')
+    outfile = NamedTemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
 
@@ -133,7 +133,7 @@ def metadata_data_file(metastring, datastring):
     """Returns a temporary file with metadata and data sections."""
 
     text = '\n'.join([metastring, datastring])
-    outfile = TemporaryFile(mode='w+')
+    outfile = NamedTemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
 
@@ -146,7 +146,7 @@ def metadata_data_file_comma(metastring, comma_datastring):
     the decimal mark"""
 
     text = '\n'.join([metastring, comma_datastring])
-    outfile = TemporaryFile(mode='w+')
+    outfile = NamedTemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
 
@@ -159,7 +159,7 @@ def header_data_file(headerstring, datastring):
     """Returns a temporary file with header and data sections."""
 
     text = '\n'.join([headerstring, datastring])
-    outfile = TemporaryFile(mode='w+')
+    outfile = NamedTemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
 
@@ -173,7 +173,7 @@ def header_data_file_comma(headerstring, comma_datastring):
     decimal mark."""
 
     text = '\n'.join([headerstring, comma_datastring])
-    outfile = TemporaryFile(mode='w+')
+    outfile = NamedTemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
 
@@ -185,7 +185,7 @@ def data_file(datastring):
     """Returns a temporary file with only a data section."""
 
     text = datastring
-    outfile = TemporaryFile(mode='w+')
+    outfile = NamedTemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
 
@@ -197,7 +197,7 @@ def data_file_comma(comma_datastring):
     """Returns a temporary file with only a data section."""
 
     text = comma_datastring
-    outfile = TemporaryFile(mode='w+')
+    outfile = NamedTemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
 
@@ -215,7 +215,7 @@ def header_data_file_with_empty(headerstring, datastring):
     dstring = '\n'.join([','.join(row) for row in rows])
 
     text = '\n'.join([headerstring, dstring])
-    outfile = TemporaryFile(mode='w+')
+    outfile = NamedTemporaryFile(mode='w+')
     outfile.write(text)
     outfile.seek(0)
 

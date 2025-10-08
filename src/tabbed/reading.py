@@ -14,6 +14,7 @@ import re
 import warnings
 from collections import deque
 from collections.abc import Callable, Iterator, Sequence
+from pathlib import Path
 from types import SimpleNamespace
 from typing import IO
 
@@ -152,7 +153,14 @@ class Reader(ReprMixin):
             arguments to make an initial guess of the header. If this guess is
             wrong, the header may be explicitly set via the 'header' setter
             property.
+
+        Raises:
+            An IOError is issued if infile is empty.
         """
+
+        if self.isempty(infile):
+            msg = f'File at path {infile.name} is empty.'
+            raise IOError(msg)
 
         self.infile = infile
         self.decimal = decimal
@@ -162,6 +170,11 @@ class Reader(ReprMixin):
         self._header = self._sniffer.header(self.poll, self.exclude)
         self.tabulator = Tabulator(self.header, columns=None, tabs=None)
         self.errors = SimpleNamespace(casting=[], ragged=[])
+
+    def isempty(self, infile: IO[str]) -> bool:
+        """Returns True if infile is empty and False otherwise."""
+
+        return not bool(Path(infile.name).stat().st_size)
 
     @property
     def sniffer(self) -> Sniffer:
@@ -437,7 +450,8 @@ class Reader(ReprMixin):
         dialect = self._sniffer.dialect.to_csv_dialect()
 
         # pylint: disable-next=expression-not-assigned
-        [next(self.infile) for _ in range(astart)]
+        [next(iter(self.infile)) for _ in range(astart)]
+        # iter above is needed for NamedTemporaryFiles which are not iterators
         row_iter = csv.DictReader(
             self.infile,
             self.header.names,

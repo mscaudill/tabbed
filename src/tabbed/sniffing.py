@@ -371,7 +371,8 @@ class Sniffer(ReprMixin):
 
         self.infile.seek(0)
         for _ in range(line):
-            next(self.infile)
+            # NamedTemporaryFiles are not iterators like file instances
+            next(iter(self.infile))
 
     def _resample(self) -> None:
         """Sample from infile using the start, amount and skip properties."""
