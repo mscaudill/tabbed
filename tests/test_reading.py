@@ -10,6 +10,7 @@ from datetime import timedelta
 import random
 from string import ascii_letters
 from tempfile import NamedTemporaryFile
+import warnings
 
 import pytest
 
@@ -308,6 +309,15 @@ def test_init_tabulator_comma(metadata_header_data_file_comma, headerstring):
     reader = Reader(metadata_header_data_file_comma, decimal=',')
     delimiter = reader.sniffer.dialect.delimiter
     assert reader.header.names == headerstring.split(delimiter)
+
+@pytest.mark.filterwarnings('ignore::UserWarning')
+def test_init_polling(metadata_header_data_file_comma):
+    """Ensure polling is set to 1 if the poll amount exceeds the sampled
+    rows."""
+
+    reader = Reader(metadata_header_data_file_comma, poll=2000)
+    assert reader.poll == 1
+
 
 ###########################
 # Sniffer property change #

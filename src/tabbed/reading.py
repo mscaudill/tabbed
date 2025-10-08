@@ -158,23 +158,58 @@ class Reader(ReprMixin):
             An IOError is issued if infile is empty.
         """
 
-        if self.isempty(infile):
+        if self._isempty(infile):
             msg = f'File at path {infile.name} is empty.'
             raise IOError(msg)
 
         self.infile = infile
         self.decimal = decimal
         self._sniffer = Sniffer(infile, decimal=decimal, **sniffing_kwargs)
-        self.poll = poll
+        self._poll = self._initialize_poll(poll)
         self.exclude = exclude
         self._header = self._sniffer.header(self.poll, self.exclude)
         self.tabulator = Tabulator(self.header, columns=None, tabs=None)
         self.errors = SimpleNamespace(casting=[], ragged=[])
 
-    def isempty(self, infile: IO[str]) -> bool:
+    def _isempty(self, infile: IO[str]) -> bool:
         """Returns True if infile is empty and False otherwise."""
 
         return not bool(Path(infile.name).stat().st_size)
+
+    def _initialize_poll(self, value: int) -> int:
+        """Sets the integer number of last sample rows to poll for header,
+        metadata and type detection.
+
+        Args:
+            value:
+                The number of last sample rows to poll. If this number
+                exceeds the number of sample rows, the poll will be 1.
+
+        Returns:
+            None
+        """
+
+        result = value
+        sample_cnt = len(self._sniffer.rows)
+        if value > sample_cnt:
+            msg = (
+                f'\nThe requested poll={value} exceeds the number of sampled'
+                f' rows={sample_cnt}. Setting the poll amount to 1.'
+            )
+            result = 1
+            warnings.warn(msg)
+        return result
+
+    @property
+    def poll(self):
+        """Returns the integer number of last sample rows this Reader's sniffer
+        will use for header, metadata and type detection.
+
+        Returns:
+            The integer number of rows to poll.
+        """
+
+        return self._poll
 
     @property
     def sniffer(self) -> Sniffer:
