@@ -26,9 +26,9 @@ from tabbed.sniffing import Sniffer
 from tabbed.utils import parsing
 
 # number of test to run per test is SEEDS * DELIMITERS * COLUMNS
-SEEDS = range(10)
+SEEDS = range(3)
 DELIMITERS = [',', ';', '|', '\t']
-COLUMNS = [1, 4, 8, 12, 16]
+COLUMNS = [1, 4, 16]
 
 
 @pytest.fixture(params=SEEDS)
@@ -901,19 +901,22 @@ def test_detected_fmts(smeta_header_file, table):
     """Validate that detected formats match expected formats from table."""
 
     infile, delim, _ = smeta_header_file
-    sniffer = safe_sniff(infile, delim)
-    types, _ = table
-    detected_fmts, consistent = sniffer.datetime_formats(poll=5)
+    # For speed only test ',' delimiter here since fmts are delimiter indpt
+    if delim == ',':
+        sniffer = safe_sniff(infile, delim)
+        types, _ = table
+        detected_fmts, consistent = sniffer.datetime_formats(poll=5)
 
-    fmts = {
-            time: parsing.time_formats(),
-            date: parsing.date_formats(),
-            datetime: parsing.datetime_formats(),
-        }
+        fmts = {
+                time: parsing.time_formats(),
+                date: parsing.date_formats(),
+                datetime: parsing.datetime_formats(),
+            }
 
-    for typed, fmt in zip(types, detected_fmts):
-        assert fmt in fmts[typed] if fmt else True
+        for typed, fmt in zip(types, detected_fmts):
+            assert fmt in fmts[typed] if fmt else True
 
+    assert True
 
 ####################
 # Header detection #

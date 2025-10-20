@@ -137,15 +137,21 @@ def valid_date(
     year = rng.choice(years)
     # choose day from minimum number of days in a given month
     day = rng.choice(range(1, 29))
-    # choose if day is first in fmt
-    day_first = rng.choice([True, False])
 
-    # build formats and date example for day first and otherwise
-    fmts = [f'%d{sep}{mfmt}{sep}{yfmt}', f'{mfmt}{sep}%d{sep}{yfmt}']
-    dates = [f'{day}{sep}{month}{sep}{year}', f'{month}{sep}{day}{sep}{year}']
+    if yfmt == '%y':
+        # non-century years must appear last -- for now
+        # build formats and date example for day first and otherwise
+        # choose if day is first in fmt
+        day_first = rng.choice([True, False])
+        fmts = [f'%d{sep}{mfmt}{sep}{yfmt}', f'{mfmt}{sep}%d{sep}{yfmt}']
+        dates = [f'{day}{sep}{month}{sep}{year}', f'{month}{sep}{day}{sep}{year}']
+        return (fmts[0], dates[0]) if day_first else (fmts[1], dates[1])
 
-    return (fmts[0], dates[0]) if day_first else (fmts[1], dates[1])
-
+    else:
+        # year is first and must include century -- for now
+        fmt = f'%Y{sep}{mfmt}{sep}%d'
+        date = f'{year}{sep}{month}{sep}{day}'
+        return fmt, date
 
 @pytest.fixture()
 def valid_time(

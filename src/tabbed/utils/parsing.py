@@ -51,8 +51,15 @@ def date_formats() -> list[str]:
     months, separators, years = 'mbB', ' /-.', 'Yy'
     fmts = []
     for mth, sep, yr in itertools.product(months, separators, years):
-        # build month and day first fmts
-        x = [f'%{mth}{sep}%d{sep}%{yr}', f'%d{sep}%{mth}{sep}%{yr}']
+        # currently support year without century in last position only
+        # future vers will support 1st position year without century but sniffer
+        # datetime_formats will need to disambiguate %m from %y in 1st pos.
+        x = [
+            f'%{mth}{sep}%d{sep}%{yr}',
+            f'%d{sep}%{mth}{sep}%{yr}',
+            f'%Y{sep}%{mth}{sep}%d',
+        ]
+
         fmts.extend(x)
 
     return fmts
