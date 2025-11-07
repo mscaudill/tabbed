@@ -6,7 +6,7 @@ import warnings
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, time
-from itertools import chain
+from itertools import chain, zip_longest
 from types import SimpleNamespace
 from typing import IO
 
@@ -449,7 +449,7 @@ class Sniffer(ReprMixin):
             )
             raise RuntimeError(msg)
 
-        cols = list(zip(*rows))
+        cols = list(zip_longest(*rows, fillvalue=''))
         type_cnts = [
             Counter([type(parsing.convert(el, self.decimal)) for el in col])
             for col in cols
@@ -567,9 +567,13 @@ class Sniffer(ReprMixin):
         types, consistent = self.types(poll, exclude)
 
         if not consistent:
-            msg = 'Detection failure due to inconsistent column data types'
+            msg = (
+                'Inconsistent data types detected, header and metadata'
+                ' detection may fail. For small files, try reducing the'
+                ' number of polling rows to not include the header and '
+                ' metadata lines'
+            )
             warnings.warn(msg)
-            return None, None
 
         # int, float and complex mismatches are not type mismatches
         numerics = {int, float, complex}
