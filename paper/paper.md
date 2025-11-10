@@ -76,7 +76,7 @@ column named *Annotation* has a string value of *exploring*. Tabbed supports
 both column selection and row filtering with equality, membership, rich
 comparison, regular expression matching, and custom callables. To support an
 intuitive interface for creating these filters, tabbed uses simple keyword
-arguments passed to a method called `tab' of the Reader class. Below we
+arguments passed to a method called `tab` of the Reader class. Below we
 illustrate the simplicity of constructing these filters for the sample file
 shown in \autoref{fig: figure1}.
 
@@ -141,7 +141,7 @@ standard deviation across 30 trials. These comparisons were carried out on
 a single 2.4 GHz Intel Core i5-6300U processor \label{fig: figure2}](figure2.png).
 
 To further understand tabbed's performance, we tested how row filtering impacts
-read speeds.  The right panel of \autoref{fig: figure2} shows the read speed
+read speeds. The right panel of \autoref{fig: figure2} shows the read speed
 as a function of the number of filters applied to each data row. The left-most
 point is the baseline with no filters. We measure an approximate 2% reduction
 in speed for each new filter added.
