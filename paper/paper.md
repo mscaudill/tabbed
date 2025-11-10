@@ -101,13 +101,12 @@ tabbed to linearly scale to large files.
 Tablib [@tablib], comma [@comma], pandas [@pandas; @mckinney2010] and
 frictionless-py [@frictionless] are popular alternative packages to tabbed.
 \autoref{tbl: table1} compares their respective features. Pandas `read_csv` and
-Frictionless'
-`extract` functions most closely match the available features in tabbed. Both
-support broad type casting and iterative reading of large files. However, both
-require specifying the header row if metadata is written to the file. This per
-file specification of the header location makes batch reading of text files with
-varying structure difficult. Additionally, neither package stores the skipped
-metadata section for later use.
+Frictionless' `extract` functions most closely match the available features in
+tabbed. Both support broad type casting and iterative reading of large files.
+However, both require specifying the header row if metadata is written to the
+file. This per file specification of the header location makes batch reading of
+text files with varying structure difficult. Additionally, neither package
+stores the skipped metadata section for later use.
 
 |   **Software**   | **Structural Detection** | **Casting** | **Value-based Filtering** | **Iterative** |
 |:----------------:|:------------------------:|:-----------:|:-------------------------:|:-------------:|
@@ -138,7 +137,7 @@ mixed types. The conversion engine for pandas was chosen to be "python". Right:
 Tabbed's read speed as a function of the number of filters applied to each row
 during reading. In both panels black circles and error bars are the mean and
 standard deviation across 30 trials. These comparisons were carried out on
-a single 2.4 GHz Intel Core i5-6300U processor \label{fig: figure2}](figure2.png).
+a single 2.4 GHz Intel Core i5-6300U processor. \label{fig: figure2}](figure2.png)
 
 To further understand tabbed's performance, we tested how row filtering impacts
 read speeds. The right panel of \autoref{fig: figure2} shows the read speed
