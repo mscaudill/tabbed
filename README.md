@@ -8,11 +8,11 @@
 [![status](
 https://joss.theoj.org/papers/4c0ca4b9e42cf06da96fbc87c79d3ab1/status.svg)](
 https://joss.theoj.org/papers/4c0ca4b9e42cf06da96fbc87c79d3ab1)
-[![Documentation](
-https://img.shields.io/badge/github.io-Documentation-seagreen)](
+[![documentation](
+https://img.shields.io/badge/github.io-Docs-seagreen)](
 https://mscaudill.github.io/tabbed/
 )
-![Static Badge](https://img.shields.io/badge/Python-%3E%3D3.12-blue)
+![python](https://img.shields.io/badge/Python-%3E%3D3.12-blue)
 [![Code style: black](https://img.shields.io/badge/style-black-black.svg)](
 https://github.com/psf/black
 )
@@ -20,11 +20,11 @@ https://github.com/psf/black
 https://github.com/mscaudill/tabbed/actions/workflows/testing.yml/badge.svg)](
 https://github.com/mscaudill/tabbed/actions/workflows/testing.yml
 )
-[![Coverage](
+[![coverage](
 https://coveralls.io/repos/github/mscaudill/tabbed/badge.svg?branch=master)](
 https://coveralls.io/github/mscaudill/tabbed?branch=master
 )
-![PyPI - License](
+![license](
 https://img.shields.io/pypi/l/tabbed?color=darkmagenta
 )
 
