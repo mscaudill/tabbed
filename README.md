@@ -12,8 +12,8 @@ https://joss.theoj.org/papers/4c0ca4b9e42cf06da96fbc87c79d3ab1)
 https://img.shields.io/badge/github.io-Documentation-seagreen)](
 https://mscaudill.github.io/tabbed/
 )
-![Python version](https://img.shields.io/badge/Python-%3E%3D3.12-goldenrod)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](
+![Static Badge](https://img.shields.io/badge/Python-%3E%3D3.12-blue)
+[![Code style: black](https://img.shields.io/badge/style-black-black.svg)](
 https://github.com/psf/black
 )
 [![pytest](
