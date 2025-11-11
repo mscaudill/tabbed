@@ -1,0 +1,28 @@
+cff-version: "1.2.0"
+authors:
+- family-names: Caudill
+  given-names: Matthew S.
+  orcid: "https://orcid.org/0000-0002-3656-9261"
+doi: 10.5281/zenodo.17554453
+message: If you use this software, please cite our article in the
+  Journal of Open Source Software.
+preferred-citation:
+  authors:
+  - family-names: Caudill
+    given-names: Matthew S.
+    orcid: "https://orcid.org/0000-0002-3656-9261"
+  date-published: 2025-11-11
+  doi: 10.21105/joss.08964
+  issn: 2475-9066
+  issue: 115
+  journal: Journal of Open Source Software
+  publisher:
+    name: Open Journals
+  start: 8964
+  title: "Tabbed: A Python package for reading variably structured text
+    files at scale"
+  type: article
+  url: "https://joss.theoj.org/papers/10.21105/joss.08964"
+  volume: 10
+title: "Tabbed: A Python package for reading variably structured text
+  files at scale"
