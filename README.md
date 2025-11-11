@@ -5,9 +5,9 @@
 
 ## A Python package for reading variably structured text files at scale
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15847863.svg)](
-https://doi.org/10.5281/zenodo.15847863
-)
+[![status](
+https://joss.theoj.org/papers/4c0ca4b9e42cf06da96fbc87c79d3ab1/status.svg)](
+https://joss.theoj.org/papers/4c0ca4b9e42cf06da96fbc87c79d3ab1)
 [![Documentation](
 https://img.shields.io/badge/github.io-Documentation-seagreen)](
 https://mscaudill.github.io/tabbed/
