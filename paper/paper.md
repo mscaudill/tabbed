@@ -23,7 +23,7 @@ bibliography: paper.bib
 
 # Summary
 Delimiter separated value (DSV) text files are ubiquitous for representing
-tabular data. For example, a search of Github.com for comma separated value
+tabular data. For example, a search of GitHub for comma separated value
 files, a subset of the DSV format, returns 75 million matches. They are simple
 to create, easy to share, and can encode a variety of data types. Despite
 their broad use, variability in the formatting and structure of DSV files has
