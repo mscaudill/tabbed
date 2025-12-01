@@ -6,7 +6,6 @@ a string to a type specific convert callable.
 import itertools
 import re
 import string
-from collections import Counter
 from datetime import date, datetime, time
 
 # define the supported intrinsic types for each list element read by Tabbed
@@ -84,6 +83,12 @@ def datetime_formats() -> list[str]:
     return fmts
 
 
+# GLOBALS OF FORMATS
+TIME_FORMATS = time_formats()
+DATE_FORMATS = date_formats()
+DATETIME_FORMATS = datetime_formats()
+
+
 def find_format(astring: str, formats: list[str]) -> str | None:
     """Returns the date, time, or datetime format of astring.
 
@@ -144,7 +149,7 @@ def is_time(astring: str) -> bool:
     """
 
     # all times contain 2 ':' separators
-    if Counter(astring)[':'] < 2:
+    if not re.search(r'^\d{1,2}:\d{2}:\d{2}', astring):
         return False
 
     # another method to time detect without fmt testing could give speedup
@@ -200,18 +205,16 @@ def as_numeric(astring: str, decimal: str) -> int | float | complex | str:
     if decimal != '.':
         astring = astring.replace(decimal, '.')
 
-    # look for imag part for complex
-    if re.findall(r'[ij]', astring):
-        return complex(astring)
-
-    # look for a decimal
-    if re.findall(r'\.', astring):
-        return float(astring)
-
     try:
-        return int(astring)
+        x = float(astring)
     except ValueError:
-        return astring
+        if re.search(r'i|j', astring):
+            try:
+                return complex(astring)
+            except ValueError:
+                return astring
+
+    return int(x) if x.is_integer() else x
 
 
 def as_time(astring: str, fmt: str) -> time | str:
@@ -332,23 +335,25 @@ def convert(
         return as_numeric(astring, decimal)
 
     # simple string a subset of ascii
-    if set(astring.lower()).issubset(string.ascii_letters):
+    # dates and times will have a separator that is non-ascii letters or digits
+    if set(astring.lower()).issubset(string.ascii_letters + string.digits):
         return astring
 
+    # dates and times are slower -- room for improvement
     # times,dates, datetimes - use asserts for mypy type narrowing
     if is_time(astring):
-        fmt = find_format(astring, time_formats())
+        fmt = find_format(astring, TIME_FORMATS)
         assert isinstance(fmt, str)
         return as_time(astring, fmt)
 
     if is_date(astring):
-        fmt = find_format(astring, date_formats())
+        fmt = find_format(astring, DATE_FORMATS)
         assert isinstance(fmt, str)
         return as_date(astring, fmt)
 
     if is_datetime(astring):
         # perform datetime last since it has many fmts to test
-        fmt = find_format(astring, datetime_formats())
+        fmt = find_format(astring, DATETIME_FORMATS)
         assert isinstance(fmt, str)
         return as_datetime(astring, fmt)
 

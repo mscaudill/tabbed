@@ -177,7 +177,7 @@ def valid_time(
     diurn = ' ' + rng.choice(diurnal[1]) if dicode else ''
 
     fmt = f'{hfmt}:%M:%S{sep}%f {dicode}'
-    example = f'{hour}:{mins}:{secs}{sep}{musecs}{diurn}'
+    example = f'{hour}:{mins:0>{2}}:{secs:0>{2}}{sep}{musecs}{diurn}'
 
     return fmt, example
 
